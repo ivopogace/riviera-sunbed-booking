@@ -56,7 +56,7 @@ class StayCancellationMailListener {
 		switch (facts.resolveStayCancellation(stay.get(), event.refundMinor(), event.currency(), event.reason(),
 				endedByRemodel(event, stay.get()))) {
 			case StayCancellationMailFacts.Missing(MissingBookingFact fact) -> abandon(fact, event);
-			case StayCancellationMailFacts.Resolved resolved -> mails.sendBookingCancellation(resolved.toEmail(),
+			case StayCancellationMailFacts.Resolved resolved -> mails.sendBookingCancellation(resolved.toEmail(), resolved.locale(),
 					resolved.mail());
 		}
 	}

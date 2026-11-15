@@ -20,6 +20,7 @@ import ai.riviera.platform.notification.application.MissingBookingFact;
 import ai.riviera.platform.notification.application.RebookLinks;
 import ai.riviera.platform.notification.application.TransactionalMailService;
 import ai.riviera.platform.monitoring.vocabulary.ObservabilityMetrics;
+import ai.riviera.platform.shared.SiteLocale;
 
 /**
  * Mails the tourist a cancelled booking's record, for every cancellation channel: the payload's server-computed
@@ -56,16 +57,16 @@ class BookingCancellationMailListener {
 		}
 		switch (facts.resolve(event.bookingId(), event.setId())) {
 			case BookingMailFacts.Missing(MissingBookingFact fact) -> abandon(fact, event);
-			case BookingMailFacts.Resolved booking -> mails.sendBookingCancellation(booking.toEmail(),
+			case BookingMailFacts.Resolved booking -> mails.sendBookingCancellation(booking.toEmail(), booking.locale(),
 					new BookingCancellationMail(booking.bookingCode(), booking.venueName(),
 							event.bookingDate(), event.lastDay(), event.refundMinor(), event.currency(), event.reason(),
-							rebookLinkFor(event)));
+							rebookLinkFor(event, booking.locale())));
 		}
 	}
 
-	private URI rebookLinkFor(BookingCancelled event) {
+	private URI rebookLinkFor(BookingCancelled event, SiteLocale locale) {
 		return event.reason() == RefundReason.VENUE_CHANGE && bookings.endedByRemodel(event.bookingId())
-				? rebookLinks.forDate(event.venueId(), event.bookingDate())
+				? rebookLinks.forDate(event.venueId(), event.bookingDate(), locale)
 				: null;
 	}
 

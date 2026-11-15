@@ -5,6 +5,7 @@ import java.time.LocalDate;
 
 import org.junit.jupiter.api.Test;
 
+import ai.riviera.platform.shared.SiteLocale;
 import ai.riviera.platform.venue.vocabulary.VenueId;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -19,28 +20,43 @@ class BookingLinksTest {
 
 	@Test
 	void buildsTheCodeGatedBookingUrl() {
-		assertEquals(URI.create("https://riviera.example/booking/K7Q2M9XR"), LINKS.forBooking("K7Q2M9XR"));
+		assertEquals(URI.create("https://riviera.example/booking/K7Q2M9XR"), LINKS.forBooking("K7Q2M9XR", SiteLocale.EN));
 	}
 
 	@Test
 	void encodesACodeAsOnePathSegment() {
-		assertEquals(URI.create("https://riviera.example/booking/a%2Fb%20c%3F"), LINKS.forBooking("a/b c?"));
+		assertEquals(URI.create("https://riviera.example/booking/a%2Fb%20c%3F"), LINKS.forBooking("a/b c?", SiteLocale.EN));
 	}
 
 	@Test
 	void keepsAPercentEscapedOriginPathAsEncoded() {
 		assertEquals(URI.create("https://riviera.example/my%20app/booking/K7Q2M9XR"),
-				new BookingLinks("https://riviera.example/my%20app").forBooking("K7Q2M9XR"));
+				new BookingLinks("https://riviera.example/my%20app").forBooking("K7Q2M9XR", SiteLocale.EN));
 	}
 
 	@Test
 	void buildsEveryLinkOnAnUnderscoredOrigin() {
 		BookingLinks onComposeHost = new BookingLinks("http://riviera_backend:8080");
 
-		assertEquals(URI.create("http://riviera_backend:8080/booking/K7Q2M9XR"), onComposeHost.forBooking("K7Q2M9XR"));
+		assertEquals(URI.create("http://riviera_backend:8080/booking/K7Q2M9XR"), onComposeHost.forBooking("K7Q2M9XR", SiteLocale.EN));
 		assertEquals(URI.create("http://riviera_backend:8080/venues/7?date=2026-07-01"),
-				onComposeHost.forVenueMap(new VenueId(7), LocalDate.parse("2026-07-01")));
+				onComposeHost.forVenueMap(new VenueId(7), LocalDate.parse("2026-07-01"), SiteLocale.EN));
 		assertEquals(URI.create("http://riviera_backend:8080/?date=2026-07-01"),
-				onComposeHost.forDiscovery(LocalDate.parse("2026-07-01")));
+				onComposeHost.forDiscovery(LocalDate.parse("2026-07-01"), SiteLocale.EN));
+	}
+
+	@Test
+	void everyLinkOfATranslatedBookingIsUnderItsLocaleSubpath() {
+		assertEquals(URI.create("https://riviera.example/sq/booking/K7Q2M9XR"), LINKS.forBooking("K7Q2M9XR", SiteLocale.SQ));
+		assertEquals(URI.create("https://riviera.example/it/venues/7?date=2026-07-01"),
+				LINKS.forVenueMap(new VenueId(7), LocalDate.parse("2026-07-01"), SiteLocale.IT));
+		assertEquals(URI.create("https://riviera.example/sq/?date=2026-07-01"),
+				LINKS.forDiscovery(LocalDate.parse("2026-07-01"), SiteLocale.SQ));
+	}
+
+	@Test
+	void aTranslatedLinkKeepsAnOriginPath() {
+		assertEquals(URI.create("https://riviera.example/my%20app/it/booking/K7Q2M9XR"),
+				new BookingLinks("https://riviera.example/my%20app").forBooking("K7Q2M9XR", SiteLocale.IT));
 	}
 }

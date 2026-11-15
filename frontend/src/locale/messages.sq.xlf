@@ -250,6 +250,9 @@
           <context context-type="sourcefile">src/app/admin/admin-venue-changes.ts</context>
         </context-group>
         <context-group purpose="location">
+          <context context-type="sourcefile">src/app/auth/set-password.ts</context>
+        </context-group>
+        <context-group purpose="location">
           <context context-type="sourcefile">src/app/booking/review-panel.ts</context>
         </context-group>
         <context-group purpose="location">
@@ -733,6 +736,27 @@
         </context-group>
         <context-group purpose="location">
           <context context-type="sourcefile">src/app/app.html</context>
+        </context-group>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/auth/auth-page.ts</context>
+        </context-group>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/auth/auth-page.ts</context>
+        </context-group>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/auth/forgot-password.ts</context>
+        </context-group>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/auth/reset-password.ts</context>
+        </context-group>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/auth/set-password.ts</context>
+        </context-group>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/auth/verify-email.ts</context>
+        </context-group>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/auth/verify-email.ts</context>
         </context-group>
         <context-group purpose="location">
           <context context-type="sourcefile">src/app/console-shell.ts</context>
@@ -1866,8 +1890,7 @@
       <trans-unit id="2799966124574916152" datatype="html">
         <source> Name, email and phone become unrecoverable for <x id="START_TAG_STRONG" ctype="x-strong" equiv-text="&lt;strong class=&quot;text-riv-card-ink&quot;&gt;"/><x id="EMAIL" equiv-text="{{
                 submittedEmail() // i18n(ph=&quot;email&quot;)
-              }}"/><x id="CLOSE_TAG_STRONG" ctype="x-strong" equiv-text="&lt;/strong
-              &gt;"/>. Bookings and ledger entries remain as anonymous records. This cannot be undone. </source>
+              }}"/><x id="CLOSE_TAG_STRONG" ctype="x-strong" equiv-text="&lt;/strong&gt;"/>. Bookings and ledger entries remain as anonymous records. This cannot be undone. </source>
         <target state="translated"> Emri, e-maili dhe telefoni bëhen të parikuperueshëm për <x id="START_TAG_STRONG" ctype="x-strong" equiv-text="&lt;strong class=&quot;text-riv-card-ink&quot;&gt;"/><x id="EMAIL" equiv-text="{{
                 submittedEmail() // i18n(ph=&quot;email&quot;)
               }}"/><x id="CLOSE_TAG_STRONG" ctype="x-strong" equiv-text="&lt;/strong
@@ -1889,6 +1912,9 @@
         <target state="translated">Po fshihet…</target>
         <context-group purpose="location">
           <context context-type="sourcefile">src/app/admin/admin-privacy.ts</context>
+        </context-group>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/auth/set-password.ts</context>
         </context-group>
       </trans-unit>
       <trans-unit id="6670925715277788477" datatype="html">
@@ -2217,6 +2243,12 @@
         <target state="translated">Po ngarkohet…</target>
         <context-group purpose="location">
           <context context-type="sourcefile">src/app/admin/admin-reviews.ts</context>
+        </context-group>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/auth/set-password.ts</context>
+        </context-group>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/auth/set-password.ts</context>
         </context-group>
         <context-group purpose="location">
           <context context-type="sourcefile">src/app/booking/booking-pay.ts</context>
@@ -2679,6 +2711,9 @@
         <context-group purpose="location">
           <context context-type="sourcefile">src/app/app.html</context>
         </context-group>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/auth/set-password.ts</context>
+        </context-group>
       </trans-unit>
       <trans-unit id="95870375139787830" datatype="html">
         <source> Find a booking </source>
@@ -3004,6 +3039,51 @@
           <context context-type="sourcefile">src/app/app.routes.ts</context>
         </context-group>
       </trans-unit>
+      <trans-unit id="3080305945771414849" datatype="html">
+        <source>My bookings — Riviera</source>
+        <target state="translated">Rezervimet e mia — Riviera</target>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/app.routes.ts</context>
+        </context-group>
+      </trans-unit>
+      <trans-unit id="8910470131743157828" datatype="html">
+        <source>Sign in — Riviera</source>
+        <target state="translated">Hyr — Riviera</target>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/app.routes.ts</context>
+        </context-group>
+      </trans-unit>
+      <trans-unit id="6582382784466748496" datatype="html">
+        <source>Reset your password — Riviera</source>
+        <target state="translated">Rivendosni fjalëkalimin — Riviera</target>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/app.routes.ts</context>
+        </context-group>
+      </trans-unit>
+      <trans-unit id="6461654912465813579" datatype="html">
+        <source>Set a new password — Riviera</source>
+        <target state="translated">Vendosni një fjalëkalim të ri — Riviera</target>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/app.routes.ts</context>
+        </context-group>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/app.routes.ts</context>
+        </context-group>
+      </trans-unit>
+      <trans-unit id="921349656632198944" datatype="html">
+        <source>Verify your email — Riviera</source>
+        <target state="translated">Verifikoni e-mailin — Riviera</target>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/app.routes.ts</context>
+        </context-group>
+      </trans-unit>
+      <trans-unit id="6445087211953346698" datatype="html">
+        <source>Your account — Riviera</source>
+        <target state="translated">Llogaria juaj — Riviera</target>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/app.routes.ts</context>
+        </context-group>
+      </trans-unit>
       <trans-unit id="3616609503510061591" datatype="html">
         <source>Change your password — Riviera</source>
         <target state="translated">Ndryshoni fjalëkalimin — Riviera</target>
@@ -3088,11 +3168,427 @@
           <context context-type="sourcefile">src/app/app.routes.ts</context>
         </context-group>
       </trans-unit>
+      <trans-unit id="6768256384808627936" datatype="html">
+        <source>Couldn’t load this page — Riviera</source>
+        <target state="translated">Faqja nuk u ngarkua — Riviera</target>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/app.routes.ts</context>
+        </context-group>
+      </trans-unit>
+      <trans-unit id="5340930404446069814" datatype="html">
+        <source>Page not found — Riviera</source>
+        <target state="translated">Faqja nuk u gjet — Riviera</target>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/app.routes.ts</context>
+        </context-group>
+      </trans-unit>
       <trans-unit id="1648584146038529465" datatype="html">
         <source>Account: <x id="email" equiv-text="this.customerAuth.email()"/></source>
         <target state="translated">Llogaria: <x id="email" equiv-text="this.customerAuth.email()"/></target>
         <context-group purpose="location">
           <context context-type="sourcefile">src/app/app.ts</context>
+        </context-group>
+      </trans-unit>
+      <trans-unit id="6356023023684719668" datatype="html">
+        <source>Tourist</source>
+        <target state="translated">Turist</target>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/auth/auth-page.ts</context>
+        </context-group>
+        <note priority="1" from="description">Sign-in audience tab</note>
+      </trans-unit>
+      <trans-unit id="7402011075719879702" datatype="html">
+        <source>Venue operator</source>
+        <target state="translated">Operator lokali</target>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/auth/auth-page.ts</context>
+        </context-group>
+        <note priority="1" from="description">Sign-in audience tab</note>
+      </trans-unit>
+      <trans-unit id="3626222370385896242" datatype="html">
+        <source>Book a sunbed</source>
+        <target state="translated">Rezervo një shezlong</target>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/auth/auth-page.ts</context>
+        </context-group>
+        <note priority="1" from="description">Register role option</note>
+      </trans-unit>
+      <trans-unit id="5956376828706729773" datatype="html">
+        <source>Find beaches and reserve your spot.</source>
+        <target state="translated">Gjeni plazhe dhe rezervoni vendin tuaj.</target>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/auth/auth-page.ts</context>
+        </context-group>
+      </trans-unit>
+      <trans-unit id="1942311070003116345" datatype="html">
+        <source>Run a venue</source>
+        <target state="translated">Drejto një lokal</target>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/auth/auth-page.ts</context>
+        </context-group>
+        <note priority="1" from="description">Register role option</note>
+      </trans-unit>
+      <trans-unit id="7900178764250781402" datatype="html">
+        <source>List your beach and manage bookings.</source>
+        <target state="translated">Listoni plazhin tuaj dhe menaxhoni rezervimet.</target>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/auth/auth-page.ts</context>
+        </context-group>
+      </trans-unit>
+      <trans-unit id="6239416727024542117" datatype="html">
+        <source>Registration submitted for approval</source>
+        <target state="translated">Regjistrimi u dërgua për miratim</target>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/auth/auth-page.ts</context>
+        </context-group>
+      </trans-unit>
+      <trans-unit id="2382811042530241138" datatype="html">
+        <source>Thanks — we’ve received your operator registration. Sign in with your new credentials to set up your venue and beach map right away. A platform admin reviews each registration; your venue is shown to tourists once your account is approved.</source>
+        <target state="translated">Faleminderit — e morëm regjistrimin tuaj si operator. Hyni me kredencialet e reja për të konfiguruar menjëherë lokalin dhe hartën e plazhit. Një administrator i platformës shqyrton çdo regjistrim; lokali juaj u shfaqet turistëve sapo llogaria juaj të miratohet.</target>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/auth/auth-page.ts</context>
+        </context-group>
+      </trans-unit>
+      <trans-unit id="1590903908181344501" datatype="html">
+        <source> Back to sign-in </source>
+        <target state="translated"> Kthehu te hyrja </target>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/auth/auth-page.ts</context>
+        </context-group>
+      </trans-unit>
+      <trans-unit id="9060569730694423874" datatype="html">
+        <source>I want to</source>
+        <target state="translated">Dua të</target>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/auth/auth-page.ts</context>
+        </context-group>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/auth/auth-page.ts</context>
+        </context-group>
+        <note priority="1" from="description">Register role picker label</note>
+      </trans-unit>
+      <trans-unit id="7868839472446380174" datatype="html">
+        <source>Sign in as</source>
+        <target state="translated">Hyr si</target>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/auth/auth-page.ts</context>
+        </context-group>
+      </trans-unit>
+      <trans-unit id="8757962954958495112" datatype="html">
+        <source>Contact email</source>
+        <target state="translated">E-mail kontakti</target>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/auth/auth-page.ts</context>
+        </context-group>
+      </trans-unit>
+      <trans-unit id="1431416938026210429" datatype="html">
+        <source>Password</source>
+        <target state="translated">Fjalëkalimi</target>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/auth/auth-page.ts</context>
+        </context-group>
+        <note priority="1" from="description">Field label</note>
+      </trans-unit>
+      <trans-unit id="2012659005494284050" datatype="html">
+        <source>Forgot your password?</source>
+        <target state="translated">Keni harruar fjalëkalimin?</target>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/auth/auth-page.ts</context>
+        </context-group>
+      </trans-unit>
+      <trans-unit id="2224947564116830026" datatype="html">
+        <source>Create your account</source>
+        <target state="translated">Krijoni llogarinë tuaj</target>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/auth/auth-page.ts</context>
+        </context-group>
+      </trans-unit>
+      <trans-unit id="4200317694838753109" datatype="html">
+        <source>Welcome back</source>
+        <target state="translated">Mirë se u kthyet</target>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/auth/auth-page.ts</context>
+        </context-group>
+      </trans-unit>
+      <trans-unit id="450084039828243083" datatype="html">
+        <source>Join Riviera in a minute — pick what you’re here to do.</source>
+        <target state="translated">Bashkohuni me Riviera brenda një minute — zgjidhni çfarë doni të bëni.</target>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/auth/auth-page.ts</context>
+        </context-group>
+      </trans-unit>
+      <trans-unit id="7875467187625745989" datatype="html">
+        <source>Sign in to run your venue.</source>
+        <target state="translated">Hyni për të drejtuar lokalin tuaj.</target>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/auth/auth-page.ts</context>
+        </context-group>
+      </trans-unit>
+      <trans-unit id="6366017180102382243" datatype="html">
+        <source>Sign in to manage your bookings and codes.</source>
+        <target state="translated">Hyni për të menaxhuar rezervimet dhe kodet tuaja.</target>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/auth/auth-page.ts</context>
+        </context-group>
+      </trans-unit>
+      <trans-unit id="5248717555542428023" datatype="html">
+        <source>Username</source>
+        <target state="translated">Emri i përdoruesit</target>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/auth/auth-page.ts</context>
+        </context-group>
+        <note priority="1" from="description">Field label</note>
+      </trans-unit>
+      <trans-unit id="4768749765465246664" datatype="html">
+        <source>Email</source>
+        <target state="translated">E-mail</target>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/auth/auth-page.ts</context>
+        </context-group>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/auth/forgot-password.ts</context>
+        </context-group>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/booking/booking-dialog.ts</context>
+        </context-group>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/shared/support-channels.ts</context>
+        </context-group>
+        <note priority="1" from="description">Field label</note>
+      </trans-unit>
+      <trans-unit id="1041104936823929398" datatype="html">
+        <source>Signing in…</source>
+        <target state="translated">Po hyni…</target>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/auth/auth-page.ts</context>
+        </context-group>
+      </trans-unit>
+      <trans-unit id="1039469030033012125" datatype="html">
+        <source>Submitting…</source>
+        <target state="translated">Po dërgohet…</target>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/auth/auth-page.ts</context>
+        </context-group>
+      </trans-unit>
+      <trans-unit id="5985217902579782163" datatype="html">
+        <source>Request account</source>
+        <target state="translated">Kërko llogari</target>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/auth/auth-page.ts</context>
+        </context-group>
+      </trans-unit>
+      <trans-unit id="5554949022015540852" datatype="html">
+        <source>Creating…</source>
+        <target state="translated">Po krijohet…</target>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/auth/auth-page.ts</context>
+        </context-group>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/operator/venue-create-card.ts</context>
+        </context-group>
+      </trans-unit>
+      <trans-unit id="5907476126990913307" datatype="html">
+        <source>Create account</source>
+        <target state="translated">Krijo llogari</target>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/auth/auth-page.ts</context>
+        </context-group>
+      </trans-unit>
+      <trans-unit id="5277739594710154939" datatype="html">
+        <source>Already have an account?</source>
+        <target state="translated">Keni tashmë një llogari?</target>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/auth/auth-page.ts</context>
+        </context-group>
+      </trans-unit>
+      <trans-unit id="6759207837766620522" datatype="html">
+        <source>New to Riviera?</source>
+        <target state="translated">I ri në Riviera?</target>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/auth/auth-page.ts</context>
+        </context-group>
+      </trans-unit>
+      <trans-unit id="5467277762952566541" datatype="html">
+        <source>Create one</source>
+        <target state="translated">Krijoni një</target>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/auth/auth-page.ts</context>
+        </context-group>
+        <note priority="1" from="description">Link to the register mode</note>
+      </trans-unit>
+      <trans-unit id="4620417385037141790" datatype="html">
+        <source>Welcome back.</source>
+        <target state="translated">Mirë se u kthyet.</target>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/auth/auth-page.ts</context>
+        </context-group>
+      </trans-unit>
+      <trans-unit id="6246945225489602721" datatype="html">
+        <source>You’re signed in.</source>
+        <target state="translated">Jeni identifikuar.</target>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/auth/auth-page.ts</context>
+        </context-group>
+      </trans-unit>
+      <trans-unit id="8355300713858708703" datatype="html">
+        <source>You’re signed in to your operator account.</source>
+        <target state="translated">Jeni identifikuar në llogarinë tuaj të operatorit.</target>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/auth/auth-page.ts</context>
+        </context-group>
+      </trans-unit>
+      <trans-unit id="6167115859214950853" datatype="html">
+        <source>Your bookings and codes live in your account.</source>
+        <target state="translated">Rezervimet dhe kodet tuaja ruhen në llogarinë tuaj.</target>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/auth/auth-page.ts</context>
+        </context-group>
+      </trans-unit>
+      <trans-unit id="2098914303819120968" datatype="html">
+        <source>Open operator console</source>
+        <target state="translated">Hap panelin e operatorit</target>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/auth/auth-page.ts</context>
+        </context-group>
+      </trans-unit>
+      <trans-unit id="6930739552513547176" datatype="html">
+        <source>Browse beaches</source>
+        <target state="translated">Shfleto plazhet</target>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/auth/auth-page.ts</context>
+        </context-group>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/booking/my-bookings.ts</context>
+        </context-group>
+      </trans-unit>
+      <trans-unit id="7630549136849718332" datatype="html">
+        <source>Enter a username, contact email, and password.</source>
+        <target state="translated">Vendosni emrin e përdoruesit, e-mailin e kontaktit dhe fjalëkalimin.</target>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/auth/auth-page.ts</context>
+        </context-group>
+      </trans-unit>
+      <trans-unit id="8833763333781726920" datatype="html">
+        <source>Enter your username and password.</source>
+        <target state="translated">Vendosni emrin e përdoruesit dhe fjalëkalimin.</target>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/auth/auth-page.ts</context>
+        </context-group>
+      </trans-unit>
+      <trans-unit id="187562900679258892" datatype="html">
+        <source>Enter your email and password.</source>
+        <target state="translated">Vendosni e-mailin dhe fjalëkalimin.</target>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/auth/auth-page.ts</context>
+        </context-group>
+      </trans-unit>
+      <trans-unit id="4371680625121499898" datatype="html">
+        <source>Reset your password</source>
+        <target state="translated">Rivendosni fjalëkalimin</target>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/auth/forgot-password.ts</context>
+        </context-group>
+      </trans-unit>
+      <trans-unit id="3744292353732119996" datatype="html">
+        <source> If an account exists for that email, we&apos;ve sent a link to set a new password. Check your inbox. </source>
+        <target state="translated"> Nëse ekziston një llogari me këtë e-mail, ju kemi dërguar një lidhje për të vendosur një fjalëkalim të ri. Kontrolloni kutinë postare. </target>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/auth/forgot-password.ts</context>
+        </context-group>
+      </trans-unit>
+      <trans-unit id="4939428286618017421" datatype="html">
+        <source>Back to sign in</source>
+        <target state="translated">Kthehu te hyrja</target>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/auth/forgot-password.ts</context>
+        </context-group>
+      </trans-unit>
+      <trans-unit id="7960174648162532086" datatype="html">
+        <source> Enter your email and we&apos;ll send you a link to set a new password. </source>
+        <target state="translated"> Vendosni e-mailin tuaj dhe do t’ju dërgojmë një lidhje për të vendosur një fjalëkalim të ri. </target>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/auth/forgot-password.ts</context>
+        </context-group>
+      </trans-unit>
+      <trans-unit id="327534766307158513" datatype="html">
+        <source>Remembered it?</source>
+        <target state="translated">E kujtuat?</target>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/auth/forgot-password.ts</context>
+        </context-group>
+      </trans-unit>
+      <trans-unit id="7606672167560356784" datatype="html">
+        <source>Sending…</source>
+        <target state="translated">Po dërgohet…</target>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/auth/forgot-password.ts</context>
+        </context-group>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/booking/review-panel.ts</context>
+        </context-group>
+      </trans-unit>
+      <trans-unit id="5111842031822965750" datatype="html">
+        <source>Send reset link</source>
+        <target state="translated">Dërgo lidhjen e rivendosjes</target>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/auth/forgot-password.ts</context>
+        </context-group>
+      </trans-unit>
+      <trans-unit id="6084407256586922970" datatype="html">
+        <source>Enter your email.</source>
+        <target state="translated">Vendosni e-mailin tuaj.</target>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/auth/forgot-password.ts</context>
+        </context-group>
+      </trans-unit>
+      <trans-unit id="1336529394751708762" datatype="html">
+        <source>Too many attempts. Please wait a minute and try again.</source>
+        <target state="translated">Shumë përpjekje. Ju lutemi prisni një minutë dhe provoni përsëri.</target>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/auth/forgot-password.ts</context>
+        </context-group>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/auth/reset-password.ts</context>
+        </context-group>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/auth/set-password.ts</context>
+        </context-group>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/core/customer-auth.ts</context>
+        </context-group>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/core/customer-auth.ts</context>
+        </context-group>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/core/operator-auth.ts</context>
+        </context-group>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/core/operator-auth.ts</context>
+        </context-group>
+      </trans-unit>
+      <trans-unit id="883225603593837541" datatype="html">
+        <source>Something went wrong. Please try again.</source>
+        <target state="translated">Diçka shkoi keq. Ju lutemi provoni përsëri.</target>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/auth/forgot-password.ts</context>
+        </context-group>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/auth/reset-password.ts</context>
+        </context-group>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/auth/set-password.ts</context>
+        </context-group>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/auth/set-password.ts</context>
+        </context-group>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/booking/booking-dialog.ts</context>
+        </context-group>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/booking/find-booking.ts</context>
+        </context-group>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/operator/venue-create-card.ts</context>
         </context-group>
       </trans-unit>
       <trans-unit id="1375188762769896369" datatype="html">
@@ -3119,12 +3615,21 @@
         <context-group purpose="location">
           <context context-type="sourcefile">src/app/auth/operator-password.ts</context>
         </context-group>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/auth/set-password.ts</context>
+        </context-group>
       </trans-unit>
       <trans-unit id="3588415639242079458" datatype="html">
         <source>New password</source>
         <target state="translated">Fjalëkalimi i ri</target>
         <context-group purpose="location">
           <context context-type="sourcefile">src/app/auth/operator-password.ts</context>
+        </context-group>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/auth/reset-password.ts</context>
+        </context-group>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/auth/set-password.ts</context>
         </context-group>
       </trans-unit>
       <trans-unit id="7092763425773739838" datatype="html">
@@ -3152,6 +3657,9 @@
           <context context-type="sourcefile">src/app/auth/operator-password.ts</context>
         </context-group>
         <context-group purpose="location">
+          <context context-type="sourcefile">src/app/auth/set-password.ts</context>
+        </context-group>
+        <context-group purpose="location">
           <context context-type="sourcefile">src/app/operator/layout-editor.html</context>
         </context-group>
         <context-group purpose="location">
@@ -3175,6 +3683,315 @@
         </context-group>
         <context-group purpose="location">
           <context context-type="sourcefile">src/app/operator/operator-account-chip.ts</context>
+        </context-group>
+      </trans-unit>
+      <trans-unit id="4129080604379805008" datatype="html">
+        <source>Request a new one.</source>
+        <target state="translated">Kërkoni një të re.</target>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/auth/reset-password.ts</context>
+        </context-group>
+      </trans-unit>
+      <trans-unit id="1643394790579019213" datatype="html">
+        <source>Ask your platform admin for a new one.</source>
+        <target state="translated">Kërkojini administratorit të platformës një të re.</target>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/auth/reset-password.ts</context>
+        </context-group>
+      </trans-unit>
+      <trans-unit id="8282309360961339523" datatype="html">
+        <source>Set a new password</source>
+        <target state="translated">Vendosni një fjalëkalim të ri</target>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/auth/reset-password.ts</context>
+        </context-group>
+      </trans-unit>
+      <trans-unit id="5423267187486437121" datatype="html">
+        <source> Your password has been updated. You can sign in with it now. </source>
+        <target state="translated"> Fjalëkalimi juaj u përditësua. Tani mund të hyni me të. </target>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/auth/reset-password.ts</context>
+        </context-group>
+      </trans-unit>
+      <trans-unit id="2650218570907526781" datatype="html">
+        <source> This reset link is invalid or incomplete. <x id="NEWLINKHINT" equiv-text="{{
+              copy.newLinkHint // i18n(ph=&quot;newLinkHint&quot;)
+            }}"/> </source>
+        <target state="translated"> Kjo lidhje rivendosjeje është e pavlefshme ose e paplotë. <x id="NEWLINKHINT"/> </target>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/auth/reset-password.ts</context>
+        </context-group>
+      </trans-unit>
+      <trans-unit id="8138378942476041021" datatype="html">
+        <source>Request a reset link</source>
+        <target state="translated">Kërkoni një lidhje rivendosjeje</target>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/auth/reset-password.ts</context>
+        </context-group>
+      </trans-unit>
+      <trans-unit id="8656126574213649581" datatype="html">
+        <source>Confirm new password</source>
+        <target state="translated">Konfirmoni fjalëkalimin e ri</target>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/auth/reset-password.ts</context>
+        </context-group>
+      </trans-unit>
+      <trans-unit id="102408375548589662" datatype="html">
+        <source>Update password</source>
+        <target state="translated">Përditëso fjalëkalimin</target>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/auth/reset-password.ts</context>
+        </context-group>
+      </trans-unit>
+      <trans-unit id="2706312198973609080" datatype="html">
+        <source>Updating…</source>
+        <target state="translated">Po përditësohet…</target>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/auth/reset-password.ts</context>
+        </context-group>
+      </trans-unit>
+      <trans-unit id="6729136776649548048" datatype="html">
+        <source>The passwords do not match.</source>
+        <target state="translated">Fjalëkalimet nuk përputhen.</target>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/auth/reset-password.ts</context>
+        </context-group>
+      </trans-unit>
+      <trans-unit id="9182725533736659584" datatype="html">
+        <source>This reset link is invalid or has expired. <x id="newLinkHint" equiv-text="this.copy.newLinkHint"/></source>
+        <target state="translated">Kjo lidhje rivendosjeje është e pavlefshme ose ka skaduar. <x id="newLinkHint"/></target>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/auth/reset-password.ts</context>
+        </context-group>
+      </trans-unit>
+      <trans-unit id="8215465061565135181" datatype="html">
+        <source>Verification email sent. Check your inbox.</source>
+        <target state="translated">E-maili i verifikimit u dërgua. Kontrolloni kutinë postare.</target>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/auth/set-password.ts</context>
+        </context-group>
+      </trans-unit>
+      <trans-unit id="820231706999696650" datatype="html">
+        <source>We couldn&apos;t send it — we&apos;re not able to email this address at the moment. Your account still works as normal; your email just stays unverified.</source>
+        <target state="translated">Nuk arritëm ta dërgonim — për momentin nuk mund t’i dërgojmë e-mail kësaj adrese. Llogaria juaj funksionon normalisht; thjesht e-maili juaj mbetet i paverifikuar.</target>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/auth/set-password.ts</context>
+        </context-group>
+      </trans-unit>
+      <trans-unit id="1734182005386767754" datatype="html">
+        <source>Could not send the email. Please try again.</source>
+        <target state="translated">E-maili nuk u dërgua. Ju lutemi provoni përsëri.</target>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/auth/set-password.ts</context>
+        </context-group>
+      </trans-unit>
+      <trans-unit id="154710540606160542" datatype="html">
+        <source>Account loaded.</source>
+        <target state="translated">Llogaria u ngarkua.</target>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/auth/set-password.ts</context>
+        </context-group>
+      </trans-unit>
+      <trans-unit id="6581158671118955284" datatype="html">
+        <source> Your account and personal data have been erased, and you have been signed out. Any booking records are kept only as long as the law requires, with your personal details removed. </source>
+        <target state="translated"> Llogaria dhe të dhënat tuaja personale u fshinë dhe ju dolët nga llogaria. Çdo regjistrim rezervimi ruhet vetëm për aq kohë sa e kërkon ligji, pa të dhënat tuaja personale. </target>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/auth/set-password.ts</context>
+        </context-group>
+      </trans-unit>
+      <trans-unit id="2619603419881560729" datatype="html">
+        <source> We couldn&apos;t check whether you&apos;re signed in. Refresh the page and try again. </source>
+        <target state="translated"> Nuk arritëm të kontrollonim nëse jeni identifikuar. Rifreskoni faqen dhe provoni përsëri. </target>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/auth/set-password.ts</context>
+        </context-group>
+      </trans-unit>
+      <trans-unit id="1007919324944490947" datatype="html">
+        <source> Sign in to manage your account. </source>
+        <target state="translated"> Hyni për të menaxhuar llogarinë tuaj. </target>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/auth/set-password.ts</context>
+        </context-group>
+      </trans-unit>
+      <trans-unit id="2413664827139119654" datatype="html">
+        <source> Signed in as <x id="EMAIL" equiv-text="{{
+              auth.email()  // i18n(ph=&quot;email&quot;)
+            }}"/>. </source>
+        <target state="translated"> Jeni identifikuar si <x id="EMAIL"/>. </target>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/auth/set-password.ts</context>
+        </context-group>
+      </trans-unit>
+      <trans-unit id="7975392867292571008" datatype="html">
+        <source>Your email isn&apos;t verified yet.</source>
+        <target state="translated">E-maili juaj nuk është verifikuar ende.</target>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/auth/set-password.ts</context>
+        </context-group>
+      </trans-unit>
+      <trans-unit id="9047299274453352420" datatype="html">
+        <source> Resend verification email </source>
+        <target state="translated"> Ridërgo e-mailin e verifikimit </target>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/auth/set-password.ts</context>
+        </context-group>
+      </trans-unit>
+      <trans-unit id="8208235966740621366" datatype="html">
+        <source>Your email is verified.</source>
+        <target state="translated">E-maili juaj është verifikuar.</target>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/auth/set-password.ts</context>
+        </context-group>
+      </trans-unit>
+      <trans-unit id="4885191252959094007" datatype="html">
+        <source> Leave blank if you signed in with Google or Apple and haven&apos;t set a password yet. </source>
+        <target state="translated"> Lëreni bosh nëse keni hyrë me Google ose Apple dhe ende nuk keni vendosur fjalëkalim. </target>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/auth/set-password.ts</context>
+        </context-group>
+      </trans-unit>
+      <trans-unit id="5842499508597401307" datatype="html">
+        <source> Delete your account </source>
+        <target state="translated"> Fshini llogarinë tuaj </target>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/auth/set-password.ts</context>
+        </context-group>
+      </trans-unit>
+      <trans-unit id="6432268817541733969" datatype="html">
+        <source> Permanently erase your account and personal details. Booking records are kept only as long as the law requires, with your personal data removed. This cannot be undone. </source>
+        <target state="translated"> Fshini përgjithmonë llogarinë dhe të dhënat tuaja personale. Regjistrimet e rezervimeve ruhen vetëm për aq kohë sa e kërkon ligji, pa të dhënat tuaja personale. Ky veprim nuk mund të zhbëhet. </target>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/auth/set-password.ts</context>
+        </context-group>
+      </trans-unit>
+      <trans-unit id="5588258964294390397" datatype="html">
+        <source> Erase your account and personal data? This cannot be undone. </source>
+        <target state="translated"> Doni të fshini llogarinë dhe të dhënat tuaja personale? Ky veprim nuk mund të zhbëhet. </target>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/auth/set-password.ts</context>
+        </context-group>
+      </trans-unit>
+      <trans-unit id="3687040460313071809" datatype="html">
+        <source> Erase my account &amp; data </source>
+        <target state="translated"> Fshi llogarinë dhe të dhënat e mia </target>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/auth/set-password.ts</context>
+        </context-group>
+      </trans-unit>
+      <trans-unit id="8052364348537655354" datatype="html">
+        <source>Save password</source>
+        <target state="translated">Ruaj fjalëkalimin</target>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/auth/set-password.ts</context>
+        </context-group>
+      </trans-unit>
+      <trans-unit id="9071387005745190554" datatype="html">
+        <source>Yes, erase everything</source>
+        <target state="translated">Po, fshi gjithçka</target>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/auth/set-password.ts</context>
+        </context-group>
+      </trans-unit>
+      <trans-unit id="5095679252506046542" datatype="html">
+        <source>Your password has been saved.</source>
+        <target state="translated">Fjalëkalimi juaj u ruajt.</target>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/auth/set-password.ts</context>
+        </context-group>
+      </trans-unit>
+      <trans-unit id="8164049561976354920" datatype="html">
+        <source>The current password is incorrect.</source>
+        <target state="translated">Fjalëkalimi aktual është i pasaktë.</target>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/auth/set-password.ts</context>
+        </context-group>
+      </trans-unit>
+      <trans-unit id="6627551976444260400" datatype="html">
+        <source>or</source>
+        <target state="translated">ose</target>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/auth/sso-buttons.ts</context>
+        </context-group>
+        <note priority="1" from="description">Divider between the sign-in form and the provider buttons</note>
+      </trans-unit>
+      <trans-unit id="9001843700533957667" datatype="html">
+        <source>Continue with a provider</source>
+        <target state="translated">Vazhdoni me një ofrues</target>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/auth/sso-buttons.ts</context>
+        </context-group>
+      </trans-unit>
+      <trans-unit id="3655082891939518750" datatype="html">
+        <source>Continue with Google</source>
+        <target state="translated">Vazhdo me Google</target>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/auth/sso-buttons.ts</context>
+        </context-group>
+      </trans-unit>
+      <trans-unit id="7530287534197575240" datatype="html">
+        <source>Continue with Apple</source>
+        <target state="translated">Vazhdo me Apple</target>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/auth/sso-buttons.ts</context>
+        </context-group>
+      </trans-unit>
+      <trans-unit id="7119731027798418259" datatype="html">
+        <source>Verify your email</source>
+        <target state="translated">Verifikoni e-mailin tuaj</target>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/auth/verify-email.ts</context>
+        </context-group>
+      </trans-unit>
+      <trans-unit id="4590096748591483411" datatype="html">
+        <source>Verifying your email…</source>
+        <target state="translated">Po verifikohet e-maili juaj…</target>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/auth/verify-email.ts</context>
+        </context-group>
+      </trans-unit>
+      <trans-unit id="2666584570391612249" datatype="html">
+        <source>Your email is verified. Thanks!</source>
+        <target state="translated">E-maili juaj u verifikua. Faleminderit!</target>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/auth/verify-email.ts</context>
+        </context-group>
+      </trans-unit>
+      <trans-unit id="9210529147483611025" datatype="html">
+        <source> Verifying your email… </source>
+        <target state="translated"> Po verifikohet e-maili juaj… </target>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/auth/verify-email.ts</context>
+        </context-group>
+      </trans-unit>
+      <trans-unit id="3261892257945612718" datatype="html">
+        <source> Your email is verified. Thanks! </source>
+        <target state="translated"> E-maili juaj u verifikua. Faleminderit! </target>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/auth/verify-email.ts</context>
+        </context-group>
+      </trans-unit>
+      <trans-unit id="6962699013778688473" datatype="html">
+        <source>Continue</source>
+        <target state="translated">Vazhdo</target>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/auth/verify-email.ts</context>
+        </context-group>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/booking/booking-dialog.ts</context>
+        </context-group>
+      </trans-unit>
+      <trans-unit id="5499100944000324645" datatype="html">
+        <source> Something went wrong verifying your email. Please try again. </source>
+        <target state="translated"> Diçka shkoi keq gjatë verifikimit të e-mailit. Ju lutemi provoni përsëri. </target>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/auth/verify-email.ts</context>
+        </context-group>
+      </trans-unit>
+      <trans-unit id="9190983555961303575" datatype="html">
+        <source> This verification link is invalid or has expired. Sign in and request a new one. </source>
+        <target state="translated"> Kjo lidhje verifikimi është e pavlefshme ose ka skaduar. Hyni dhe kërkoni një të re. </target>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/auth/verify-email.ts</context>
         </context-group>
       </trans-unit>
       <trans-unit id="6849903239507748150" datatype="html">
@@ -3477,16 +4294,6 @@
           <context context-type="sourcefile">src/app/booking/booking-dialog.ts</context>
         </context-group>
       </trans-unit>
-      <trans-unit id="4768749765465246664" datatype="html">
-        <source>Email</source>
-        <target state="translated">E-mail</target>
-        <context-group purpose="location">
-          <context context-type="sourcefile">src/app/booking/booking-dialog.ts</context>
-        </context-group>
-        <context-group purpose="location">
-          <context context-type="sourcefile">src/app/shared/support-channels.ts</context>
-        </context-group>
-      </trans-unit>
       <trans-unit id="3262236020277300799" datatype="html">
         <source>Phone</source>
         <target state="translated">Telefoni</target>
@@ -3622,13 +4429,6 @@
         </context-group>
         <note priority="1" from="description">Row label for the booked sunbed set (2 loungers + umbrella)</note>
         <note priority="1" from="meaning">sunbed set</note>
-      </trans-unit>
-      <trans-unit id="6962699013778688473" datatype="html">
-        <source>Continue</source>
-        <target state="translated">Vazhdo</target>
-        <context-group purpose="location">
-          <context context-type="sourcefile">src/app/booking/booking-dialog.ts</context>
-        </context-group>
       </trans-unit>
       <trans-unit id="736940570258467336" datatype="html">
         <source>Send request</source>
@@ -3778,19 +4578,6 @@
         <target state="translated">Ju lutemi kontrolloni formularin dhe provoni përsëri.</target>
         <context-group purpose="location">
           <context context-type="sourcefile">src/app/booking/booking-dialog.ts</context>
-        </context-group>
-      </trans-unit>
-      <trans-unit id="883225603593837541" datatype="html">
-        <source>Something went wrong. Please try again.</source>
-        <target state="translated">Diçka shkoi keq. Ju lutemi provoni përsëri.</target>
-        <context-group purpose="location">
-          <context context-type="sourcefile">src/app/booking/booking-dialog.ts</context>
-        </context-group>
-        <context-group purpose="location">
-          <context context-type="sourcefile">src/app/booking/find-booking.ts</context>
-        </context-group>
-        <context-group purpose="location">
-          <context context-type="sourcefile">src/app/operator/venue-create-card.ts</context>
         </context-group>
       </trans-unit>
       <trans-unit id="3922998542509203292" datatype="html">
@@ -4339,6 +5126,9 @@
         <context-group purpose="location">
           <context context-type="sourcefile">src/app/booking/booking-view.ts</context>
         </context-group>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/booking/my-bookings.ts</context>
+        </context-group>
       </trans-unit>
       <trans-unit id="5353168171276468206" datatype="html">
         <source> Booking cancelled </source>
@@ -4407,8 +5197,7 @@
       <trans-unit id="5016141727546780846" datatype="html">
         <source> If the new spot doesn’t suit you, cancel below for a full refund until <x id="START_TAG_STRONG" ctype="x-strong" equiv-text="&lt;strong&gt;"/><x id="DEADLINE" equiv-text="{{
                     deadlineLabel(until) // i18n(ph=&quot;deadline&quot;)
-                  }}"/><x id="CLOSE_TAG_STRONG" ctype="x-strong" equiv-text="&lt;/strong
-                  &gt;"/>. </source>
+                  }}"/><x id="CLOSE_TAG_STRONG" ctype="x-strong" equiv-text="&lt;/strong&gt;"/>. </source>
         <target state="translated"> Nëse vendi i ri nuk ju përshtatet, anulojeni më poshtë për rimbursim të plotë deri më <x id="START_TAG_STRONG" ctype="x-strong" equiv-text="&lt;strong&gt;"/><x id="DEADLINE" equiv-text="{{
                     deadlineLabel(until) // i18n(ph=&quot;deadline&quot;)
                   }}"/><x id="CLOSE_TAG_STRONG" ctype="x-strong" equiv-text="&lt;/strong
@@ -5106,6 +5895,187 @@
           <context context-type="sourcefile">src/app/booking/manage-booking-link.ts</context>
         </context-group>
       </trans-unit>
+      <trans-unit id="7676935843923331785" datatype="html">
+        <source>Every day was refunded</source>
+        <target state="translated">Çdo ditë u rimbursua</target>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/booking/my-bookings.ts</context>
+        </context-group>
+        <note priority="1" from="description">Status sub-line on a My bookings row</note>
+      </trans-unit>
+      <trans-unit id="1544130573043501964" datatype="html">
+        <source>Spot changed by the venue · see details</source>
+        <target state="translated">Lokali e ndryshoi vendin · shihni detajet</target>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/booking/my-bookings.ts</context>
+        </context-group>
+        <note priority="1" from="description">Status sub-line on a My bookings row</note>
+      </trans-unit>
+      <trans-unit id="2595241399195034666" datatype="html">
+        <source>Payment needed</source>
+        <target state="translated">Kërkohet pagesa</target>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/booking/my-bookings.ts</context>
+        </context-group>
+        <note priority="1" from="description">Status sub-line on a My bookings row</note>
+      </trans-unit>
+      <trans-unit id="5158594740344479794" datatype="html">
+        <source>Awaiting host · by <x id="deadline" equiv-text="formatDeadline(b.requestExpiresAt)"/></source>
+        <target state="translated">Në pritje të lokalit · deri më <x id="deadline"/></target>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/booking/my-bookings.ts</context>
+        </context-group>
+        <note priority="1" from="description">Status sub-line on a My bookings row</note>
+      </trans-unit>
+      <trans-unit id="3562513278306578368" datatype="html">
+        <source>Awaiting host reply</source>
+        <target state="translated">Në pritje të përgjigjes së lokalit</target>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/booking/my-bookings.ts</context>
+        </context-group>
+        <note priority="1" from="description">Status sub-line on a My bookings row</note>
+      </trans-unit>
+      <trans-unit id="5128676927711378913" datatype="html">
+        <source>Host could not accept</source>
+        <target state="translated">Lokali nuk mundi ta pranonte</target>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/booking/my-bookings.ts</context>
+        </context-group>
+        <note priority="1" from="description">Status sub-line on a My bookings row</note>
+      </trans-unit>
+      <trans-unit id="5746256269510908778" datatype="html">
+        <source>Request expired unanswered</source>
+        <target state="translated">Kërkesa skadoi pa përgjigje</target>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/booking/my-bookings.ts</context>
+        </context-group>
+        <note priority="1" from="description">Status sub-line on a My bookings row</note>
+      </trans-unit>
+      <trans-unit id="4074232633127003490" datatype="html">
+        <source>Enjoyed · thanks for visiting</source>
+        <target state="translated">U shijua · faleminderit për vizitën</target>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/booking/my-bookings.ts</context>
+        </context-group>
+        <note priority="1" from="description">Status sub-line on a My bookings row</note>
+      </trans-unit>
+      <trans-unit id="2455891174313548096" datatype="html">
+        <source>Marked as no-show</source>
+        <target state="translated">Shënuar si mosparaqitje</target>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/booking/my-bookings.ts</context>
+        </context-group>
+        <note priority="1" from="description">Status sub-line on a My bookings row</note>
+      </trans-unit>
+      <trans-unit id="5818047773816819331" datatype="html">
+        <source>Request withdrawn</source>
+        <target state="translated">Kërkesa u tërhoq</target>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/booking/my-bookings.ts</context>
+        </context-group>
+        <note priority="1" from="description">Status sub-line on a My bookings row</note>
+      </trans-unit>
+      <trans-unit id="742513684453758724" datatype="html">
+        <source><x id="row" equiv-text="b.rowLabel"/> · spot <x id="spot" equiv-text="b.positionNo"/></source>
+        <target state="translated"><x id="row" equiv-text="stretch.rowLabel"/> · vendi <x id="spot" equiv-text="stretch.positionNo"/></target>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/booking/my-bookings.ts</context>
+        </context-group>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/booking/request-confirmation.ts</context>
+        </context-group>
+      </trans-unit>
+      <trans-unit id="282864380650310363" datatype="html">
+        <source>All beaches</source>
+        <target state="translated">Të gjitha plazhet</target>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/booking/my-bookings.ts</context>
+        </context-group>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/pages/home/discover-head.ts</context>
+        </context-group>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/venue/venue-map.html</context>
+        </context-group>
+      </trans-unit>
+      <trans-unit id="5557814931810880842" datatype="html">
+        <source> Your bookings </source>
+        <target state="translated"> Rezervimet tuaja </target>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/booking/my-bookings.ts</context>
+        </context-group>
+      </trans-unit>
+      <trans-unit id="4751438227741293257" datatype="html">
+        <source>Loading your bookings…</source>
+        <target state="translated">Po ngarkohen rezervimet tuaja…</target>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/booking/my-bookings.ts</context>
+        </context-group>
+      </trans-unit>
+      <trans-unit id="1443210841173625399" datatype="html">
+        <source>Your bookings loaded.</source>
+        <target state="translated">Rezervimet tuaja u ngarkuan.</target>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/booking/my-bookings.ts</context>
+        </context-group>
+      </trans-unit>
+      <trans-unit id="3427876162827861424" datatype="html">
+        <source> No booking yet </source>
+        <target state="translated"> Ende asnjë rezervim </target>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/booking/my-bookings.ts</context>
+        </context-group>
+      </trans-unit>
+      <trans-unit id="3312875679634475630" datatype="html">
+        <source> Pick a beach, choose your exact set on the map, and your booking code will live here. </source>
+        <target state="translated"> Zgjidhni një plazh, zgjidhni setin tuaj të saktë në hartë dhe kodi i rezervimit do të ruhet këtu. </target>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/booking/my-bookings.ts</context>
+        </context-group>
+      </trans-unit>
+      <trans-unit id="7468180915427823175" datatype="html">
+        <source> We couldn’t load your account bookings just now — any made on other devices may be missing. </source>
+        <target state="translated"> Nuk arritëm t’i ngarkonim tani rezervimet e llogarisë suaj — mund të mungojnë ato të bëra në pajisje të tjera. </target>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/booking/my-bookings.ts</context>
+        </context-group>
+      </trans-unit>
+      <trans-unit id="6209192816478868012" datatype="html">
+        <source> Some bookings couldn’t load. Retry the ones marked below. </source>
+        <target state="translated"> Disa rezervime nuk u ngarkuan. Provoni përsëri ato të shënuara më poshtë. </target>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/booking/my-bookings.ts</context>
+        </context-group>
+      </trans-unit>
+      <trans-unit id="8989427859439549944" datatype="html">
+        <source>Couldn’t load this booking</source>
+        <target state="translated">Ky rezervim nuk u ngarkua</target>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/booking/my-bookings.ts</context>
+        </context-group>
+      </trans-unit>
+      <trans-unit id="3660632916771561809" datatype="html">
+        <source>Check your connection and try again.</source>
+        <target state="translated">Kontrolloni lidhjen dhe provoni përsëri.</target>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/booking/my-bookings.ts</context>
+        </context-group>
+      </trans-unit>
+      <trans-unit id="7934833136974560675" datatype="html">
+        <source>Retry</source>
+        <target state="translated">Provo përsëri</target>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/booking/my-bookings.ts</context>
+        </context-group>
+        <note priority="1" from="description">Button that retries a failed load</note>
+      </trans-unit>
+      <trans-unit id="4541946503525125683" datatype="html">
+        <source>Retrying…</source>
+        <target state="translated">Po provohet përsëri…</target>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/booking/my-bookings.ts</context>
+        </context-group>
+      </trans-unit>
       <trans-unit id="6457599036940487318" datatype="html">
         <source>Request sent</source>
         <target state="translated">Kërkesa u dërgua</target>
@@ -5154,8 +6124,7 @@
       <trans-unit id="7944873255471191867" datatype="html">
         <source>We’ll notify you by email as soon as the venue responds — expected by <x id="START_TAG_STRONG" ctype="x-strong" equiv-text="&lt;strong [class]=&quot;cls.strong&quot; data-testid=&quot;request-deadline&quot;&gt;"/><x id="DEADLINE" equiv-text="{{
                 deadline(r.requestExpiresAt) // i18n(ph=&quot;deadline&quot;)
-              }}"/><x id="CLOSE_TAG_STRONG" ctype="x-strong" equiv-text="&lt;/strong
-              &gt;"/>.</source>
+              }}"/><x id="CLOSE_TAG_STRONG" ctype="x-strong" equiv-text="&lt;/strong&gt;"/>.</source>
         <target state="translated">Do t’ju njoftojmë me email sapo lokali të përgjigjet — pritet deri më <x id="START_TAG_STRONG" ctype="x-strong" equiv-text="&lt;strong [class]=&quot;cls.strong&quot; data-testid=&quot;request-deadline&quot;&gt;"/><x id="DEADLINE" equiv-text="{{
                 deadline(r.requestExpiresAt) // i18n(ph=&quot;deadline&quot;)
               }}"/><x id="CLOSE_TAG_STRONG" ctype="x-strong" equiv-text="&lt;/strong
@@ -5217,13 +6186,6 @@
       <trans-unit id="8644773828634289471" datatype="html">
         <source>Your booking request isn’t available here anymore.</source>
         <target state="translated">Kërkesa juaj për rezervim nuk është më e disponueshme këtu.</target>
-        <context-group purpose="location">
-          <context context-type="sourcefile">src/app/booking/request-confirmation.ts</context>
-        </context-group>
-      </trans-unit>
-      <trans-unit id="742513684453758724" datatype="html">
-        <source><x id="row" equiv-text="stretch.rowLabel"/> · spot <x id="spot" equiv-text="stretch.positionNo"/></source>
-        <target state="translated"><x id="row" equiv-text="stretch.rowLabel"/> · vendi <x id="spot" equiv-text="stretch.positionNo"/></target>
         <context-group purpose="location">
           <context context-type="sourcefile">src/app/booking/request-confirmation.ts</context>
         </context-group>
@@ -5435,13 +6397,6 @@
       <trans-unit id="5471154669553841835" datatype="html">
         <source>Show my name as</source>
         <target state="translated">Shfaq emrin tim si</target>
-        <context-group purpose="location">
-          <context context-type="sourcefile">src/app/booking/review-panel.ts</context>
-        </context-group>
-      </trans-unit>
-      <trans-unit id="7606672167560356784" datatype="html">
-        <source>Sending…</source>
-        <target state="translated">Po dërgohet…</target>
         <context-group purpose="location">
           <context context-type="sourcefile">src/app/booking/review-panel.ts</context>
         </context-group>
@@ -5793,6 +6748,110 @@
           <context context-type="sourcefile">src/app/core/theme.ts</context>
         </context-group>
         <note priority="1" from="description">Colour theme name</note>
+      </trans-unit>
+      <trans-unit id="9121424381282805046" datatype="html">
+        <source>Enter your current password.</source>
+        <target state="translated">Shkruani fjalëkalimin tuaj aktual.</target>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/core/customer-auth.ts</context>
+        </context-group>
+      </trans-unit>
+      <trans-unit id="4670419021486064593" datatype="html">
+        <source>Sign-in failed. Check your email and password.</source>
+        <target state="translated">Hyrja dështoi. Kontrolloni email-in dhe fjalëkalimin.</target>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/core/customer-auth.ts</context>
+        </context-group>
+      </trans-unit>
+      <trans-unit id="2215155058125314434" datatype="html">
+        <source>Something went wrong signing in. Please try again.</source>
+        <target state="translated">Diçka shkoi keq gjatë hyrjes. Ju lutemi provoni përsëri.</target>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/core/customer-auth.ts</context>
+        </context-group>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/core/operator-auth.ts</context>
+        </context-group>
+      </trans-unit>
+      <trans-unit id="1171538870085994397" datatype="html">
+        <source>That email may already have an account. Try signing in instead.</source>
+        <target state="translated">Ky email mund të ketë tashmë një llogari. Provoni të hyni në vend të kësaj.</target>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/core/customer-auth.ts</context>
+        </context-group>
+      </trans-unit>
+      <trans-unit id="8379529983216484894" datatype="html">
+        <source>Something went wrong creating your account. Please try again.</source>
+        <target state="translated">Diçka shkoi keq gjatë krijimit të llogarisë suaj. Ju lutemi provoni përsëri.</target>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/core/customer-auth.ts</context>
+        </context-group>
+      </trans-unit>
+      <trans-unit id="8496293973091704836" datatype="html">
+        <source>Sign-in failed. Check your username and password.</source>
+        <target state="translated">Hyrja dështoi. Kontrolloni emrin e përdoruesit dhe fjalëkalimin.</target>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/core/operator-auth.ts</context>
+        </context-group>
+      </trans-unit>
+      <trans-unit id="1611064856239509842" datatype="html">
+        <source>Too many sign-in attempts. Please wait a minute and try again.</source>
+        <target state="translated">Shumë përpjekje për hyrje. Ju lutemi prisni një minutë dhe provoni përsëri.</target>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/core/operator-auth.ts</context>
+        </context-group>
+      </trans-unit>
+      <trans-unit id="8319069617818186469" datatype="html">
+        <source>Your operator session has expired. Please sign in again.</source>
+        <target state="translated">Seanca juaj si operator ka skaduar. Ju lutemi hyni përsëri.</target>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/core/operator-auth.ts</context>
+        </context-group>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/operator/venue-create-card.ts</context>
+        </context-group>
+      </trans-unit>
+      <trans-unit id="2179485637949354334" datatype="html">
+        <source>Your password has been changed. Any other devices signed in as you have been signed out.</source>
+        <target state="translated">Fjalëkalimi juaj u ndryshua. Çdo pajisje tjetër ku ishit të identifikuar është shkëputur.</target>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/core/operator-auth.ts</context>
+        </context-group>
+      </trans-unit>
+      <trans-unit id="5824197465046299846" datatype="html">
+        <source>That current password is incorrect.</source>
+        <target state="translated">Fjalëkalimi aktual është i pasaktë.</target>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/core/operator-auth.ts</context>
+        </context-group>
+      </trans-unit>
+      <trans-unit id="7452922548911750795" datatype="html">
+        <source>This account&apos;s password is managed by the deployment environment and can&apos;t be changed here.</source>
+        <target state="translated">Fjalëkalimi i kësaj llogarie menaxhohet nga mjedisi i vendosjes dhe nuk mund të ndryshohet këtu.</target>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/core/operator-auth.ts</context>
+        </context-group>
+      </trans-unit>
+      <trans-unit id="5922413046842549795" datatype="html">
+        <source>This account is not active. Contact a platform admin.</source>
+        <target state="translated">Kjo llogari nuk është aktive. Kontaktoni një administrator të platformës.</target>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/core/operator-auth.ts</context>
+        </context-group>
+      </trans-unit>
+      <trans-unit id="540011916904356197" datatype="html">
+        <source>Something went wrong changing your password. Please try again.</source>
+        <target state="translated">Diçka shkoi keq gjatë ndryshimit të fjalëkalimit. Ju lutemi provoni përsëri.</target>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/core/operator-auth.ts</context>
+        </context-group>
+      </trans-unit>
+      <trans-unit id="7921766106646929927" datatype="html">
+        <source>Something went wrong submitting your registration. Please try again.</source>
+        <target state="translated">Diçka shkoi keq gjatë dërgimit të regjistrimit. Ju lutemi provoni përsëri.</target>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/core/operator-auth.ts</context>
+        </context-group>
       </trans-unit>
       <trans-unit id="2826581353496868063" datatype="html">
         <source>Language</source>
@@ -9234,13 +10293,6 @@
           <context context-type="sourcefile">src/app/operator/venue-create-card.html</context>
         </context-group>
       </trans-unit>
-      <trans-unit id="5554949022015540852" datatype="html">
-        <source>Creating…</source>
-        <target state="translated">Po krijohet…</target>
-        <context-group purpose="location">
-          <context context-type="sourcefile">src/app/operator/venue-create-card.ts</context>
-        </context-group>
-      </trans-unit>
       <trans-unit id="563075165775503845" datatype="html">
         <source>Create venue</source>
         <target state="translated">Krijoni lokalin</target>
@@ -9283,13 +10335,6 @@
         </context-group>
         <context-group purpose="location">
           <context context-type="sourcefile">src/app/operator/venue-tab.ts</context>
-        </context-group>
-      </trans-unit>
-      <trans-unit id="8319069617818186469" datatype="html">
-        <source>Your operator session has expired. Please sign in again.</source>
-        <target state="translated">Sesioni juaj si operator ka skaduar. Ju lutemi hyni përsëri.</target>
-        <context-group purpose="location">
-          <context context-type="sourcefile">src/app/operator/venue-create-card.ts</context>
         </context-group>
       </trans-unit>
       <trans-unit id="8933031995366951357" datatype="html">
@@ -10265,16 +11310,6 @@
           <context context-type="sourcefile">src/app/shared/riviera-map.html</context>
         </context-group>
       </trans-unit>
-      <trans-unit id="282864380650310363" datatype="html">
-        <source>All beaches</source>
-        <target state="translated">Të gjitha plazhet</target>
-        <context-group purpose="location">
-          <context context-type="sourcefile">src/app/pages/home/discover-head.ts</context>
-        </context-group>
-        <context-group purpose="location">
-          <context context-type="sourcefile">src/app/venue/venue-map.html</context>
-        </context-group>
-      </trans-unit>
       <trans-unit id="4864465000624841559" datatype="html">
         <source>All <x id="count" equiv-text="this.beaches().length"/> beaches: choose one</source>
         <target state="translated">Të gjitha <x id="count" equiv-text="this.beaches().length"/> plazhet: zgjidhni një</target>
@@ -10739,6 +11774,51 @@
         <target state="translated">Mbyllur sot</target>
         <context-group purpose="location">
           <context context-type="sourcefile">src/app/pages/home/venue-row.ts</context>
+        </context-group>
+      </trans-unit>
+      <trans-unit id="2505113049105568326" datatype="html">
+        <source> Page not found </source>
+        <target state="translated"> Faqja nuk u gjet </target>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/pages/not-found/not-found.ts</context>
+        </context-group>
+      </trans-unit>
+      <trans-unit id="3006848529927908014" datatype="html">
+        <source> There’s no page at this address. Check the link, or head back to the beaches. </source>
+        <target state="translated"> Në këtë adresë nuk ka asnjë faqe. Kontrolloni lidhjen ose kthehuni te plazhet. </target>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/pages/not-found/not-found.ts</context>
+        </context-group>
+      </trans-unit>
+      <trans-unit id="8009184610880159090" datatype="html">
+        <source>Back to the beaches</source>
+        <target state="translated">Kthehu te plazhet</target>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/pages/not-found/not-found.ts</context>
+        </context-group>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/pages/page-load-failed/page-load-failed.ts</context>
+        </context-group>
+      </trans-unit>
+      <trans-unit id="5340825107444021459" datatype="html">
+        <source> Loading this page again… </source>
+        <target state="translated"> Po ngarkohet sërish kjo faqe… </target>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/pages/page-load-failed/page-load-failed.ts</context>
+        </context-group>
+      </trans-unit>
+      <trans-unit id="8859773686370006999" datatype="html">
+        <source>Couldn’t load this page</source>
+        <target state="translated">Faqja nuk u ngarkua</target>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/pages/page-load-failed/page-load-failed.ts</context>
+        </context-group>
+      </trans-unit>
+      <trans-unit id="7077963143369352440" datatype="html">
+        <source> Part of Riviera didn’t arrive — the connection dropped, or the app was just updated. Try again, or head back to the beaches. </source>
+        <target state="translated"> Një pjesë e Riviera nuk mbërriti — lidhja u ndërpre ose aplikacioni sapo u përditësua. Provoni përsëri ose kthehuni te plazhet. </target>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/pages/page-load-failed/page-load-failed.ts</context>
         </context-group>
       </trans-unit>
       <trans-unit id="8048626978161905531" datatype="html">
@@ -11367,6 +12447,34 @@
         </context-group>
         <note priority="1" from="description">Map tile licence credit</note>
       </trans-unit>
+      <trans-unit id="4716244492410232454" datatype="html">
+        <source>At least 12 characters. It can’t contain the name you sign in with or the word “riviera”.</source>
+        <target state="translated">Të paktën 12 karaktere. Nuk mund të përmbajë emrin me të cilin hyni ose fjalën “riviera”.</target>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/shared/password-policy.ts</context>
+        </context-group>
+      </trans-unit>
+      <trans-unit id="4510456269705807483" datatype="html">
+        <source>Choose a password of 12–72 characters.</source>
+        <target state="translated">Zgjidhni një fjalëkalim me 12–72 karaktere.</target>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/shared/password-policy.ts</context>
+        </context-group>
+      </trans-unit>
+      <trans-unit id="4368999237449808647" datatype="html">
+        <source>That password is too long. Accented letters and emoji each take several of the 72 available characters, so try a shorter one.</source>
+        <target state="translated">Ky fjalëkalim është shumë i gjatë. Shkronjat me theks dhe emoji zënë secila disa nga 72 karakteret e lejuara, ndaj provoni një më të shkurtër.</target>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/shared/password-policy.ts</context>
+        </context-group>
+      </trans-unit>
+      <trans-unit id="3352672788139154167" datatype="html">
+        <source>That password contains the name you sign in with or the word “riviera”. Choose a different one.</source>
+        <target state="translated">Ky fjalëkalim përmban emrin me të cilin hyni ose fjalën “riviera”. Zgjidhni një tjetër.</target>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/shared/password-policy.ts</context>
+        </context-group>
+      </trans-unit>
       <trans-unit id="768946083814801341" datatype="html">
         <source>View photo <x id="position" equiv-text="index + 1"/> of <x id="count" equiv-text="this.photos().length"/> of <x id="venue" equiv-text="this.name()"/></source>
         <target state="translated">Shiko foton <x id="position" equiv-text="index + 1"/> nga <x id="count" equiv-text="this.photos().length"/> të <x id="venue" equiv-text="this.name()"/></target>
@@ -11838,8 +12946,7 @@
       <trans-unit id="4395544738741966748" datatype="html">
         <source> Move on <x id="START_TAG_STRONG" ctype="x-strong" equiv-text="&lt;strong class=&quot;text-riv-card-ink&quot;&gt;"/><x id="DAY" equiv-text="{{
                   move.day // i18n(ph=&quot;day&quot;)
-                }}"/><x id="CLOSE_TAG_STRONG" ctype="x-strong" equiv-text="&lt;/strong
-                &gt;"/>: <x id="DISTANCE" equiv-text="{{
+                }}"/><x id="CLOSE_TAG_STRONG" ctype="x-strong" equiv-text="&lt;/strong&gt;"/>: <x id="DISTANCE" equiv-text="{{
                   move.text // i18n(ph=&quot;distance&quot;)
                 }}"/> </source>
         <target state="translated"> Zhvendosje më <x id="START_TAG_STRONG" ctype="x-strong" equiv-text="&lt;strong class=&quot;text-riv-card-ink&quot;&gt;"/><x id="DAY" equiv-text="{{

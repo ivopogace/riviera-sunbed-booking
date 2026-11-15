@@ -50,9 +50,9 @@ class RequestExpiredMailListener {
 	void on(BookingRequestExpired event) {
 		switch (facts.resolve(event.bookingId(), event.setId())) {
 			case BookingMailFacts.Missing(MissingBookingFact fact) -> abandon(fact, event);
-			case BookingMailFacts.Resolved booking -> mails.sendRequestExpired(booking.toEmail(),
+			case BookingMailFacts.Resolved booking -> mails.sendRequestExpired(booking.toEmail(), booking.locale(),
 					new RequestExpiredMail(booking.bookingCode(), booking.venueName(),
-							event.bookingDate(), event.lastDay(), links.forBooking(booking.bookingCode())));
+							event.bookingDate(), event.lastDay(), links.forBooking(booking.bookingCode(), booking.locale())));
 		}
 	}
 
@@ -68,9 +68,9 @@ class RequestExpiredMailListener {
 						+ "nothing retries it: the guest has no notice their request expired", fact.tagValue(),
 						event.stayId().value());
 			}
-			case StayRequestMailFacts.Resolved stay -> mails.sendRequestExpired(stay.toEmail(),
+			case StayRequestMailFacts.Resolved stay -> mails.sendRequestExpired(stay.toEmail(), stay.locale(),
 					new RequestExpiredMail(stay.stayCode(), stay.venueName(), stay.firstDate(), stay.lastDate(),
-							links.forBooking(stay.stayCode())));
+							links.forBooking(stay.stayCode(), stay.locale())));
 		}
 	}
 

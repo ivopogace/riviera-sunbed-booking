@@ -1,4 +1,12 @@
-import { afterNextRender, Component, ElementRef, inject, signal, viewChild } from '@angular/core';
+import {
+  afterNextRender,
+  Component,
+  computed,
+  ElementRef,
+  inject,
+  signal,
+  viewChild,
+} from '@angular/core';
 import { FormField, form } from '@angular/forms/signals';
 import { RouterLink } from '@angular/router';
 
@@ -48,10 +56,10 @@ const CLS = {
       aria-labelledby="forgot-title"
     >
       <div [class]="cls.card" appCardGlass>
-        <h1 id="forgot-title" [class]="cls.title">Reset your password</h1>
+        <h1 id="forgot-title" [class]="cls.title" i18n>Reset your password</h1>
 
         @if (sent()) {
-          <output [class]="cls.intro" tabindex="-1" data-testid="forgot-sent">
+          <output [class]="cls.intro" tabindex="-1" data-testid="forgot-sent" i18n>
             If an account exists for that email, we've sent a link to set a new password. Check your
             inbox.
           </output>
@@ -61,17 +69,18 @@ const CLS = {
               [class]="cls.altLink"
               routerLink="/account/sign-in"
               data-testid="forgot-to-signin"
+              i18n
               >Back to sign in</a
             >
           </p>
         } @else {
-          <p id="forgot-intro" [class]="cls.intro">
+          <p id="forgot-intro" [class]="cls.intro" i18n>
             Enter your email and we'll send you a link to set a new password.
           </p>
 
           <form (submit)="onSubmit(); $event.preventDefault()" novalidate>
             <label [class]="cls.field">
-              <span [class]="cls.label">Email</span>
+              <span [class]="cls.label" i18n="Field label">Email</span>
               <input
                 appTouchTarget
                 [class]="cls.input"
@@ -104,17 +113,18 @@ const CLS = {
               data-testid="forgot-submit"
               [appBusy]="submitting()"
             >
-              {{ submitting() ? 'Sending…' : 'Send reset link' }}
+              {{ submitLabel() }}
             </button>
           </form>
 
           <p [class]="cls.alt">
-            Remembered it?
+            <ng-container i18n>Remembered it?</ng-container>
             <a
               appTouchTarget
               [class]="cls.altLink"
               routerLink="/account/sign-in"
               data-testid="forgot-to-signin"
+              i18n="Link to the sign-in page"
               >Sign in</a
             >
           </p>
@@ -138,6 +148,10 @@ export class ForgotPassword {
   /** The widget's verified proof-of-work solution, while it has one. */
   protected readonly challengePayload = signal<string | undefined>(undefined);
 
+  protected readonly submitLabel = computed(() =>
+    this.submitting() ? $localize`Sending…` : $localize`Send reset link`,
+  );
+
   protected readonly model = signal({ email: '' });
   protected readonly forgotForm = form(this.model);
 
@@ -154,7 +168,7 @@ export class ForgotPassword {
     }
     const email = this.model().email.trim();
     if (!email) {
-      this.error.set('Enter your email.');
+      this.error.set($localize`Enter your email.`);
       return;
     }
     this.submitting.set(true);
@@ -170,9 +184,9 @@ export class ForgotPassword {
       this.error.set(challengeRejectionMessage(result));
       this.challenge()?.refresh();
     } else if (result === 'rate-limited') {
-      this.error.set('Too many attempts. Please wait a minute and try again.');
+      this.error.set($localize`Too many attempts. Please wait a minute and try again.`);
     } else {
-      this.error.set('Something went wrong. Please try again.');
+      this.error.set($localize`Something went wrong. Please try again.`);
     }
   }
 }

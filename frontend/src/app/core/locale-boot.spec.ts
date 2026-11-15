@@ -15,6 +15,8 @@ interface Scenario {
   readonly path: string;
   readonly stored: string | null;
   readonly storageBlocked?: boolean;
+  /** The one-shot note `CustomerAuth.startSso` leaves in `sessionStorage`. */
+  readonly ssoReturn?: string | null;
   readonly languages: readonly string[];
   /** Where the seed sends the browser, or `null` when it stays. */
   readonly redirect: string | null;
@@ -59,6 +61,46 @@ const SCENARIOS: readonly Scenario[] = [
     redirect: '/it/',
   },
   {
+    name: 'an SSO return to Italian beats a stored English',
+    path: '/',
+    stored: 'en',
+    ssoReturn: 'it',
+    languages: ['en'],
+    redirect: '/it/',
+  },
+  {
+    name: 'an SSO return to English beats a stored Albanian',
+    path: '/',
+    stored: 'sq',
+    ssoReturn: 'en',
+    languages: ['sq'],
+    redirect: null,
+  },
+  {
+    name: 'a protocol-relative SSO note falls back to the stored choice',
+    path: '/',
+    stored: 'sq',
+    ssoReturn: '//evil.example',
+    languages: [],
+    redirect: '/sq/',
+  },
+  {
+    name: 'an absolute-URL SSO note falls back to English',
+    path: '/',
+    stored: null,
+    ssoReturn: 'https://evil.example/',
+    languages: ['de'],
+    redirect: null,
+  },
+  {
+    name: 'a path-shaped SSO note falls back to the browser',
+    path: '/',
+    stored: null,
+    ssoReturn: 'it/../../evil',
+    languages: ['it'],
+    redirect: '/it/',
+  },
+  {
     name: 'a deep link is never redirected',
     path: '/venues/1',
     stored: 'sq',
@@ -67,8 +109,9 @@ const SCENARIOS: readonly Scenario[] = [
   },
 ];
 
-/** The literal key, so a key drift against `core/locale.ts` fails the pin. */
+/** The literal keys, so a key drift against `core/locale.ts` fails the pin. */
 const SEED_STORAGE_KEY = 'riviera-locale';
+const SEED_SSO_RETURN_KEY = 'riviera-sso-locale';
 
 function localeSeedScript(): string {
   // Index slicing, not an HTML-tag regex (CodeQL js/bad-tag-filter); cwd is frontend/ under Vitest.
@@ -92,14 +135,40 @@ interface SeedBrowser {
   readonly path: string;
   readonly stored: string | null;
   readonly storageBlocked?: boolean;
+  readonly ssoReturn?: string | null;
   readonly languages: readonly string[];
   readonly search?: string;
   readonly hash?: string;
 }
 
+interface SeedRun {
+  readonly redirect: string | null;
+  /** The keys the seed removed from `sessionStorage`. */
+  readonly consumed: readonly string[];
+}
+
 function redirectedBySeed(browser: SeedBrowser): string | null {
+  return runSeed(browser).redirect;
+}
+
+function runSeed(browser: SeedBrowser): SeedRun {
   let redirect: string | null = null;
+  const consumed: string[] = [];
   const context = createContext({
+    sessionStorage: {
+      getItem: (key: string) => {
+        if (browser.storageBlocked) {
+          throw new Error('storage blocked (private mode)');
+        }
+        return key === SEED_SSO_RETURN_KEY ? (browser.ssoReturn ?? null) : null;
+      },
+      removeItem: (key: string) => {
+        if (browser.storageBlocked) {
+          throw new Error('storage blocked (private mode)');
+        }
+        consumed.push(key);
+      },
+    },
     localStorage: {
       getItem: (key: string) => {
         if (browser.storageBlocked) {
@@ -119,7 +188,7 @@ function redirectedBySeed(browser: SeedBrowser): string | null {
     },
   });
   runInContext(localeSeedScript(), context);
-  return redirect;
+  return { redirect, consumed };
 }
 
 describe('first-visit locale seed vs firstVisitLocale (drift pin)', () => {
@@ -129,7 +198,8 @@ describe('first-visit locale seed vs firstVisitLocale (drift pin)', () => {
 
       if (scenario.path === '/') {
         const stored = scenario.storageBlocked ? null : scenario.stored;
-        const locale = firstVisitLocale(stored, scenario.languages);
+        const ssoReturn = scenario.storageBlocked ? null : (scenario.ssoReturn ?? null);
+        const locale = firstVisitLocale(stored, scenario.languages, ssoReturn);
         expect(locale === 'en' ? null : `/${locale}/`).toBe(scenario.redirect);
       }
     });
@@ -144,5 +214,20 @@ describe('first-visit locale seed vs firstVisitLocale (drift pin)', () => {
       hash: '#map',
     });
     expect(redirect).toBe('/it/?venue=3#map');
+  });
+
+  it('consumes the SSO note on a load of /, whatever it named', () => {
+    expect(runSeed({ path: '/', stored: null, ssoReturn: 'it', languages: [] }).consumed).toEqual([
+      SEED_SSO_RETURN_KEY,
+    ]);
+    expect(
+      runSeed({ path: '/', stored: null, ssoReturn: '//evil.example', languages: [] }).consumed,
+    ).toEqual([SEED_SSO_RETURN_KEY]);
+  });
+
+  it('leaves the SSO note alone on a deep link', () => {
+    expect(
+      runSeed({ path: '/venues/1', stored: null, ssoReturn: 'it', languages: [] }).consumed,
+    ).toEqual([]);
   });
 });

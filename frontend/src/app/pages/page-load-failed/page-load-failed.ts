@@ -27,6 +27,7 @@ import { TouchTarget } from '../../shared/touch-target';
         <p
           class="m-0 text-[14.5px] leading-[1.5] text-riv-card-ink-soft"
           data-testid="page-load-failed-reloading"
+          i18n
         >
           Loading this page again…
         </p>
@@ -40,8 +41,8 @@ import { TouchTarget } from '../../shared/touch-target';
         data-testid="page-load-failed"
       >
         <span appFailureIcon aria-hidden="true"><app-alert-icon /></span>
-        <h1 appFailureTitle id="page-load-failed-title">Couldn’t load this page</h1>
-        <p appFailureText>
+        <h1 appFailureTitle id="page-load-failed-title" i18n>Couldn’t load this page</h1>
+        <p appFailureText i18n>
           Part of Riviera didn’t arrive — the connection dropped, or the app was just updated. Try
           again, or head back to the beaches.
         </p>
@@ -52,6 +53,7 @@ import { TouchTarget } from '../../shared/touch-target';
             routerLink="/"
             class="inline-flex items-center text-[14.5px] font-semibold text-riv-accent-ink underline focus-visible:outline-[3px] focus-visible:outline-offset-2 focus-visible:outline-riv-accent-ink"
             data-testid="page-load-failed-home"
+            i18n
             >Back to the beaches</a
           >
         </p>

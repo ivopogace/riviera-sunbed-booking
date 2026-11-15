@@ -1,5 +1,7 @@
 package ai.riviera.platform.notification.application;
 
+import ai.riviera.platform.shared.SiteLocale;
+
 /**
  * What {@link BookingMailFactsService} could — or could not — assemble about one booking: a typed
  * outcome, never an {@code Optional}, because every caller must <em>name</em> the missing fact to
@@ -17,10 +19,10 @@ public sealed interface BookingMailFacts {
 	 * <p>{@code bookingCode} is the tourist's arrival credential (invariant #7) — mailed, never
 	 * logged. Not every consumer uses every field (the cancellation mail renders no spot): the
 	 * spot arrives on the same {@code venue} read as {@code venueName}, so narrowing per consumer
-	 * would cost a second port call.
+	 * would cost a second port call. {@code locale} is the language the guest booked in.
 	 */
 	record Resolved(String toEmail, String bookingCode, String venueName, String rowLabel,
-			int positionNo) implements BookingMailFacts {
+			int positionNo, SiteLocale locale) implements BookingMailFacts {
 	}
 
 	/** The first fact that did not resolve — the reads short-circuit, so exactly one is named. */

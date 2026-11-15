@@ -48,10 +48,10 @@ class BookingDayRefundMailListener {
 	void on(BookingDayRefunded event) {
 		switch (facts.resolve(event.bookingId(), event.setId())) {
 			case BookingMailFacts.Missing(MissingBookingFact fact) -> abandon(fact, event);
-			case BookingMailFacts.Resolved booking -> mails.sendDayRefund(booking.toEmail(),
+			case BookingMailFacts.Resolved booking -> mails.sendDayRefund(booking.toEmail(), booking.locale(),
 					new DayRefundMail(booking.bookingCode(), booking.venueName(), event.serviceDate(),
 							event.refundMinor(), event.currency(), event.refundReason(), event.released(),
-							links.forBooking(booking.bookingCode())));
+							links.forBooking(booking.bookingCode(), booking.locale())));
 		}
 	}
 

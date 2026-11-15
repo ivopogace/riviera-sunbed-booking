@@ -31,6 +31,7 @@ import ai.riviera.platform.notification.adapter.out.MockMailer;
 import ai.riviera.platform.notification.application.BookingConfirmationMail;
 import ai.riviera.platform.notification.application.EmailSuppressions;
 import ai.riviera.platform.notification.application.TransactionalMailService;
+import ai.riviera.platform.shared.SiteLocale;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
@@ -148,7 +149,7 @@ class TemWebhookIT {
 		String email = "bounced@tem-skip.example.com";
 		deliver(PKI.notification(event("email_dropped", email))).andExpect(status().isNoContent());
 
-		mailService.sendBookingConfirmation(email, confirmation());
+		mailService.sendBookingConfirmation(email, SiteLocale.EN, confirmation());
 
 		assertThat(mailer.lastTo(email)).as("skipped silently at the chokepoint, no caller-visible error").isEmpty();
 	}

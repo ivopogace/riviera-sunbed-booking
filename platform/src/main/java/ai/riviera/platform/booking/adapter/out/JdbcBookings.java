@@ -247,13 +247,14 @@ class JdbcBookings implements Bookings {
 	private OptionalLong insert(NewBooking b, BookingStatus status, Instant requestExpiresAt) {
 		return jdbc.sql("""
 				INSERT INTO booking (code, venue_id, set_id, customer_id, account_id, booking_date, last_date,
-				                     amount_minor, amount_currency, status, request_expires_at, stay_id)
+				                     amount_minor, amount_currency, status, request_expires_at, stay_id, locale)
 				VALUES (:code, :venue, :set, :customer, :account, :date, :last, :amount, :currency, :status, :expires,
-				        :stay)
+				        :stay, :locale)
 				ON CONFLICT (code) DO NOTHING
 				RETURNING id
 				""")
 				.param("code", b.code())
+				.param("locale", b.locale().code())
 				.param("stay", b.stayId() == null ? null : b.stayId().value(), java.sql.Types.BIGINT)
 				.param(PARAM_VENUE, b.venueId().value())
 				.param("set", b.setId().value())

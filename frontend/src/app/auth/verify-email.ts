@@ -34,35 +34,42 @@ const CLS = {
       aria-labelledby="verify-title"
     >
       <div [class]="cls.card" appCardGlass>
-        <h1 id="verify-title" [class]="cls.title">Verify your email</h1>
+        <h1 id="verify-title" [class]="cls.title" i18n>Verify your email</h1>
 
         <!-- Above the @switch on purpose: a live region must outlive the branch it describes. -->
         <app-load-announcer
           [loading]="state() === 'verifying'"
           [ready]="state() === 'verified'"
           loadingLabel="Verifying your email…"
+          i18n-loadingLabel
           readyLabel="Your email is verified. Thanks!"
+          i18n-readyLabel
         />
 
         @switch (state()) {
           @case ('verifying') {
             <!-- Visible copy only; the announcer above owns the announcement. -->
-            <p [class]="cls.intro" aria-hidden="true" data-testid="verify-pending">
+            <p [class]="cls.intro" aria-hidden="true" data-testid="verify-pending" i18n>
               Verifying your email…
             </p>
           }
           @case ('verified') {
-            <p [class]="cls.intro" aria-hidden="true" data-testid="verify-success">
+            <p [class]="cls.intro" aria-hidden="true" data-testid="verify-success" i18n>
               Your email is verified. Thanks!
             </p>
             <p [class]="cls.alt">
-              <a appTouchTarget [class]="cls.altLink" routerLink="/" data-testid="verify-to-home"
+              <a
+                appTouchTarget
+                [class]="cls.altLink"
+                routerLink="/"
+                data-testid="verify-to-home"
+                i18n
                 >Continue</a
               >
             </p>
           }
           @case ('error') {
-            <p [class]="cls.error" role="alert" data-testid="verify-error">
+            <p [class]="cls.error" role="alert" data-testid="verify-error" i18n>
               Something went wrong verifying your email. Please try again.
             </p>
             <p [class]="cls.alt">
@@ -71,12 +78,13 @@ const CLS = {
                 [class]="cls.altLink"
                 routerLink="/account/sign-in"
                 data-testid="verify-to-signin"
+                i18n="Link to the sign-in page"
                 >Sign in</a
               >
             </p>
           }
           @default {
-            <p [class]="cls.error" role="alert" data-testid="verify-failed">
+            <p [class]="cls.error" role="alert" data-testid="verify-failed" i18n>
               This verification link is invalid or has expired. Sign in and request a new one.
             </p>
             <p [class]="cls.alt">
@@ -85,6 +93,7 @@ const CLS = {
                 [class]="cls.altLink"
                 routerLink="/account/sign-in"
                 data-testid="verify-to-signin"
+                i18n="Link to the sign-in page"
                 >Sign in</a
               >
             </p>

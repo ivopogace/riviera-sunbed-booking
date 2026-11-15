@@ -66,7 +66,7 @@ class BookingConfirmationMailListener {
 	private void send(BookingMailFacts.Resolved booking, BookingConfirmed event) {
 		ConfirmationSendOutcome outcome;
 		try {
-			outcome = mails.sendBookingConfirmation(booking.toEmail(),
+			outcome = mails.sendBookingConfirmation(booking.toEmail(), booking.locale(),
 					new BookingConfirmationMail(booking.bookingCode(), booking.venueName(),
 							event.bookingDate(), event.lastDay(), booking.rowLabel(), booking.positionNo(),
 							event.amountMinor(), event.currency(),

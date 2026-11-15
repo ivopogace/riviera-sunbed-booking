@@ -58,7 +58,7 @@ class BookingConfirmationResendService implements BookingConfirmationResend {
 		return switch (mailFacts.resolve(bookingId, booking.setId())) {
 			case BookingMailFacts.Missing(MissingBookingFact fact) -> abandon(bookingId, fact, recordOutcome);
 			case BookingMailFacts.Resolved resolved -> sendAndRecord(bookingId, recordOutcome,
-					() -> mails.sendBookingConfirmation(resolved.toEmail(), new BookingConfirmationMail(
+					() -> mails.sendBookingConfirmation(resolved.toEmail(), resolved.locale(), new BookingConfirmationMail(
 							resolved.bookingCode(), resolved.venueName(), booking.bookingDate(), booking.lastDate(),
 							resolved.rowLabel(), resolved.positionNo(), booking.amountMinor(), booking.currency(),
 							booking.cancellationWindowAtBirth(), booking.lateCancelRefundBps())));
@@ -76,7 +76,7 @@ class BookingConfirmationResendService implements BookingConfirmationResend {
 		return switch (mailFacts.resolveStay(stay, stay.cancellationWindowAtBirth(), stay.lateCancelRefundBps())) {
 			case StayMailFacts.Missing(MissingBookingFact fact) -> abandon(pressed, fact, recordOutcome);
 			case StayMailFacts.Resolved resolved -> sendAndRecord(pressed, recordOutcome,
-					() -> mails.sendStayConfirmation(resolved.toEmail(), resolved.mail()));
+					() -> mails.sendStayConfirmation(resolved.toEmail(), resolved.locale(), resolved.mail()));
 		};
 	}
 

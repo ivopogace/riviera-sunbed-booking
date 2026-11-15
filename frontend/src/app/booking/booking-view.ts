@@ -487,8 +487,7 @@ const CLS = {
                   If the new spot doesn’t suit you, cancel below for a full refund until
                   <strong>{{
                     deadlineLabel(until) // i18n(ph="deadline")
-                  }}</strong
-                  >.
+                  }}</strong>.
                 </p>
               }
             } @else {

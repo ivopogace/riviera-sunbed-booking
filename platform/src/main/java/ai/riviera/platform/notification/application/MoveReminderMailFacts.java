@@ -1,5 +1,7 @@
 package ai.riviera.platform.notification.application;
 
+import ai.riviera.platform.shared.SiteLocale;
+
 /**
  * What {@link BookingMailFactsService#resolveMoveReminder} could, or could not, assemble for a move's one
  * reminder; sealed so each caller's {@code switch} is exhaustive. Module-internal: public only so
@@ -8,7 +10,7 @@ package ai.riviera.platform.notification.application;
 public sealed interface MoveReminderMailFacts {
 
 	/** The recipient and the mail, ready to send; {@code mail} carries the stay's code (invariant #7). */
-	record Resolved(String toEmail, MoveReminderMail mail) implements MoveReminderMailFacts {
+	record Resolved(String toEmail, MoveReminderMail mail, SiteLocale locale) implements MoveReminderMailFacts {
 	}
 
 	/** The first fact that did not resolve. */

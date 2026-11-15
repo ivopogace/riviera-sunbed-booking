@@ -41,11 +41,11 @@ export type ResetAudience = 'customer' | 'operator';
 /** What differs per audience: where a new link comes from, and which sign-in tab to land on. */
 const AUDIENCE_COPY = {
   customer: {
-    newLinkHint: 'Request a new one.',
+    newLinkHint: $localize`Request a new one.`,
     signInQuery: {},
   },
   operator: {
-    newLinkHint: 'Ask your platform admin for a new one.',
+    newLinkHint: $localize`Ask your platform admin for a new one.`,
     signInQuery: { audience: 'operator' },
   },
 } as const satisfies Record<ResetAudience, { newLinkHint: string; signInQuery: object }>;
@@ -65,10 +65,10 @@ const AUDIENCE_COPY = {
       aria-labelledby="reset-title"
     >
       <div [class]="cls.card" appCardGlass>
-        <h1 id="reset-title" [class]="cls.title">Set a new password</h1>
+        <h1 id="reset-title" [class]="cls.title" i18n>Set a new password</h1>
 
         @if (done()) {
-          <output [class]="cls.intro" tabindex="-1" data-testid="reset-done">
+          <output [class]="cls.intro" tabindex="-1" data-testid="reset-done" i18n>
             Your password has been updated. You can sign in with it now.
           </output>
           <p [class]="cls.alt">
@@ -78,12 +78,16 @@ const AUDIENCE_COPY = {
               routerLink="/account/sign-in"
               [queryParams]="copy.signInQuery"
               data-testid="reset-to-signin"
+              i18n="Link to the sign-in page"
               >Sign in</a
             >
           </p>
         } @else if (!token) {
-          <p [class]="cls.error" role="alert" data-testid="reset-no-token">
-            This reset link is invalid or incomplete. {{ copy.newLinkHint }}
+          <p [class]="cls.error" role="alert" data-testid="reset-no-token" i18n>
+            This reset link is invalid or incomplete.
+            {{
+              copy.newLinkHint // i18n(ph="newLinkHint")
+            }}
           </p>
           @if (audience === 'customer') {
             <p [class]="cls.alt">
@@ -92,6 +96,7 @@ const AUDIENCE_COPY = {
                 [class]="cls.altLink"
                 routerLink="/account/forgot"
                 data-testid="reset-to-forgot"
+                i18n
                 >Request a reset link</a
               >
             </p>
@@ -99,7 +104,7 @@ const AUDIENCE_COPY = {
         } @else {
           <form (submit)="onSubmit(); $event.preventDefault()" novalidate>
             <label [class]="cls.field">
-              <span [class]="cls.label">New password</span>
+              <span [class]="cls.label" i18n>New password</span>
               <input
                 appTouchTarget
                 [class]="cls.input"
@@ -113,7 +118,7 @@ const AUDIENCE_COPY = {
             <p id="reset-hint" [class]="cls.hint" data-testid="reset-hint">{{ policyHint }}</p>
 
             <label [class]="cls.field">
-              <span [class]="cls.label">Confirm new password</span>
+              <span [class]="cls.label" i18n>Confirm new password</span>
               <input
                 appTouchTarget
                 [class]="cls.input"
@@ -136,7 +141,7 @@ const AUDIENCE_COPY = {
               data-testid="reset-submit"
               [appBusy]="submitting()"
             >
-              {{ submitting() ? 'Updating…' : 'Update password' }}
+              {{ submitting() ? updatingLabel : updateLabel }}
             </button>
           </form>
         }
@@ -158,6 +163,8 @@ export class ResetPassword {
 
   protected readonly cls = CLS;
   protected readonly policyHint = PASSWORD_POLICY_HINT;
+  protected readonly updateLabel = $localize`Update password`;
+  protected readonly updatingLabel = $localize`Updating…`;
   /** The reset token from the emailed link, read once (a page instance is one link). */
   protected readonly token = this.route.snapshot.queryParamMap.get('token') ?? '';
   protected readonly submitting = signal(false);
@@ -186,7 +193,7 @@ export class ResetPassword {
       return;
     }
     if (newPassword !== confirm) {
-      this.error.set('The passwords do not match.');
+      this.error.set($localize`The passwords do not match.`);
       return;
     }
     this.submitting.set(true);
@@ -200,7 +207,9 @@ export class ResetPassword {
         this.focusAfterRender('reset-done');
         break;
       case 'invalid-token':
-        this.error.set(`This reset link is invalid or has expired. ${this.copy.newLinkHint}`);
+        this.error.set(
+          $localize`This reset link is invalid or has expired. ${this.copy.newLinkHint}:newLinkHint:`,
+        );
         break;
       case 'invalid-password':
         this.error.set(PASSWORD_LENGTH_MESSAGE);
@@ -209,10 +218,10 @@ export class ResetPassword {
         this.error.set(PASSWORD_BLOCKED_MESSAGE);
         break;
       case 'rate-limited':
-        this.error.set('Too many attempts. Please wait a minute and try again.');
+        this.error.set($localize`Too many attempts. Please wait a minute and try again.`);
         break;
       case 'error':
-        this.error.set('Something went wrong. Please try again.');
+        this.error.set($localize`Something went wrong. Please try again.`);
         break;
     }
   }

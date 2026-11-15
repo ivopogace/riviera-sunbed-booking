@@ -1,14 +1,8 @@
 package ai.riviera.platform.notification.adapter.out;
 
-import java.math.BigDecimal;
-import java.math.RoundingMode;
 import java.net.URI;
-import java.time.LocalDate;
-import java.time.ZoneId;
-import java.time.format.DateTimeFormatter;
-import java.time.temporal.ChronoUnit;
-import java.util.Currency;
-import java.util.Locale;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.stream.Collectors;
 
 import org.springframework.beans.factory.annotation.Value;
@@ -18,6 +12,7 @@ import org.springframework.mail.javamail.JavaMailSender;
 import org.springframework.stereotype.Component;
 
 import ai.riviera.platform.booking.vocabulary.CancellationWindow;
+import ai.riviera.platform.notification.adapter.out.MailCopy.Row;
 import ai.riviera.platform.notification.application.BookingCancellationMail;
 import ai.riviera.platform.notification.application.BookingConfirmationMail;
 import ai.riviera.platform.notification.application.BookingMovedMail;
@@ -29,58 +24,32 @@ import ai.riviera.platform.notification.application.RequestDeclinedMail;
 import ai.riviera.platform.notification.application.RequestExpiredMail;
 import ai.riviera.platform.notification.application.StayConfirmationMail;
 import ai.riviera.platform.notification.application.SupportContact;
+import ai.riviera.platform.shared.SiteLocale;
 
 /**
- * Real SMTP {@link Mailer} over {@link JavaMailSender} (ADR-0011): Scaleway TEM in deployment, any relay
- * by config ({@code application-mailer.properties}). Under {@code mailer}, missing SMTP config fails at
- * boot, never on first send; {@code smtp4dev} targets the local sink. Plain text, no tracking markup
- * (ADR-0011). Never logs a bearer credential (tokenized link, arrival code; invariant #7), and
- * CRLF-strips untrusted header text ({@link #headerSafe}). Pinned by {@code SmtpMailerIT} and
- * {@code MailerProfileWiringTest}.
+ * Real SMTP {@link Mailer} over {@link JavaMailSender} (ADR-0011): Scaleway TEM in deployment, any relay by config
+ * ({@code application-mailer.properties}); missing SMTP config fails at boot. Plain text, no tracking markup, copy in
+ * the guest's {@link SiteLocale} ({@link MailCopy}). Never logs a bearer credential (invariant #7); CRLF-strips
+ * untrusted header text ({@link #headerSafe}). Pinned by {@code SmtpMailerIT} and {@code MailerProfileWiringTest}.
  */
 @Component
 @Profile("mailer | smtp4dev")
 class SmtpMailer implements Mailer {
 
-	private static final String VERIFICATION_SUBJECT = "Verify your email";
-	private static final String RESET_SUBJECT = "Reset your password";
-	private static final String CONFIRMATION_SUBJECT = "Your booking at %s is confirmed";
-	private static final String STAY_CONFIRMATION_SUBJECT = "Your stay at %s is confirmed";
-	private static final String CANCELLATION_SUBJECT = "Your booking at %s is cancelled";
-	private static final String PAYMENT_DUE_SUBJECT = "%s accepted your request — payment due";
 	private static final String OPERATOR_APPROVED_SUBJECT = "Your operator account is approved";
-	private static final String REQUEST_DECLINED_SUBJECT = "%s declined your booking request";
-	private static final String BOOKING_MOVED_SUBJECT = "Your spot at %s has changed";
-	private static final String REQUEST_EXPIRED_SUBJECT = "Your booking request to %s has expired";
-	private static final String MOVE_REMINDER_SUBJECT = "Tomorrow at %s: your spot moves";
-	private static final String DAY_REFUND_SUBJECT = "A day of your booking at %s is refunded";
 
-	/** English-only in v1 (ADR-0011); the locale is explicit so the JVM default cannot change the copy. */
-	private static final DateTimeFormatter DATE_FORMAT =
-			DateTimeFormatter.ofPattern("d MMMM yyyy", Locale.ENGLISH);
+	private static final String ROW_BOOKING_CODE = "row.bookingCode";
+	private static final String ROW_VENUE = "row.venue";
+	private static final String ROW_DATE = "row.date";
+	private static final String ROW_DAYS = "row.days";
+	private static final String ROW_REFUND = "row.refund";
+	private static final String ROW_PAID = "row.paid";
+	private static final String SPOT = "value.spot";
+	private static final String ROW_SPOT = "value.rowSpot";
+	private static final String PARAGRAPH = "\n\n";
 
-	/** The first end of a days range, which shares the second's year. */
-	private static final DateTimeFormatter DAY_MONTH_FORMAT =
-			DateTimeFormatter.ofPattern("d MMMM", Locale.ENGLISH);
-
-	/** The label column widths of the confirmation, cancellation and moved bodies. */
-	private static final int CONFIRMATION_LABEL_WIDTH = 15;
-	private static final int CANCELLATION_LABEL_WIDTH = 10;
-	private static final int MOVED_LABEL_WIDTH = 15;
-
-	/**
-	 * The zone every deadline in this mail is stated in (invariant #6). A pay-by instant is only
-	 * actionable as a wall clock, and {@code Europe/Tirane} is the one both the guest and the venue
-	 * are standing in; rendering it in UTC or in the JVM default would be a different time of day.
-	 */
-	private static final ZoneId TIRANE = ZoneId.of("Europe/Tirane");
-
-	/**
-	 * A deadline needs the hour, and the offset so a guest reading it abroad cannot be an hour out —
-	 * the one place this transport prints a time rather than a date.
-	 */
-	private static final DateTimeFormatter DEADLINE_FORMAT =
-			DateTimeFormatter.ofPattern("d MMMM yyyy 'at' HH:mm (zzz)", Locale.ENGLISH);
+	/** The label column of a block that shows a booking's code, venue and days. */
+	private static final List<String> BOOKING_ROWS = List.of(ROW_BOOKING_CODE, ROW_VENUE, ROW_DATE, ROW_DAYS);
 
 	private final JavaMailSender sender;
 	private final String from;
@@ -97,425 +66,272 @@ class SmtpMailer implements Mailer {
 	}
 
 	@Override
-	public void sendEmailVerification(String toEmail, URI verificationLink) {
-		send(toEmail, VERIFICATION_SUBJECT, """
-				Confirm your email address by opening this link:
-
-				%s
-
-				If you didn't create an account, you can ignore this message.""".formatted(verificationLink));
+	public void sendEmailVerification(String toEmail, SiteLocale locale, URI verificationLink) {
+		MailCopy copy = MailCopy.in(locale);
+		send(toEmail, copy.text("verification.subject"), copy.text("verification.body", verificationLink.toString()));
 	}
 
 	@Override
-	public void sendPasswordReset(String toEmail, URI resetLink) {
-		send(toEmail, RESET_SUBJECT, """
-				Reset your password by opening this link:
-
-				%s
-
-				The link is valid once, for a limited time. If you didn't request a reset, you can ignore
-				this message — your password is unchanged.""".formatted(resetLink));
+	public void sendPasswordReset(String toEmail, SiteLocale locale, URI resetLink) {
+		MailCopy copy = MailCopy.in(locale);
+		send(toEmail, copy.text("reset.subject"), copy.text("reset.body", resetLink.toString()));
 	}
 
 	@Override
-	public void sendBookingConfirmation(String toEmail, BookingConfirmationMail confirmation) {
-		send(toEmail, CONFIRMATION_SUBJECT.formatted(headerSafe(confirmation.venueName())), """
-				Your sunbed set is confirmed.
-
-				  Booking code:  %s
-				  Venue:         %s
-				  %s
-				  Spot:          %s, position %d
-				  Paid:          %s
-
-				Show the booking code at the venue on arrival.%s%s"""
-				.formatted(confirmation.bookingCode(), confirmation.venueName(),
-						daysLine(confirmation.bookingDate(), confirmation.lastDate(), CONFIRMATION_LABEL_WIDTH),
-						confirmation.rowLabel(),
-						confirmation.positionNo(),
-						formatAmount(confirmation.amountMinor(), confirmation.currency()),
-						disclosureLine(confirmation.cancellationWindowAtBirth(),
-								confirmation.lateCancelRefundBps()),
-						supportLines()));
+	public void sendBookingConfirmation(String toEmail, SiteLocale locale, BookingConfirmationMail confirmation) {
+		MailCopy copy = MailCopy.in(locale);
+		String block = copy.block(widthOf(BOOKING_ROWS, "row.spot", ROW_PAID), List.of(
+				new Row(ROW_BOOKING_CODE, confirmation.bookingCode()),
+				new Row(ROW_VENUE, confirmation.venueName()),
+				copy.daysRow(confirmation.bookingDate(), confirmation.lastDate()),
+				new Row("row.spot", copy.text(SPOT, confirmation.rowLabel(), String.valueOf(confirmation.positionNo()))),
+				new Row(ROW_PAID, copy.amount(confirmation.amountMinor(), confirmation.currency()))));
+		send(toEmail, copy.text("confirmation.subject", headerSafe(confirmation.venueName())),
+				copy.text("confirmation.opening") + PARAGRAPH + block + PARAGRAPH + copy.text("confirmation.closing")
+						+ disclosureLine(copy, confirmation.cancellationWindowAtBirth(),
+								confirmation.lateCancelRefundBps())
+						+ supportLines(copy));
 	}
 
 	@Override
-	public void sendStayConfirmation(String toEmail, StayConfirmationMail confirmation) {
-		send(toEmail, STAY_CONFIRMATION_SUBJECT.formatted(headerSafe(confirmation.venueName())), """
-				Your stay is confirmed.
-
-				  Booking code:  %s
-				  Venue:         %s
-				  %s
-				  Paid:          %s
-
-				Your spot changes during the stay:
-
-				%s
-
-				Show the same booking code at the venue every morning.%s%s"""
-				.formatted(confirmation.bookingCode(), confirmation.venueName(),
-						daysLine(confirmation.firstDate(), confirmation.lastDate(), CONFIRMATION_LABEL_WIDTH),
-						formatAmount(confirmation.amountMinor(), confirmation.currency()),
-						confirmation.stops().stream()
-								.map(stop -> "  %s:  %s, position %d".formatted(span(stop.firstDate(), stop.lastDate()),
-										stop.rowLabel(), stop.positionNo()))
-								.collect(Collectors.joining("\n")),
-						disclosureLine(confirmation.cancellationWindowAtBirth(),
-								confirmation.lateCancelRefundBps()),
-						supportLines()));
+	public void sendStayConfirmation(String toEmail, SiteLocale locale, StayConfirmationMail confirmation) {
+		MailCopy copy = MailCopy.in(locale);
+		String block = copy.block(widthOf(BOOKING_ROWS, ROW_PAID), List.of(
+				new Row(ROW_BOOKING_CODE, confirmation.bookingCode()),
+				new Row(ROW_VENUE, confirmation.venueName()),
+				copy.daysRow(confirmation.firstDate(), confirmation.lastDate()),
+				new Row(ROW_PAID, copy.amount(confirmation.amountMinor(), confirmation.currency()))));
+		String stops = confirmation.stops().stream()
+				.map(stop -> "  %s:  %s".formatted(copy.span(stop.firstDate(), stop.lastDate()),
+						copy.text(SPOT, stop.rowLabel(), String.valueOf(stop.positionNo()))))
+				.collect(Collectors.joining("\n"));
+		send(toEmail, copy.text("stayConfirmation.subject", headerSafe(confirmation.venueName())),
+				copy.text("stayConfirmation.opening") + PARAGRAPH + block + PARAGRAPH
+						+ copy.text("stayConfirmation.spotChanges") + PARAGRAPH + stops + PARAGRAPH
+						+ copy.text("stayConfirmation.closing")
+						+ disclosureLine(copy, confirmation.cancellationWindowAtBirth(),
+								confirmation.lateCancelRefundBps())
+						+ supportLines(copy));
 	}
 
-	/**
-	 * The configured support channels under a blank line, one per line; empty when none is configured,
-	 * so no placeholder is ever mailed.
-	 */
-	private String supportLines() {
+	/** The configured support channels under a blank line, one per line; empty when none is configured. */
+	private String supportLines(MailCopy copy) {
 		if (!support.hasChannel()) {
 			return "";
 		}
-		StringBuilder lines = new StringBuilder("\n\nNeed help? Contact Riviera:");
-		support.email().ifPresent(email -> lines.append("\n  Email:     ").append(email));
-		support.whatsappNumber().ifPresent(number -> lines.append("\n  WhatsApp:  ").append(number)
-				.append(" (").append(support.whatsappLink().orElseThrow()).append(')'));
-		return lines.toString();
+		List<Row> channels = new ArrayList<>();
+		support.email().ifPresent(email -> channels.add(new Row("support.email", email)));
+		support.whatsappNumber().ifPresent(number -> channels.add(new Row("support.whatsapp",
+				number + " (" + support.whatsappLink().orElseThrow() + ")")));
+		return PARAGRAPH + copy.text("support.heading") + "\n"
+				+ copy.block(List.of("support.email", "support.whatsapp"), channels);
 	}
 
 	@Override
-	public void sendBookingCancellation(String toEmail, BookingCancellationMail cancellation) {
-		send(toEmail, CANCELLATION_SUBJECT.formatted(headerSafe(cancellation.venueName())), """
-				%s
-
-				  Booking:  %s
-				  Venue:    %s
-				  %s
-				%s%s"""
-				.formatted(opening(cancellation), cancellation.bookingCode(), cancellation.venueName(),
-						daysLine(cancellation.bookingDate(), cancellation.lastDate(), CANCELLATION_LABEL_WIDTH),
-						refundLine(cancellation),
-						rebookLine(cancellation)));
+	public void sendBookingCancellation(String toEmail, SiteLocale locale, BookingCancellationMail cancellation) {
+		MailCopy copy = MailCopy.in(locale);
+		List<Row> rows = new ArrayList<>(List.of(
+				new Row("row.booking", cancellation.bookingCode()),
+				new Row(ROW_VENUE, cancellation.venueName()),
+				copy.daysRow(cancellation.bookingDate(), cancellation.lastDate())));
+		String after;
+		if (cancellation.refundMinor() > 0) {
+			rows.add(new Row(ROW_REFUND, copy.amount(cancellation.refundMinor(), cancellation.currency())));
+			after = copy.text("refund.onItsWay");
+		}
+		else {
+			after = copy.text(cancellation.rebookLink() != null ? "cancellation.nothingCharged" : "cancellation.noRefund");
+		}
+		String block = copy.block(List.of("row.booking", ROW_VENUE, ROW_DATE, ROW_DAYS, ROW_REFUND), rows);
+		send(toEmail, copy.text("cancellation.subject", headerSafe(cancellation.venueName())),
+				opening(copy, cancellation) + PARAGRAPH + block + PARAGRAPH + after + rebookLine(copy, cancellation));
 	}
 
 	/**
-	 * The booking's days as one line: {@code Date:  3 July 2027} for one day, or
-	 * {@code Days:  3 July – 7 July 2027 (5 days)} for a stay — every day named, without a list
-	 * as long as the stay.
+	 * Why the booking ended, in the tourist's terms. Exhaustive over the published enum with no {@code default}, so a
+	 * new {@code RefundReason} is a compile error here rather than a blank first line in someone's inbox.
 	 */
-	private static String daysLine(LocalDate first, LocalDate last, int labelWidth) {
-		if (first.equals(last)) {
-			return padded("Date:", labelWidth) + DATE_FORMAT.format(first);
-		}
-		long days = ChronoUnit.DAYS.between(first, last) + 1;
-		return padded("Days:", labelWidth) + span(first, last) + " (" + days + " days)";
-	}
-
-	/** {@code 3 July 2027}, or {@code 3 July – 7 July 2027}: the first end shares the second's year. */
-	private static String span(LocalDate first, LocalDate last) {
-		if (first.equals(last)) {
-			return DATE_FORMAT.format(first);
-		}
-		return (first.getYear() == last.getYear() ? DAY_MONTH_FORMAT : DATE_FORMAT).format(first)
-				+ " – " + DATE_FORMAT.format(last);
-	}
-
-	private static String padded(String label, int width) {
-		return label + " ".repeat(Math.max(0, width - label.length()));
-	}
-
-	/**
-	 * Why the booking ended, in the tourist's terms. Exhaustive over the published enum with no
-	 * {@code default}, so a new {@code RefundReason} is a compile error here rather than a blank
-	 * first line in someone's inbox.
-	 */
-	private static String opening(BookingCancellationMail cancellation) {
+	private static String opening(MailCopy copy, BookingCancellationMail cancellation) {
 		return switch (cancellation.reason()) {
-			case POLICY -> "Your cancellation is confirmed.";
-			case WEATHER -> "The venue cancelled bookings for %s because of the weather."
-					.formatted(DATE_FORMAT.format(cancellation.bookingDate()));
-			case VENUE -> "%s refunded your booking for %s."
-					.formatted(cancellation.venueName(), DATE_FORMAT.format(cancellation.bookingDate()));
-			case CONFLICT -> "The venue had to cancel your booking.";
-			case VENUE_CHANGE -> venueChangeOpening(cancellation);
+			case POLICY -> copy.text("cancellation.opening.policy");
+			case WEATHER -> copy.text("cancellation.opening.weather", copy.date(cancellation.bookingDate()));
+			case VENUE -> copy.text("cancellation.opening.venue", cancellation.venueName(),
+					copy.date(cancellation.bookingDate()));
+			case CONFLICT -> copy.text("cancellation.opening.conflict");
+			case VENUE_CHANGE -> venueChangeOpening(copy, cancellation);
 		};
 	}
 
-	/**
-	 * A rebook link marks the venue's own remodel; without one the guest took the free exit a move
-	 * earned them, which is the same reason from the other side.
-	 */
-	private static String venueChangeOpening(BookingCancellationMail cancellation) {
+	/** A rebook link marks the venue's own remodel; without one the guest took the free exit a move earned them. */
+	private static String venueChangeOpening(MailCopy copy, BookingCancellationMail cancellation) {
 		if (cancellation.rebookLink() == null) {
-			return "You cancelled the booking the venue had moved, so it is refunded in full.";
+			return copy.text("cancellation.opening.freeExit");
 		}
-		return cancellation.refundMinor() > 0
-				? "The venue changed its beach layout and had no free spot left for you, so your booking is "
-						+ "cancelled and refunded in full."
-				: "The venue changed its beach layout and had no free spot left for you, so your unpaid booking "
-						+ "has been released.";
-	}
-
-	/**
-	 * Nothing refunded is said in words, never as {@code EUR 0.00}, which reads as a refund at a glance
-	 * (ADR-0005 tier {@code NONE}, past the evening-before cutoff). A released unpaid booking says
-	 * nothing was charged instead of naming a cutoff it never reached.
-	 */
-	private static String refundLine(BookingCancellationMail cancellation) {
-		if (cancellation.refundMinor() > 0) {
-			return """
-					  Refund:   %s
-
-					The refund is on its way back to the payment method you used; it can take a few working
-					days to appear on your statement."""
-					.formatted(formatAmount(cancellation.refundMinor(), cancellation.currency()));
-		}
-		if (cancellation.rebookLink() != null) {
-			return """
-
-					Nothing was charged for this booking.""";
-		}
-		return """
-
-				No refund applies — the booking was cancelled after the free-cancellation cutoff.""";
+		return copy.text(cancellation.refundMinor() > 0
+				? "cancellation.opening.remodelRefunded"
+				: "cancellation.opening.remodelReleased");
 	}
 
 	/** The way back a venue-caused cancellation owes: that venue's map for the day, or the day's list. */
-	private static String rebookLine(BookingCancellationMail cancellation) {
+	private static String rebookLine(MailCopy copy, BookingCancellationMail cancellation) {
 		if (cancellation.rebookLink() == null) {
 			return "";
 		}
-		return """
-
-
-				Book another spot for the same day:
-				%s""".formatted(cancellation.rebookLink());
+		return PARAGRAPH + copy.text("cancellation.rebook") + "\n" + cancellation.rebookLink();
 	}
 
 	@Override
-	public void sendPaymentDue(String toEmail, PaymentDueMail paymentDue) {
-		send(toEmail, PAYMENT_DUE_SUBJECT.formatted(headerSafe(paymentDue.venueName())), """
-				%s accepted your request — your set is held until you pay.
-
-				  Booking code:  %s
-				  Venue:         %s
-				  %s
-				  To pay:        %s
-				  Pay by:        %s
-
-				Pay here:
-
-				%s
-
-				If we haven't received payment by then the set is released for someone else, and you
-				would need to request it again.%s"""
-				.formatted(paymentDue.venueName(), paymentDue.bookingCode(), paymentDue.venueName(),
-						daysLine(paymentDue.bookingDate(), paymentDue.lastDate(), CONFIRMATION_LABEL_WIDTH),
-						formatAmount(paymentDue.amountMinor(), paymentDue.currency()),
-						DEADLINE_FORMAT.format(paymentDue.payBy().atZone(TIRANE)), paymentDue.payLink(),
-						disclosureLine(paymentDue.cancellationWindowAtBirth(),
-								paymentDue.lateCancelRefundBps())));
+	public void sendPaymentDue(String toEmail, SiteLocale locale, PaymentDueMail paymentDue) {
+		MailCopy copy = MailCopy.in(locale);
+		String block = copy.block(widthOf(BOOKING_ROWS, "row.toPay", "row.payBy"), List.of(
+				new Row(ROW_BOOKING_CODE, paymentDue.bookingCode()),
+				new Row(ROW_VENUE, paymentDue.venueName()),
+				copy.daysRow(paymentDue.bookingDate(), paymentDue.lastDate()),
+				new Row("row.toPay", copy.amount(paymentDue.amountMinor(), paymentDue.currency())),
+				new Row("row.payBy", copy.deadline(paymentDue.payBy()))));
+		send(toEmail, copy.text("paymentDue.subject", headerSafe(paymentDue.venueName())),
+				copy.text("paymentDue.opening", paymentDue.venueName()) + PARAGRAPH + block + PARAGRAPH
+						+ copy.text("paymentDue.payHere") + PARAGRAPH + paymentDue.payLink() + PARAGRAPH
+						+ copy.text("paymentDue.closing")
+						+ disclosureLine(copy, paymentDue.cancellationWindowAtBirth(), paymentDue.lateCancelRefundBps()));
 	}
 
 	/**
-	 * The born-past-free-cancellation line for the confirmation and payment-due bodies, matching the
-	 * checkout note. Only CLOSED may say the booking can't be cancelled: LATE stays cancellable
-	 * (invariant #10). FREE or null renders nothing; tolerate null forever (payloads lacking the field).
+	 * The born-past-free-cancellation line, matching the checkout note. Only CLOSED may say the booking can't be
+	 * cancelled: LATE stays cancellable (invariant #10). FREE or null renders nothing (payloads lacking the field).
 	 */
-	private static String disclosureLine(CancellationWindow windowAtBirth, int lateCancelRefundBps) {
+	private static String disclosureLine(MailCopy copy, CancellationWindow windowAtBirth, int lateCancelRefundBps) {
 		if (windowAtBirth == null || windowAtBirth == CancellationWindow.FREE) {
 			return "";
 		}
 		if (windowAtBirth == CancellationWindow.LATE) {
-			return lateCancelRefundBps > 0
-					? """
-
-
-							This booking was made past free cancellation — cancelling refunds only %s%% of the price."""
-							.formatted(bpsAsPercent(lateCancelRefundBps))
-					: """
-
-
-							This booking was made past free cancellation — no refund if cancelled.""";
+			return PARAGRAPH + (lateCancelRefundBps > 0
+					? copy.text("disclosure.latePartial", copy.percent(lateCancelRefundBps))
+					: copy.text("disclosure.lateNone"));
 		}
-		return """
-
-
-				This is a non-refundable last-minute booking — it can't be cancelled.""";
-	}
-
-	/** Basis points → a display percentage, trimming trailing zeros (2500 → 25, 2250 → 22.5). */
-	private static String bpsAsPercent(int bps) {
-		return BigDecimal.valueOf(bps).movePointLeft(2).stripTrailingZeros().toPlainString();
+		return PARAGRAPH + copy.text("disclosure.closed");
 	}
 
 	@Override
-	public void sendBookingMoved(String toEmail, BookingMovedMail moved) {
-		send(toEmail, BOOKING_MOVED_SUBJECT.formatted(headerSafe(moved.venueName())), """
-				%s re-laid its beach, so your booking has moved to a new spot: %s%d instead of %s%d, %s.
-				Your booking code, price and %s are unchanged.
-
-				  Booking code:  %s
-				  Venue:         %s
-				  %s
-				  Your spot:     Row %s, position %d
-
-				%s
-
-				%s"""
-				.formatted(moved.venueName(), moved.toRowLabel(), moved.toPositionNo(), moved.fromRowLabel(),
-						moved.fromPositionNo(), distance(moved),
-						moved.bookingDate().equals(moved.lastDate()) ? "date" : "days",
-						moved.bookingCode(), moved.venueName(),
-						daysLine(moved.bookingDate(), moved.lastDate(), MOVED_LABEL_WIDTH), moved.toRowLabel(),
-						moved.toPositionNo(), freeExitLine(moved), moved.bookingLink()));
+	public void sendBookingMoved(String toEmail, SiteLocale locale, BookingMovedMail moved) {
+		MailCopy copy = MailCopy.in(locale);
+		boolean oneDay = moved.bookingDate().equals(moved.lastDate());
+		String block = copy.block(widthOf(BOOKING_ROWS, "row.yourSpot"), List.of(
+				new Row(ROW_BOOKING_CODE, moved.bookingCode()),
+				new Row(ROW_VENUE, moved.venueName()),
+				copy.daysRow(moved.bookingDate(), moved.lastDate()),
+				new Row("row.yourSpot", copy.text(ROW_SPOT, moved.toRowLabel(), String.valueOf(moved.toPositionNo())))));
+		send(toEmail, copy.text("moved.subject", headerSafe(moved.venueName())),
+				copy.text("moved.opening", moved.venueName(), moved.toRowLabel() + moved.toPositionNo(),
+						moved.fromRowLabel() + moved.fromPositionNo(),
+						distance(copy, moved.rowsAway(), moved.positionsAway()))
+						+ "\n" + copy.text(oneDay ? "moved.unchangedDate" : "moved.unchangedDays") + PARAGRAPH
+						+ block + PARAGRAPH + freeExitLine(copy, moved) + PARAGRAPH + moved.bookingLink());
 	}
 
 	@Override
-	public void sendMoveReminder(String toEmail, MoveReminderMail reminder) {
-		send(toEmail, MOVE_REMINDER_SUBJECT.formatted(headerSafe(reminder.venueName())), """
-				Tomorrow, %s, your spot at %s changes: %s%d%s, %s.
-				Show the same booking code in the morning and staff will point you to it.
-
-				  Booking code:  %s
-				  Venue:         %s
-				  Tomorrow:      Row %s, position %d
-				  Until:         %s
-
-				Your stay:
-
-				%s"""
-				.formatted(DATE_FORMAT.format(reminder.moveDate()), reminder.venueName(), reminder.toRowLabel(),
-						reminder.toPositionNo(), todaysSpot(reminder),
-						distance(reminder.rowsAway(), reminder.positionsAway()), reminder.bookingCode(),
-						reminder.venueName(), reminder.toRowLabel(), reminder.toPositionNo(),
-						DATE_FORMAT.format(reminder.stayLastDate()), reminder.bookingLink()));
-	}
-
-	/** "instead of today's A1" only while the guest holds today on that set; a refunded day is not today's spot (#1381). */
-	private static String todaysSpot(MoveReminderMail reminder) {
-		return reminder.fromDayHeld()
-				? " instead of today's %s%d".formatted(reminder.fromRowLabel(), reminder.fromPositionNo())
-				: "";
+	public void sendMoveReminder(String toEmail, SiteLocale locale, MoveReminderMail reminder) {
+		MailCopy copy = MailCopy.in(locale);
+		String block = copy.block(List.of(ROW_BOOKING_CODE, ROW_VENUE, "row.tomorrow", "row.until"), List.of(
+				new Row(ROW_BOOKING_CODE, reminder.bookingCode()),
+				new Row(ROW_VENUE, reminder.venueName()),
+				new Row("row.tomorrow", copy.text(ROW_SPOT, reminder.toRowLabel(), String.valueOf(reminder.toPositionNo()))),
+				new Row("row.until", copy.date(reminder.stayLastDate()))));
+		String to = reminder.toRowLabel() + reminder.toPositionNo();
+		String distance = distance(copy, reminder.rowsAway(), reminder.positionsAway());
+		// "instead of today's A1" only while the guest holds today on that set; a refunded day is not today's spot (#1381).
+		String opening = reminder.fromDayHeld()
+				? copy.text("moveReminder.openingHeld", copy.date(reminder.moveDate()), reminder.venueName(), to,
+						reminder.fromRowLabel() + reminder.fromPositionNo(), distance)
+				: copy.text("moveReminder.opening", copy.date(reminder.moveDate()), reminder.venueName(), to, distance);
+		send(toEmail, copy.text("moveReminder.subject", headerSafe(reminder.venueName())),
+				opening + "\n" + copy.text("moveReminder.staff") + PARAGRAPH + block + PARAGRAPH
+						+ copy.text("moveReminder.yourStay") + PARAGRAPH + reminder.bookingLink());
 	}
 
 	@Override
-	public void sendDayRefund(String toEmail, DayRefundMail refund) {
-		send(toEmail, DAY_REFUND_SUBJECT.formatted(headerSafe(refund.venueName())), """
-				%s
-
-				  Booking code:  %s
-				  Venue:         %s
-				  Refunded day:  %s
-				  Refund:        %s
-
-				The refund is on its way back to the payment method you used; it can take a few working
-				days to appear on your statement.
-
-				%s"""
-				.formatted(dayRefundOpening(refund), refund.bookingCode(),
-						refund.venueName(), DATE_FORMAT.format(refund.serviceDate()),
-						formatAmount(refund.refundMinor(), refund.currency()), refund.bookingLink()));
+	public void sendDayRefund(String toEmail, SiteLocale locale, DayRefundMail refund) {
+		MailCopy copy = MailCopy.in(locale);
+		String block = copy.block(List.of(ROW_BOOKING_CODE, ROW_VENUE, "row.refundedDay", ROW_REFUND), List.of(
+				new Row(ROW_BOOKING_CODE, refund.bookingCode()),
+				new Row(ROW_VENUE, refund.venueName()),
+				new Row("row.refundedDay", copy.date(refund.serviceDate())),
+				new Row(ROW_REFUND, copy.amount(refund.refundMinor(), refund.currency()))));
+		send(toEmail, copy.text("dayRefund.subject", headerSafe(refund.venueName())),
+				dayRefundOpening(copy, refund) + PARAGRAPH + block + PARAGRAPH + copy.text("refund.onItsWay")
+						+ PARAGRAPH + refund.bookingLink());
 	}
 
 	/**
-	 * Who refunded the day and what becomes of the spot: weather keeps it the guest's (ADR-0026 §3); the
-	 * venue's own refund frees it when released, and names no grounds (ADR-0027 §9). Exhaustive on
-	 * purpose: a day reason without copy is a compile error, not a blank first line.
+	 * Who refunded the day and what becomes of the spot: weather keeps it the guest's (ADR-0026 §3); the venue's own
+	 * refund frees it when released, and names no grounds (ADR-0027 §9). Exhaustive: a reason without copy won't compile.
 	 */
-	private static String dayRefundOpening(DayRefundMail refund) {
-		String venue = refund.venueName();
-		String day = DATE_FORMAT.format(refund.serviceDate());
+	private static String dayRefundOpening(MailCopy copy, DayRefundMail refund) {
+		String day = copy.date(refund.serviceDate());
 		return switch (refund.reason()) {
-			case WEATHER -> ("%s closed for the weather on %s, so that day's share of your booking is refunded. Your\n"
-					+ "booking stands for its other days, and your spot stays yours.").formatted(venue, day);
-			case VENUE -> refund.released()
-					? ("%s refunded %s of your booking, so that day's share is on its way back to you. Your spot\n"
-							+ "is no longer held for that day; your booking stands for its other days.").formatted(venue, day)
-					: ("%s refunded %s of your booking, so that day's share is on its way back to you. Your\n"
-							+ "booking stands for its other days.").formatted(venue, day);
+			case WEATHER -> copy.text("dayRefund.weather", refund.venueName(), day);
+			case VENUE -> copy.text(refund.released() ? "dayRefund.venueReleased" : "dayRefund.venue",
+					refund.venueName(), day);
 			case POLICY, CONFLICT, VENUE_CHANGE -> throw new IllegalArgumentException(
 					"a day is refunded for weather or by the venue, not " + refund.reason());
 		};
 	}
 
 	/** The exit a move earned: in full for a lone booking, these days in full for a stretch, none once the judged day opened. */
-	private static String freeExitLine(BookingMovedMail moved) {
+	private static String freeExitLine(MailCopy copy, BookingMovedMail moved) {
 		if (moved.freeExitUntil() == null) {
-			return "Your stay has already begun, so it can no longer be cancelled. Your booking:";
+			return copy.text("moved.freeExitClosed");
 		}
-		String until = DEADLINE_FORMAT.format(moved.freeExitUntil().atZone(TIRANE));
-		return moved.stretch()
-				? ("If the new spot does not suit you, you can cancel your stay until %s (Albania time), "
-						+ "and these days are refunded in full:").formatted(until)
-				: "If the new spot does not suit you, you can cancel for a full refund until %s (Albania time):"
-						.formatted(until);
+		String until = copy.deadline(moved.freeExitUntil());
+		return copy.text(moved.stretch() ? "moved.freeExitStretch" : "moved.freeExitLone", until);
 	}
 
 	/** "4 positions along the row", "1 row over", "2 rows and 3 positions away". */
-	static String distance(BookingMovedMail moved) {
-		return distance(moved.rowsAway(), moved.positionsAway());
-	}
-
-	static String distance(int rowsAway, int positionsAway) {
-		String positions = plural(positionsAway, "position");
+	static String distance(MailCopy copy, int rowsAway, int positionsAway) {
+		String positions = copy.text("count.positions", positionsAway);
 		if (rowsAway == 0) {
-			return positions + " along the row";
+			return copy.text("distance.alongRow", positions);
 		}
-		String rows = plural(rowsAway, "row");
+		String rows = copy.text("count.rows", rowsAway);
 		if (positionsAway == 0) {
-			return rows + " over";
+			return copy.text("distance.rowsOver", rows);
 		}
-		return rows + " and " + positions + " away";
-	}
-
-	private static String plural(int count, String noun) {
-		return count + " " + noun + (count == 1 ? "" : "s");
+		return copy.text("distance.away", rows, positions);
 	}
 
 	@Override
-	public void sendRequestDeclined(String toEmail, RequestDeclinedMail declined) {
-		send(toEmail, REQUEST_DECLINED_SUBJECT.formatted(headerSafe(declined.venueName())), """
-				%s — nothing is held for you and nothing was charged.
-
-				  Booking code:  %s
-				  Venue:         %s
-				  %s
-
-				You can see the request here:
-
-				%s"""
-				.formatted(declineLine(declined), declined.bookingCode(), declined.venueName(),
-						daysLine(declined.bookingDate(), declined.lastDate(), CONFIRMATION_LABEL_WIDTH),
-						declined.statusLink()));
+	public void sendRequestDeclined(String toEmail, SiteLocale locale, RequestDeclinedMail declined) {
+		MailCopy copy = MailCopy.in(locale);
+		send(toEmail, copy.text("declined.subject", headerSafe(declined.venueName())),
+				declineLine(copy, declined) + PARAGRAPH + bookingBlock(copy, declined.bookingCode(), declined.venueName(),
+						copy.daysRow(declined.bookingDate(), declined.lastDate()))
+						+ PARAGRAPH + copy.text("request.seeHere") + PARAGRAPH + declined.statusLink());
 	}
 
 	/** The one line that says why the request ended (ADR-0025). */
-	private static String declineLine(RequestDeclinedMail declined) {
+	private static String declineLine(MailCopy copy, RequestDeclinedMail declined) {
 		return switch (declined.reason()) {
-			case VENUE -> declined.venueName() + " declined your booking request";
-			case SET_UNAVAILABLE -> declined.venueName() + " could not take your booking request: the set is no longer available for "
-					+ (declined.bookingDate().equals(declined.lastDate()) ? "that day" : "those days");
-			case ANOTHER_GUEST -> declined.venueName() + " gave that set to another guest, so your booking request was declined";
+			case VENUE -> copy.text("declined.venue", declined.venueName());
+			case SET_UNAVAILABLE -> copy.text(declined.bookingDate().equals(declined.lastDate())
+					? "declined.setUnavailableDay" : "declined.setUnavailableDays", declined.venueName());
+			case ANOTHER_GUEST -> copy.text("declined.anotherGuest", declined.venueName());
 		};
 	}
 
 	@Override
-	public void sendRequestExpired(String toEmail, RequestExpiredMail expired) {
-		send(toEmail, REQUEST_EXPIRED_SUBJECT.formatted(headerSafe(expired.venueName())), """
-				Your booking request expired without an answer from the venue — nothing is held for
-				you and nothing was charged.
-
-				  Booking code:  %s
-				  Venue:         %s
-				  %s
-
-				You can see the request here:
-
-				%s"""
-				.formatted(expired.bookingCode(), expired.venueName(),
-						daysLine(expired.bookingDate(), expired.lastDate(), CONFIRMATION_LABEL_WIDTH),
-						expired.statusLink()));
+	public void sendRequestExpired(String toEmail, SiteLocale locale, RequestExpiredMail expired) {
+		MailCopy copy = MailCopy.in(locale);
+		send(toEmail, copy.text("expired.subject", headerSafe(expired.venueName())),
+				copy.text("expired.opening") + PARAGRAPH + bookingBlock(copy, expired.bookingCode(), expired.venueName(),
+						copy.daysRow(expired.bookingDate(), expired.lastDate()))
+						+ PARAGRAPH + copy.text("request.seeHere") + PARAGRAPH + expired.statusLink());
 	}
 
+	private static String bookingBlock(MailCopy copy, String bookingCode, String venueName, Row days) {
+		return copy.block(BOOKING_ROWS, List.of(new Row(ROW_BOOKING_CODE, bookingCode), new Row(ROW_VENUE, venueName), days));
+	}
+
+	/** Operators carry no locale, so this notice stays English. */
 	@Override
 	public void sendOperatorApproved(String toEmail, URI signInLink) {
 		send(toEmail, OPERATOR_APPROVED_SUBJECT, """
@@ -528,21 +344,16 @@ class SmtpMailer implements Mailer {
 				%s""".formatted(signInLink));
 	}
 
-	/**
-	 * Integer minor units → a display amount (invariant #5). The exponent comes from the ISO currency
-	 * rather than a hard-coded 100, so a zero-decimal currency would render correctly if v1's
-	 * EUR-only collection rule ever widens.
-	 */
-	private static String formatAmount(long amountMinor, String currency) {
-		int fractionDigits = Math.max(Currency.getInstance(currency).getDefaultFractionDigits(), 0);
-		BigDecimal major = BigDecimal.valueOf(amountMinor).movePointLeft(fractionDigits);
-		return "%s %s".formatted(currency, major.setScale(fractionDigits, RoundingMode.UNNECESSARY));
+	private static List<String> widthOf(List<String> base, String... more) {
+		List<String> keys = new ArrayList<>(base);
+		keys.addAll(List.of(more));
+		return keys;
 	}
 
 	/**
-	 * Strips CR/LF from operator-supplied text bound for a <em>header</em>. Keep it though Jakarta Mail
-	 * refuses a newline in a subject today ({@code SmtpMailerIT} passes either way): it starts mattering
-	 * under {@code MimeMessageHelper}, a raw header API or the provider's HTTP API. Bodies need none.
+	 * Strips CR/LF from operator-supplied text bound for a <em>header</em>. Keep it though Jakarta Mail refuses a
+	 * newline in a subject today ({@code SmtpMailerIT} passes either way): it starts mattering under
+	 * {@code MimeMessageHelper}, a raw header API or the provider's HTTP API. Bodies need none.
 	 */
 	private static String headerSafe(String value) {
 		return value.replaceAll("[\\r\\n]", " ");

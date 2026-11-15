@@ -4,6 +4,7 @@ import { TestBed } from '@angular/core/testing';
 
 import { environment } from '../../environments/environment';
 import { CustomerAuth } from './customer-auth';
+import { installFakeStorage, removeFakeStorage } from '../../testing/fake-storage';
 import { RecordingPageNavigation } from '../../testing/recording-page-navigation';
 import { PageNavigation } from './page-navigation';
 
@@ -229,6 +230,20 @@ describe('CustomerAuth', () => {
     ]);
   });
 
+  it('notes the running locale before leaving, so the return lands in it (ADR-0030)', async () => {
+    const session = installFakeStorage('sessionStorage');
+    try {
+      const auth = await create('signed-out');
+
+      auth.startSso('google');
+
+      expect(session.get('riviera-sso-locale')).toBe('en');
+      expect(navigation.left).toEqual([`${AUTH_API}/sso/google/authorize`]);
+    } finally {
+      removeFakeStorage('sessionStorage');
+    }
+  });
+
   it('signs out and clears the principal', async () => {
     const auth = await create({ principalType: 'CUSTOMER' });
     expect(auth.signedIn()).toBe(true);
@@ -437,5 +452,33 @@ describe('CustomerAuth', () => {
       .expectOne(`${ME_API}/verify-email/request`)
       .flush({}, { status: 500, statusText: 'Error' });
     expect(await errored).toBe('error');
+  });
+
+  describe('in a translated build (ADR-0030)', () => {
+    const localize = () => (globalThis as unknown as { $localize: { locale?: string } }).$localize;
+
+    beforeEach(() => (localize().locale = 'it'));
+    afterEach(() => (localize().locale = undefined));
+
+    it('sends the build locale with register, forgot-password and the verification resend', async () => {
+      const auth = await create({ principalType: 'CUSTOMER' });
+
+      void auth.register('new@example.com', 'password123');
+      void auth.forgotPassword('new@example.com');
+      void auth.requestVerification();
+
+      expect(http.expectOne(`${AUTH_API}/customer/register`).request.body).toEqual({
+        email: 'new@example.com',
+        password: 'password123',
+        locale: 'it',
+      });
+      expect(http.expectOne(`${AUTH_API}/customer/forgot-password`).request.body).toEqual({
+        email: 'new@example.com',
+        locale: 'it',
+      });
+      expect(http.expectOne(`${ME_API}/verify-email/request`).request.body).toEqual({
+        locale: 'it',
+      });
+    });
   });
 });

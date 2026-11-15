@@ -16,6 +16,7 @@ import ai.riviera.platform.notification.application.RebookLinks;
 import ai.riviera.platform.notification.application.MissingBookingFact;
 import ai.riviera.platform.notification.application.TransactionalMailService;
 import ai.riviera.platform.monitoring.vocabulary.ObservabilityMetrics;
+import ai.riviera.platform.shared.SiteLocale;
 import ai.riviera.platform.venue.vocabulary.SetId;
 import ai.riviera.platform.venue.vocabulary.VenueId;
 
@@ -71,7 +72,7 @@ class BookingCancellationMailListenerTest {
 	private static final URI MAP_LINK = URI.create("https://riviera.test/venues/4?date=2026-08-12");
 	private static final URI DISCOVERY_LINK = URI.create("https://riviera.test/?date=2026-08-12");
 	private static final BookingMailFacts.Resolved FACTS =
-			new BookingMailFacts.Resolved(EMAIL, CODE, "Vala Beach", "A", 3);
+			new BookingMailFacts.Resolved(EMAIL, CODE, "Vala Beach", "A", 3, SiteLocale.EN);
 
 	private final BookingMailFactsService facts = mock(BookingMailFactsService.class);
 	private final TransactionalMailService mails = mock(TransactionalMailService.class);
@@ -111,7 +112,7 @@ class BookingCancellationMailListenerTest {
 
 		listener.on(EVENT);
 
-		verify(mails).sendBookingCancellation(EMAIL, new BookingCancellationMail(
+		verify(mails).sendBookingCancellation(EMAIL, SiteLocale.EN, new BookingCancellationMail(
 				CODE, "Vala Beach", BOOKING_DATE, 4500, "EUR", RefundReason.POLICY, null));
 		verifyNoInteractions(rebookLinks);
 	}
@@ -134,7 +135,7 @@ class BookingCancellationMailListenerTest {
 
 		listener.on(nothingRefunded);
 
-		verify(mails).sendBookingCancellation(EMAIL, new BookingCancellationMail(
+		verify(mails).sendBookingCancellation(EMAIL, SiteLocale.EN, new BookingCancellationMail(
 				CODE, "Vala Beach", BOOKING_DATE, 0, "EUR", RefundReason.POLICY, null));
 	}
 
@@ -144,13 +145,13 @@ class BookingCancellationMailListenerTest {
 	void everyCancellationChannelMails(RefundReason reason) {
 		givenTheFactsAre(FACTS);
 		givenTheRemodelEndedIt();
-		when(rebookLinks.forDate(new VenueId(4L), BOOKING_DATE)).thenReturn(MAP_LINK);
+		when(rebookLinks.forDate(new VenueId(4L), BOOKING_DATE, SiteLocale.EN)).thenReturn(MAP_LINK);
 		BookingCancelled event = new BookingCancelled(BOOKING_ID, new VenueId(4L), SET_ID,
 				BOOKING_DATE, 4500, "EUR", reason);
 
 		listener.on(event);
 
-		verify(mails).sendBookingCancellation(EMAIL, new BookingCancellationMail(
+		verify(mails).sendBookingCancellation(EMAIL, SiteLocale.EN, new BookingCancellationMail(
 				CODE, "Vala Beach", BOOKING_DATE, 4500, "EUR", reason,
 				reason == RefundReason.VENUE_CHANGE ? MAP_LINK : null));
 	}
@@ -166,14 +167,14 @@ class BookingCancellationMailListenerTest {
 		givenTheRemodelEndedIt();
 		BookingCancelled venueCaused = new BookingCancelled(BOOKING_ID, new VenueId(4L), SET_ID,
 				BOOKING_DATE, 4500, "EUR", RefundReason.VENUE_CHANGE);
-		when(rebookLinks.forDate(new VenueId(4L), BOOKING_DATE)).thenReturn(MAP_LINK, DISCOVERY_LINK);
+		when(rebookLinks.forDate(new VenueId(4L), BOOKING_DATE, SiteLocale.EN)).thenReturn(MAP_LINK, DISCOVERY_LINK);
 
 		listener.on(venueCaused);
 		listener.on(venueCaused);
 
-		verify(mails).sendBookingCancellation(EMAIL, new BookingCancellationMail(
+		verify(mails).sendBookingCancellation(EMAIL, SiteLocale.EN, new BookingCancellationMail(
 				CODE, "Vala Beach", BOOKING_DATE, 4500, "EUR", RefundReason.VENUE_CHANGE, MAP_LINK));
-		verify(mails).sendBookingCancellation(EMAIL, new BookingCancellationMail(
+		verify(mails).sendBookingCancellation(EMAIL, SiteLocale.EN, new BookingCancellationMail(
 				CODE, "Vala Beach", BOOKING_DATE, 4500, "EUR", RefundReason.VENUE_CHANGE, DISCOVERY_LINK));
 	}
 
@@ -182,12 +183,26 @@ class BookingCancellationMailListenerTest {
 	void aReleasedUnpaidClaimIsMailedWithItsRebookLinkAndNoRefund() {
 		givenTheFactsAre(FACTS);
 		givenTheRemodelEndedIt();
-		when(rebookLinks.forDate(new VenueId(4L), BOOKING_DATE)).thenReturn(DISCOVERY_LINK);
+		when(rebookLinks.forDate(new VenueId(4L), BOOKING_DATE, SiteLocale.EN)).thenReturn(DISCOVERY_LINK);
 
 		listener.on(new BookingCancelled(BOOKING_ID, new VenueId(4L), SET_ID, BOOKING_DATE, 0, "EUR",
 				RefundReason.VENUE_CHANGE));
 
-		verify(mails).sendBookingCancellation(EMAIL, new BookingCancellationMail(
+		verify(mails).sendBookingCancellation(EMAIL, SiteLocale.EN, new BookingCancellationMail(
+				CODE, "Vala Beach", BOOKING_DATE, 0, "EUR", RefundReason.VENUE_CHANGE, DISCOVERY_LINK));
+	}
+
+	/** #1770: a booking made in Italian is cancelled in Italian, its way back under the Italian subpath. */
+	@Test
+	void aTranslatedBookingIsMailedAndLinkedInItsLanguage() {
+		givenTheFactsAre(new BookingMailFacts.Resolved(EMAIL, CODE, "Vala Beach", "A", 3, SiteLocale.IT));
+		givenTheRemodelEndedIt();
+		when(rebookLinks.forDate(new VenueId(4L), BOOKING_DATE, SiteLocale.IT)).thenReturn(DISCOVERY_LINK);
+
+		listener.on(new BookingCancelled(BOOKING_ID, new VenueId(4L), SET_ID, BOOKING_DATE, 0, "EUR",
+				RefundReason.VENUE_CHANGE));
+
+		verify(mails).sendBookingCancellation(EMAIL, SiteLocale.IT, new BookingCancellationMail(
 				CODE, "Vala Beach", BOOKING_DATE, 0, "EUR", RefundReason.VENUE_CHANGE, DISCOVERY_LINK));
 	}
 
@@ -243,7 +258,7 @@ class BookingCancellationMailListenerTest {
 	@Test
 	void aTransportFailurePropagates() {
 		givenTheFactsAre(FACTS);
-		doThrow(new IllegalStateException("relay down")).when(mails).sendBookingCancellation(any(), any());
+		doThrow(new IllegalStateException("relay down")).when(mails).sendBookingCancellation(any(), any(), any());
 
 		assertThatThrownBy(() -> listener.on(EVENT)).isInstanceOf(IllegalStateException.class);
 
@@ -262,7 +277,7 @@ class BookingCancellationMailListenerTest {
 		listener.on(new BookingCancelled(BOOKING_ID, new VenueId(4L), SET_ID, BOOKING_DATE, 4500, "EUR",
 				RefundReason.VENUE_CHANGE));
 
-		verify(mails).sendBookingCancellation(EMAIL, new BookingCancellationMail(
+		verify(mails).sendBookingCancellation(EMAIL, SiteLocale.EN, new BookingCancellationMail(
 				CODE, "Vala Beach", BOOKING_DATE, 4500, "EUR", RefundReason.VENUE_CHANGE, null));
 		verifyNoInteractions(rebookLinks);
 	}

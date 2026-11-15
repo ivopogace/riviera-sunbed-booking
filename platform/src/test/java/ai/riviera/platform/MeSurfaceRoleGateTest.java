@@ -17,6 +17,7 @@ import ai.riviera.platform.auth.adapter.out.PrincipalSessionRevoker;
 import ai.riviera.platform.auth.application.CustomerRecovery;
 import ai.riviera.platform.customer.api.CustomerAccountDirectory;
 import ai.riviera.platform.customer.vocabulary.CustomerAccountId;
+import ai.riviera.platform.shared.SiteLocale;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
@@ -105,7 +106,7 @@ class MeSurfaceRoleGateTest {
 				.andReturn();
 
 		assertNeverDispatched(result);
-		verify(recovery, never()).sendVerificationEmail(any(), any());
+		verify(recovery, never()).sendVerificationEmail(any(), any(), any());
 	}
 
 	@Test
@@ -114,7 +115,7 @@ class MeSurfaceRoleGateTest {
 				.andExpect(status().isUnauthorized())
 				.andReturn());
 
-		verify(recovery, never()).sendVerificationEmail(any(), any());
+		verify(recovery, never()).sendVerificationEmail(any(), any(), any());
 	}
 
 	/**
@@ -134,7 +135,7 @@ class MeSurfaceRoleGateTest {
 		assertThat(result.getHandler())
 				.as("a CUSTOMER request must still be dispatched — otherwise the assertion above is vacuous")
 				.isNotNull();
-		verify(recovery).sendVerificationEmail(ACCOUNT, CUSTOMER_EMAIL);
+		verify(recovery).sendVerificationEmail(ACCOUNT, CUSTOMER_EMAIL, SiteLocale.EN);
 	}
 
 	@Test

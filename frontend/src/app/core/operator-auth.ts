@@ -82,11 +82,11 @@ export function signInFailureMessage(result: SignInResult): string | undefined {
     case 'signed-in':
       return undefined;
     case 'invalid-credentials':
-      return 'Sign-in failed. Check your username and password.';
+      return $localize`Sign-in failed. Check your username and password.`;
     case 'rate-limited':
-      return 'Too many sign-in attempts. Please wait a minute and try again.';
+      return $localize`Too many sign-in attempts. Please wait a minute and try again.`;
     case 'error':
-      return 'Something went wrong signing in. Please try again.';
+      return $localize`Something went wrong signing in. Please try again.`;
   }
 }
 
@@ -94,7 +94,7 @@ export function signInFailureMessage(result: SignInResult): string | undefined {
  * The operator-facing notice when the session has expired mid-action (a `401` on a console call).
  * One source so every operator surface says the same thing.
  */
-export const SESSION_EXPIRED_MESSAGE = 'Your operator session has expired. Please sign in again.';
+export const SESSION_EXPIRED_MESSAGE = $localize`Your operator session has expired. Please sign in again.`;
 
 /**
  * Session-aware operator auth state (design D-1) on the shared {@link SessionAuth} base.
@@ -270,25 +270,25 @@ function passwordChangeFailure(error: unknown): OperatorPasswordChangeResult {
 export function operatorPasswordChangeMessage(result: OperatorPasswordChangeResult): string {
   switch (result) {
     case 'changed':
-      return 'Your password has been changed. Any other devices signed in as you have been signed out.';
+      return $localize`Your password has been changed. Any other devices signed in as you have been signed out.`;
     case 'missing-current':
       return OPERATOR_CURRENT_PASSWORD_REQUIRED_MESSAGE;
     case 'invalid-current':
-      return 'That current password is incorrect.';
+      return $localize`That current password is incorrect.`;
     case 'invalid-password':
       return PASSWORD_LENGTH_MESSAGE;
     case 'blocked-password':
       return PASSWORD_BLOCKED_MESSAGE;
     case 'bootstrap-managed':
-      return "This account's password is managed by the deployment environment and can't be changed here.";
+      return $localize`This account's password is managed by the deployment environment and can't be changed here.`;
     case 'not-active':
-      return 'This account is not active. Contact a platform admin.';
+      return $localize`This account is not active. Contact a platform admin.`;
     case 'rate-limited':
-      return 'Too many attempts. Please wait a minute and try again.';
+      return $localize`Too many attempts. Please wait a minute and try again.`;
     case 'session-lost':
       return SESSION_EXPIRED_MESSAGE;
     case 'error':
-      return 'Something went wrong changing your password. Please try again.';
+      return $localize`Something went wrong changing your password. Please try again.`;
   }
 }
 
@@ -309,8 +309,8 @@ export function operatorRegisterMessage(result: OperatorRegisterResult): string 
     case 'blocked-password':
       return PASSWORD_BLOCKED_MESSAGE;
     case 'rate-limited':
-      return 'Too many attempts. Please wait a minute and try again.';
+      return $localize`Too many attempts. Please wait a minute and try again.`;
     case 'error':
-      return 'Something went wrong submitting your registration. Please try again.';
+      return $localize`Something went wrong submitting your registration. Please try again.`;
   }
 }

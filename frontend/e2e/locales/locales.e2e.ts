@@ -116,9 +116,13 @@ for (const locale of LOCALES) {
       await expectNoSeriousAxeViolations(page, `${locale} payment`);
     });
 
-    test('the confirmation after a confirmed booking', async ({ page }) => {
-      await page.route('**/api/bookings', (route) =>
-        route.fulfill({
+    test('the confirmation after a confirmed booking, booked in the build locale', async ({
+      page,
+    }) => {
+      let postedLocale: unknown;
+      await page.route('**/api/bookings', (route) => {
+        postedLocale = (route.request().postDataJSON() as { locale?: unknown }).locale;
+        return route.fulfill({
           json: {
             code: 'ABCD234567',
             status: 'CONFIRMED',
@@ -130,8 +134,8 @@ for (const locale of LOCALES) {
             bookingDate: '2026-12-01',
             amount: { minorUnits: 4500, currency: 'EUR' },
           },
-        }),
-      );
+        });
+      });
       await page.goto(`/${locale}/venues/1`);
       await page.locator('button.set-button[data-set-id]').first().click();
       const dialog = page.getByRole('dialog');
@@ -142,6 +146,8 @@ for (const locale of LOCALES) {
       await dialog.getByTestId('dialog-primary').click();
 
       await expect(page).toHaveURL(new RegExp(`/${locale}/booking/confirmation`));
+      // The booking stores the guest's language, so every later mail for it is written in it (#1770).
+      expect(postedLocale).toBe(locale);
       await expect(page.getByTestId('booking-code')).toContainText('ABCD234567');
       await expectLocalePage(page, locale, 'Booking confirmed — Riviera');
       await expectNoSeriousAxeViolations(page, `${locale} confirmation`);
@@ -206,6 +212,45 @@ for (const locale of LOCALES) {
       await settle(page);
       await expectNoSeriousAxeViolations(page, `${locale} admin operators`);
     });
+
+    test('the not-found page and the sign-in card, each by deep link', async ({ page }) => {
+      await page.goto(`/${locale}/no-such-page`);
+      await expectLocalePage(page, locale, 'Page not found — Riviera');
+      await expect(page.getByTestId('not-found-home')).toHaveText(t(locale, 'Back to the beaches'));
+      await expectNoSeriousAxeViolations(page, `${locale} not found`);
+
+      await page.goto(`/${locale}/account/sign-in`);
+      await expectLocalePage(page, locale, 'Sign in — Riviera');
+      await expect(page.getByTestId('sso-google')).toHaveText(t(locale, 'Continue with Google'));
+      await expectNoSeriousAxeViolations(page, `${locale} sign-in`);
+    });
+
+    test('a server error on sign-in renders translated copy keyed on its code, never the detail', async ({
+      page,
+    }) => {
+      await page.route(/\/api\/auth\/me$/, (route) =>
+        route.fulfill({ status: 401, json: { code: 'UNAUTHENTICATED' } }),
+      );
+      const detail = 'An English server sentence.';
+      await page.route(/\/api\/auth\/customer\/login$/, (route) =>
+        route.fulfill({
+          status: 500,
+          contentType: 'application/problem+json',
+          body: JSON.stringify({ code: 'SOME_FUTURE_CODE', detail }),
+        }),
+      );
+      await page.goto(`/${locale}/account/sign-in`);
+      await expect(page.locator('html')).toHaveAttribute('lang', locale);
+      await page.getByTestId('auth-identifier').fill('ana@example.com');
+      await page.getByTestId('auth-password').fill('passphrase-123');
+      await page.getByTestId('auth-submit').click();
+
+      const error = page.getByTestId('auth-error');
+      await expect(error).toHaveText(
+        t(locale, 'Something went wrong signing in. Please try again.'),
+      );
+      await expect(error).not.toContainText(detail);
+    });
   });
 }
 
@@ -232,6 +277,36 @@ test.describe('choosing a language', () => {
     await page.getByTestId('language-option-en').click();
     await expect(page).toHaveURL(/:4300\/$/);
     await expect(page.locator('html')).toHaveAttribute('lang', 'en');
+  });
+
+  test.describe('an SSO sign-in', () => {
+    // The provider round trip, collapsed: authorize answers with the callback's own fixed 302 to `/`.
+    test.beforeEach(async ({ page }) => {
+      await page.route(/\/api\/auth\/sso\/google\/authorize$/, (route) =>
+        route.fulfill({ status: 302, headers: { location: '/' } }),
+      );
+    });
+
+    test('started on /it/ returns to /it/', async ({ page }) => {
+      await page.goto('/it/account/sign-in');
+      await awaitRoutedPage(page);
+      await page.getByTestId('sso-google').click();
+
+      await expect(page).toHaveURL(/\/it\/$/);
+      await expect(page.locator('html')).toHaveAttribute('lang', 'it');
+    });
+
+    test('started in English returns to English, over a stored Albanian choice', async ({
+      page,
+    }) => {
+      await page.goto('/account/sign-in');
+      await page.evaluate(() => localStorage.setItem('riviera-locale', 'sq'));
+      await awaitRoutedPage(page);
+      await page.getByTestId('sso-google').click();
+
+      await expect(page).toHaveURL(/:4300\/$/);
+      await expect(page.locator('html')).toHaveAttribute('lang', 'en');
+    });
   });
 
   test.describe('with an Italian browser and nothing stored', () => {

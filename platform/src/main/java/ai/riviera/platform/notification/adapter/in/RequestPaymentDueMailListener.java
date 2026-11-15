@@ -50,10 +50,10 @@ class RequestPaymentDueMailListener {
 	void on(BookingPaymentDue event) {
 		switch (facts.resolve(event.bookingId(), event.setId())) {
 			case BookingMailFacts.Missing(MissingBookingFact fact) -> abandon(fact, event);
-			case BookingMailFacts.Resolved booking -> mails.sendPaymentDue(booking.toEmail(),
+			case BookingMailFacts.Resolved booking -> mails.sendPaymentDue(booking.toEmail(), booking.locale(),
 					new PaymentDueMail(booking.bookingCode(), booking.venueName(), event.bookingDate(), event.lastDay(),
 							event.payBy(), event.amountMinor(), event.currency(),
-							links.forBooking(booking.bookingCode()),
+							links.forBooking(booking.bookingCode(), booking.locale()),
 							event.cancellationWindowAtBirth(), event.lateCancelRefundBps()));
 		}
 	}
@@ -70,9 +70,9 @@ class RequestPaymentDueMailListener {
 						+ "retries it: the guest has no notice that payment is due by {}", fact.tagValue(),
 						event.stayId().value(), event.payBy());
 			}
-			case StayRequestMailFacts.Resolved stay -> mails.sendPaymentDue(stay.toEmail(),
+			case StayRequestMailFacts.Resolved stay -> mails.sendPaymentDue(stay.toEmail(), stay.locale(),
 					new PaymentDueMail(stay.stayCode(), stay.venueName(), stay.firstDate(), stay.lastDate(),
-							event.payBy(), event.amountMinor(), event.currency(), links.forBooking(stay.stayCode()),
+							event.payBy(), event.amountMinor(), event.currency(), links.forBooking(stay.stayCode(), stay.locale()),
 							event.cancellationWindowAtBirth(), event.lateCancelRefundBps()));
 		}
 	}

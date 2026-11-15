@@ -10,6 +10,7 @@ import {
   challengeRejectionMessage,
   isChallengeRejection,
 } from '../shared/challenge';
+import { buildLocale } from '../shared/display-locale';
 import {
   PASSWORD_BLOCKED_MESSAGE,
   PASSWORD_BLOCKED_TERM_CODE,
@@ -22,6 +23,7 @@ import {
   SignInResult,
   signInResultFor,
 } from './session-auth';
+import { rememberSsoReturn } from './locale';
 import { PageNavigation } from './page-navigation';
 
 /** The `/api/me` surface for the signed-in customer's own account writes. */
@@ -34,7 +36,7 @@ export type SsoProviderId = 'google' | 'apple';
  * Shown when a current password is required but none was supplied (`MISSING_CURRENT_PASSWORD`),
  * distinct from "incorrect". One constant so the tourist and operator pages word it the same.
  */
-export const CURRENT_PASSWORD_REQUIRED_MESSAGE = 'Enter your current password.';
+export const CURRENT_PASSWORD_REQUIRED_MESSAGE = $localize`Enter your current password.`;
 
 /** How a "forgot password" request ended (always neutral to the user — non-enumeration, D-8). */
 export type ForgotPasswordResult = 'sent' | ChallengeRejection | 'rate-limited' | 'error';
@@ -132,6 +134,7 @@ export class CustomerAuth extends SessionAuth {
    * with the form-login session cookie, which `restore()` picks up on the return load.
    */
   startSso(provider: SsoProviderId): void {
+    rememberSsoReturn();
     this.navigation.leaveTo(`${AUTH_API}/sso/${provider}/authorize`);
   }
 
@@ -164,7 +167,7 @@ export class CustomerAuth extends SessionAuth {
       await firstValueFrom(
         this.http.post<AuthPrincipal>(
           `${AUTH_API}/customer/register`,
-          { email, password },
+          { email, password, locale: buildLocale() },
           { headers: challengeHeaders(challenge) },
         ),
       );
@@ -191,7 +194,7 @@ export class CustomerAuth extends SessionAuth {
       await firstValueFrom(
         this.http.post<void>(
           `${AUTH_API}/customer/forgot-password`,
-          { email },
+          { email, locale: buildLocale() },
           { headers: challengeHeaders(challenge) },
         ),
       );
@@ -291,7 +294,9 @@ export class CustomerAuth extends SessionAuth {
   async requestVerification(): Promise<'sent' | 'withheld' | 'error'> {
     try {
       const result = await firstValueFrom(
-        this.http.post<VerificationRequested>(`${ME_API}/verify-email/request`, null),
+        this.http.post<VerificationRequested>(`${ME_API}/verify-email/request`, {
+          locale: buildLocale(),
+        }),
       );
       return result?.emailWithheld ? 'withheld' : 'sent';
     } catch {
@@ -309,11 +314,11 @@ export function customerSignInMessage(result: CustomerSignInResult): string | un
     case 'signed-in':
       return undefined;
     case 'invalid-credentials':
-      return 'Sign-in failed. Check your email and password.';
+      return $localize`Sign-in failed. Check your email and password.`;
     case 'rate-limited':
-      return 'Too many attempts. Please wait a minute and try again.';
+      return $localize`Too many attempts. Please wait a minute and try again.`;
     case 'error':
-      return 'Something went wrong signing in. Please try again.';
+      return $localize`Something went wrong signing in. Please try again.`;
   }
 }
 
@@ -330,14 +335,14 @@ export function customerRegisterMessage(result: CustomerRegisterResult): string 
     case 'registered':
       return undefined;
     case 'exists':
-      return 'That email may already have an account. Try signing in instead.';
+      return $localize`That email may already have an account. Try signing in instead.`;
     case 'invalid-password':
       return PASSWORD_LENGTH_MESSAGE;
     case 'blocked-password':
       return PASSWORD_BLOCKED_MESSAGE;
     case 'rate-limited':
-      return 'Too many attempts. Please wait a minute and try again.';
+      return $localize`Too many attempts. Please wait a minute and try again.`;
     case 'error':
-      return 'Something went wrong creating your account. Please try again.';
+      return $localize`Something went wrong creating your account. Please try again.`;
   }
 }

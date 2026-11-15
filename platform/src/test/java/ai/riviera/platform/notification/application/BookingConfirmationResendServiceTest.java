@@ -13,6 +13,7 @@ import ai.riviera.platform.booking.vocabulary.BookingId;
 import ai.riviera.platform.booking.vocabulary.StayConfirmationFacts;
 import ai.riviera.platform.booking.vocabulary.StayId;
 import ai.riviera.platform.customer.vocabulary.CustomerId;
+import ai.riviera.platform.shared.SiteLocale;
 import ai.riviera.platform.venue.vocabulary.SetId;
 
 import java.util.List;
@@ -51,7 +52,7 @@ class BookingConfirmationResendServiceTest {
 			LocalDate.of(2026, 8, 1), 4500L, "EUR", CODE, new CustomerId(9L), true,
 			CancellationWindow.CLOSED, 0);
 	private static final BookingMailFacts.Resolved RESOLVED =
-			new BookingMailFacts.Resolved(EMAIL, CODE, "Vala Beach", "A", 3);
+			new BookingMailFacts.Resolved(EMAIL, CODE, "Vala Beach", "A", 3, SiteLocale.EN);
 
 	private final BookingNotificationFacts bookings = mock(BookingNotificationFacts.class);
 	private final BookingMailFactsService mailFacts = mock(BookingMailFactsService.class);
@@ -64,7 +65,7 @@ class BookingConfirmationResendServiceTest {
 	@Test
 	void sendsTheConfirmationAgainAndRecordsTheAdminAttempt() {
 		givenAConfirmedBooking();
-		when(mails.sendBookingConfirmation(any(), any())).thenReturn(ConfirmationSendOutcome.SENT);
+		when(mails.sendBookingConfirmation(any(), any(), any())).thenReturn(ConfirmationSendOutcome.SENT);
 
 		assertThat(service.resend(BOOKING_ID)).isEqualTo(ResendOutcome.SENT);
 
@@ -79,11 +80,11 @@ class BookingConfirmationResendServiceTest {
 	@Test
 	void rebuildsTheSameMailFromTheReReadFacts() {
 		givenAConfirmedBooking();
-		when(mails.sendBookingConfirmation(any(), any())).thenReturn(ConfirmationSendOutcome.SENT);
+		when(mails.sendBookingConfirmation(any(), any(), any())).thenReturn(ConfirmationSendOutcome.SENT);
 
 		service.resend(BOOKING_ID);
 
-		verify(mails).sendBookingConfirmation(EMAIL, new BookingConfirmationMail(
+		verify(mails).sendBookingConfirmation(EMAIL, SiteLocale.EN, new BookingConfirmationMail(
 				CODE, "Vala Beach", LocalDate.of(2026, 8, 1), "A", 3, 4500L, "EUR",
 				CancellationWindow.CLOSED, 0));
 	}
@@ -91,7 +92,7 @@ class BookingConfirmationResendServiceTest {
 	@Test
 	void reportsTheSendWithheldForASuppressedAddress() {
 		givenAConfirmedBooking();
-		when(mails.sendBookingConfirmation(any(), any()))
+		when(mails.sendBookingConfirmation(any(), any(), any()))
 				.thenReturn(ConfirmationSendOutcome.WITHHELD_SUPPRESSED);
 
 		assertThat(service.resend(BOOKING_ID)).isEqualTo(ResendOutcome.WITHHELD_SUPPRESSED);
@@ -108,7 +109,7 @@ class BookingConfirmationResendServiceTest {
 	@Test
 	void reportsAndRecordsATransportFailure() {
 		givenAConfirmedBooking();
-		doThrow(new IllegalStateException("relay down")).when(mails).sendBookingConfirmation(any(), any());
+		doThrow(new IllegalStateException("relay down")).when(mails).sendBookingConfirmation(any(), any(), any());
 
 		assertThat(service.resend(BOOKING_ID)).isEqualTo(ResendOutcome.TRANSPORT_FAILED);
 
@@ -138,7 +139,7 @@ class BookingConfirmationResendServiceTest {
 
 		assertThat(service.resend(BOOKING_ID)).isEqualTo(ResendOutcome.NOT_CONFIRMED);
 
-		verify(mails, never()).sendBookingConfirmation(any(), any());
+		verify(mails, never()).sendBookingConfirmation(any(), any(), any());
 		verifyNoInteractions(attempts);
 	}
 
@@ -150,7 +151,7 @@ class BookingConfirmationResendServiceTest {
 
 		assertThat(service.resend(BOOKING_ID)).isEqualTo(ResendOutcome.MISSING_FACTS);
 
-		verify(mails, never()).sendBookingConfirmation(any(), any());
+		verify(mails, never()).sendBookingConfirmation(any(), any(), any());
 		verify(attempts).recordAttempt(eq(BOOKING_ID), eq(MailAttemptSource.ADMIN_RESEND),
 				eq(MailAttemptOutcome.ABANDONED_MISSING_FACTS));
 	}
@@ -167,7 +168,7 @@ class BookingConfirmationResendServiceTest {
 							LocalDate.of(2026, 8, 2)),
 					new StayConfirmationFacts.Stop(BOOKING_ID, new SetId(8L), LocalDate.of(2026, 8, 3),
 							LocalDate.of(2026, 8, 4))),
-			18000L, "EUR", true, CancellationWindow.LATE, 2500);
+			18000L, "EUR", true, CancellationWindow.LATE, 2500, SiteLocale.EN);
 	private static final StayConfirmationMail STAY_MAIL = new StayConfirmationMail("STAYCODE", "Vala Beach",
 			LocalDate.of(2026, 8, 1), LocalDate.of(2026, 8, 4), List.of(), 18000L, "EUR", CancellationWindow.LATE, 2500);
 
@@ -176,13 +177,13 @@ class BookingConfirmationResendServiceTest {
 		givenAConfirmedBooking();
 		when(bookings.stayConfirmationFactsOf(BOOKING_ID)).thenReturn(Optional.of(STAY));
 		when(mailFacts.resolveStay(STAY, CancellationWindow.LATE, 2500))
-				.thenReturn(new StayMailFacts.Resolved(EMAIL, STAY_MAIL));
-		when(mails.sendStayConfirmation(EMAIL, STAY_MAIL)).thenReturn(ConfirmationSendOutcome.SENT);
+				.thenReturn(new StayMailFacts.Resolved(EMAIL, STAY_MAIL, SiteLocale.EN));
+		when(mails.sendStayConfirmation(EMAIL, SiteLocale.EN, STAY_MAIL)).thenReturn(ConfirmationSendOutcome.SENT);
 
 		assertThat(service.resend(BOOKING_ID)).isEqualTo(ResendOutcome.SENT);
 
 		verify(attempts).recordAttempts(STRETCHES, MailAttemptSource.ADMIN_RESEND, MailAttemptOutcome.SENT);
-		verify(mails, never()).sendBookingConfirmation(any(), any());
+		verify(mails, never()).sendBookingConfirmation(any(), any(), any());
 	}
 
 	@Test
@@ -190,7 +191,7 @@ class BookingConfirmationResendServiceTest {
 		givenAConfirmedBooking();
 		when(bookings.stayConfirmationFactsOf(BOOKING_ID)).thenReturn(Optional.of(new StayConfirmationFacts(
 				STAY.stayId(), STAY.code(), STAY.customerId(), STAY.stops(), STAY.amountMinor(), STAY.currency(), false,
-				CancellationWindow.FREE, 0)));
+				CancellationWindow.FREE, 0, SiteLocale.EN)));
 
 		assertThat(service.resend(BOOKING_ID)).isEqualTo(ResendOutcome.NOT_CONFIRMED);
 
@@ -215,8 +216,8 @@ class BookingConfirmationResendServiceTest {
 		givenAConfirmedBooking();
 		when(bookings.stayConfirmationFactsOf(BOOKING_ID)).thenReturn(Optional.of(STAY));
 		when(mailFacts.resolveStay(STAY, CancellationWindow.LATE, 2500))
-				.thenReturn(new StayMailFacts.Resolved(EMAIL, STAY_MAIL));
-		doThrow(new IllegalStateException("relay down")).when(mails).sendStayConfirmation(EMAIL, STAY_MAIL);
+				.thenReturn(new StayMailFacts.Resolved(EMAIL, STAY_MAIL, SiteLocale.EN));
+		doThrow(new IllegalStateException("relay down")).when(mails).sendStayConfirmation(EMAIL, SiteLocale.EN, STAY_MAIL);
 
 		assertThat(service.resend(BOOKING_ID)).isEqualTo(ResendOutcome.TRANSPORT_FAILED);
 

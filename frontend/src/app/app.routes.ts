@@ -237,14 +237,14 @@ export const routes: Routes = [
     // Device-local guest bookings list.
     path: 'my-bookings',
     loadComponent: () => import('./booking/my-bookings').then((m) => m.MyBookings),
-    title: 'My bookings — Riviera',
+    title: $localize`My bookings — Riviera`,
     data: { section: 'bookings' } satisfies TouristRouteData,
   },
   {
     // The ONE auth card; ?audience=/?mode=/?returnUrl= preselect its state.
     path: 'account/sign-in',
     loadComponent: () => import('./auth/auth-page').then((m) => m.AuthPage),
-    title: 'Sign in — Riviera',
+    title: $localize`Sign in — Riviera`,
     data: { section: 'account' } satisfies TouristRouteData,
   },
   {
@@ -257,21 +257,21 @@ export const routes: Routes = [
     // Forgot password → request a reset link. `account/*` literal segment, no param collision.
     path: 'account/forgot',
     loadComponent: () => import('./auth/forgot-password').then((m) => m.ForgotPassword),
-    title: 'Reset your password — Riviera',
+    title: $localize`Reset your password — Riviera`,
     data: { section: 'account' } satisfies TouristRouteData,
   },
   {
     // Reset landing (emailed link carries ?token=…) — set a new password.
     path: 'account/reset',
     loadComponent: () => import('./auth/reset-password').then((m) => m.ResetPassword),
-    title: 'Set a new password — Riviera',
+    title: $localize`Set a new password — Riviera`,
     data: { section: 'account' } satisfies TouristRouteData,
   },
   {
     // Admin-issued operator reset link (#1737), handed over out of band; anonymous like the tourist one.
     path: 'account/operator-reset',
     loadComponent: () => import('./auth/reset-password').then((m) => m.ResetPassword),
-    title: 'Set a new password — Riviera',
+    title: $localize`Set a new password — Riviera`,
     data: {
       section: 'account',
       resetAudience: 'operator',
@@ -281,14 +281,14 @@ export const routes: Routes = [
     // Email-verification landing (emailed link carries ?token=…) — POST-verify on load.
     path: 'account/verify',
     loadComponent: () => import('./auth/verify-email').then((m) => m.VerifyEmail),
-    title: 'Verify your email — Riviera',
+    title: $localize`Verify your email — Riviera`,
     data: { section: 'account' } satisfies TouristRouteData,
   },
   {
     // Signed-in account page: set/change password + verification resend.
     path: 'account/password',
     loadComponent: () => import('./auth/set-password').then((m) => m.SetPassword),
-    title: 'Your account — Riviera',
+    title: $localize`Your account — Riviera`,
     data: { section: 'account' } satisfies TouristRouteData,
   },
   {
@@ -419,12 +419,12 @@ export const routes: Routes = [
     // The one EAGER route: the answer to a chunk that failed to load must not need a chunk itself.
     path: PAGE_LOAD_FAILED_PATH,
     component: PageLoadFailed,
-    title: 'Couldn’t load this page — Riviera',
+    title: $localize`Couldn’t load this page — Riviera`,
   },
   {
     // MUST stay last: first match wins. No redirect, so the typed URL stays in the address bar.
     path: '**',
     loadComponent: () => import('./pages/not-found/not-found').then((m) => m.NotFound),
-    title: 'Page not found — Riviera',
+    title: $localize`Page not found — Riviera`,
   },
 ];

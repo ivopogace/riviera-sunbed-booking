@@ -135,6 +135,7 @@ import ai.riviera.platform.payout.domain.BatchStatus;
 import ai.riviera.platform.payout.domain.PayoutBatch;
 import ai.riviera.platform.payout.domain.PeriodKey;
 import ai.riviera.platform.shared.ResubmissionOutcome;
+import ai.riviera.platform.shared.SiteLocale;
 import ai.riviera.platform.venue.api.SetBookingFacts;
 import ai.riviera.platform.venue.api.PublicVenueIndex;
 import ai.riviera.platform.venue.api.VenueCatalog;
@@ -582,11 +583,11 @@ public class WebSliceStubs {
 	MailSender mailSender() {
 		return new MailSender() {
 			@Override
-			public void sendEmailVerification(String toEmail, URI verificationLink) {
+			public void sendEmailVerification(String toEmail, SiteLocale locale, URI verificationLink) {
 			}
 
 			@Override
-			public void sendPasswordReset(String toEmail, Supplier<Optional<URI>> resetLink) {
+			public void sendPasswordReset(String toEmail, SiteLocale locale, Supplier<Optional<URI>> resetLink) {
 			}
 
 			@Override

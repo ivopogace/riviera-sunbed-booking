@@ -53,7 +53,7 @@ class BookingMovedMailListener {
 		switch (facts.resolve(event.bookingId(), event.toSetId())) {
 			case BookingMailFacts.Missing(MissingBookingFact fact) -> abandon(fact, event);
 			case BookingMailFacts.Resolved booking -> bookings.moveFacts(event.bookingId()).ifPresentOrElse(
-					move -> mails.sendBookingMoved(booking.toEmail(), mailOf(event, booking, move)),
+					move -> mails.sendBookingMoved(booking.toEmail(), booking.locale(), mailOf(event, booking, move)),
 					() -> abandon(MissingBookingFact.NO_BOOKING, event));
 		}
 	}
@@ -61,7 +61,7 @@ class BookingMovedMailListener {
 	private BookingMovedMail mailOf(BookingMoved event, BookingMailFacts.Resolved booking, BookingMoveFacts move) {
 		return new BookingMovedMail(booking.bookingCode(), booking.venueName(), event.bookingDate(), event.lastDay(),
 				move.fromRowLabel(), move.fromPositionNo(), move.toRowLabel(), move.toPositionNo(), move.rowsAway(),
-				move.positionsAway(), move.freeExitUntil(), move.stretch(), links.forBooking(booking.bookingCode()));
+				move.positionsAway(), move.freeExitUntil(), move.stretch(), links.forBooking(booking.bookingCode(), booking.locale()));
 	}
 
 	/** Ids and the reason only — never the code or the booking link that embeds it (invariant #7). */

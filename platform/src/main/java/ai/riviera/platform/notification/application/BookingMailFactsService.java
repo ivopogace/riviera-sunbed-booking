@@ -65,7 +65,7 @@ public class BookingMailFactsService {
 			return new BookingMailFacts.Missing(MissingBookingFact.NO_CONTACT);
 		}
 		return new BookingMailFacts.Resolved(contact.get().email(), booking.get().code(),
-				set.get().venueName(), set.get().rowLabel(), set.get().positionNo());
+				set.get().venueName(), set.get().rowLabel(), set.get().positionNo(), booking.get().locale());
 	}
 
 	/**
@@ -91,7 +91,7 @@ public class BookingMailFactsService {
 		}
 		return new StayMailFacts.Resolved(contact.get().email(), new StayConfirmationMail(stay.code(), venueName,
 				stay.firstDate(), stay.lastDate(), stops, stay.amountMinor(),
-				stay.currency(), windowAtBirth, lateCancelRefundBps));
+				stay.currency(), windowAtBirth, lateCancelRefundBps), stay.locale());
 	}
 
 	/**
@@ -111,7 +111,8 @@ public class BookingMailFactsService {
 		}
 		return new MoveReminderMailFacts.Resolved(contact.get().email(), new MoveReminderMail(move.code(),
 				to.venueName(), move.moveDate(), move.stayLastDate(), from.rowLabel(), from.positionNo(),
-				to.rowLabel(), to.positionNo(), move.rowsAway(), move.positionsAway(), bookingLink, move.fromDayHeld()));
+				to.rowLabel(), to.positionNo(), move.rowsAway(), move.positionsAway(), bookingLink, move.fromDayHeld()),
+				move.locale());
 	}
 
 	/**
@@ -132,7 +133,7 @@ public class BookingMailFactsService {
 			return new StayRequestMailFacts.Missing(MissingBookingFact.NO_CONTACT);
 		}
 		return new StayRequestMailFacts.Resolved(contact.get().email(), stay.get().code(), set.get().venueName(),
-				stay.get().firstDate(), stay.get().lastDate());
+				stay.get().firstDate(), stay.get().lastDate(), stay.get().locale());
 	}
 
 	/**
@@ -150,8 +151,9 @@ public class BookingMailFactsService {
 		if (contact.isEmpty()) {
 			return new StayCancellationMailFacts.Missing(MissingBookingFact.NO_CONTACT);
 		}
-		URI rebookLink = endedByRemodel ? rebookLinks.forDate(set.get().venueId(), stay.firstDate()) : null;
+		URI rebookLink = endedByRemodel ? rebookLinks.forDate(set.get().venueId(), stay.firstDate(), stay.locale()) : null;
 		return new StayCancellationMailFacts.Resolved(contact.get().email(), new BookingCancellationMail(stay.code(),
-				set.get().venueName(), stay.firstDate(), stay.lastDate(), refundMinor, currency, reason, rebookLink));
+				set.get().venueName(), stay.firstDate(), stay.lastDate(), refundMinor, currency, reason, rebookLink),
+				stay.locale());
 	}
 }

@@ -116,8 +116,8 @@ type ErasureStage = 'form' | 'confirm' | 'done';
               Name, email and phone become unrecoverable for
               <strong class="text-riv-card-ink">{{
                 submittedEmail() // i18n(ph="email")
-              }}</strong
-              >. Bookings and ledger entries remain as anonymous records. This cannot be undone.
+              }}</strong>. Bookings and ledger entries remain as anonymous records. This cannot be
+              undone.
             </p>
 
             <label
