@@ -36,15 +36,18 @@ import jakarta.servlet.http.HttpServletResponse;
  * The customer SSO authorize and the one callback per provider both audiences return to (design D-3): OIDC
  * Authorization Code + PKCE completed server-side, so tokens never reach browser JS and the callback sets the same
  * {@code SESSION} as form login. Anonymous and per-IP rate limited. The callback dispatches on the session-held
- * {@link SsoAuthorization} alone: a customer record resolves via {@link SsoAccountProvisioning} and 302s to /, an
+ * {@link SsoAuthorization} alone: a customer record resolves via {@link SsoAccountProvisioning} and 302s to its locale's /, an
  * operator one goes to {@link OperatorSsoCallback} (#276).
  */
 @RestController
 class SsoController {
 
 	private static final String CUSTOMER_ROLE = AuthRoles.authority(AuthRoles.CUSTOMER);
-	/** Where a completed sign-in lands: the SPA root, which re-reads {@code /api/auth/me} and shows signed-in. */
-	private static final String POST_LOGIN_REDIRECT = "/";
+	/**
+	 * Where a completed sign-in lands: the SPA root, which re-reads {@code /api/auth/me}. The marker tells
+	 * {@code index.html}'s first-visit seed this load is a return, not a first visit (ADR-0030).
+	 */
+	private static final String POST_LOGIN_REDIRECT = "/?sso=signed-in";
 
 	private final SsoFlow flow;
 	private final OperatorSsoCallback operatorCallback;
@@ -64,9 +67,10 @@ class SsoController {
 	}
 
 	@GetMapping("/api/auth/sso/{provider}/authorize")
-	ResponseEntity<Void> authorize(@PathVariable String provider, HttpServletRequest request) {
+	ResponseEntity<Void> authorize(@PathVariable String provider,
+			@RequestParam(name = "locale", required = false) String locale, HttpServletRequest request) {
 		return redirectTo(flow.begin(request, SsoProviders.parse(provider), SsoAuthorization.Audience.CUSTOMER,
-				SsoAuthorization.Intent.SIGN_IN, null));
+				SsoAuthorization.Intent.SIGN_IN, null, locale));
 	}
 
 	/** Validate and consume {@code state} before any exchange, write or session: a bad one is a 400 with nothing done. */
@@ -97,7 +101,7 @@ class SsoController {
 				SessionPrincipal.erased(account.email(), authorities,
 						CredentialStamp.customer(resolved, account.passwordHash())), null, authorities);
 		SessionAuthentication.establish(securityContextRepository, authentication, request, response);
-		return redirectTo(URI.create(POST_LOGIN_REDIRECT));
+		return redirectTo(authorization.landing(POST_LOGIN_REDIRECT));
 	}
 
 	private static ResponseEntity<Void> redirectTo(URI location) {

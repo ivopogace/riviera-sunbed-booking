@@ -2,7 +2,7 @@ import { inject, Injector, Service } from '@angular/core';
 import { Router } from '@angular/router';
 
 import { buildLocale, isLocaleId, LocaleId } from '../shared/display-locale';
-import { writeSessionStorage, writeStorage } from '../shared/safe-storage';
+import { writeStorage } from '../shared/safe-storage';
 import { PageNavigation } from './page-navigation';
 
 export type { LocaleId } from '../shared/display-locale';
@@ -23,23 +23,14 @@ export const LOCALE_OPTIONS: readonly LocaleOption[] = [
 ];
 
 const STORAGE_KEY = 'riviera-locale';
-/** The per-tab note of the build an SSO sign-in left from; the server's fixed `302 /` lands on the seed. */
-const SSO_RETURN_KEY = 'riviera-sso-locale';
 const SOURCE_LOCALE: LocaleId = 'en';
 
 /**
- * Where a load of `/` belongs: an SSO round trip's note, else the stored choice, else the first
- * supported entry of the browser's language list (what it sends as `Accept-Language`), else English.
- * `index.html`'s inline seed applies the same order before boot (drift pin: `locale-boot.spec.ts`).
+ * Where a load of `/` belongs: the stored choice, else the first supported entry of the browser's
+ * language list (what it sends as `Accept-Language`), else English. `index.html`'s inline seed
+ * applies the same order before boot (drift pin: `locale-boot.spec.ts`).
  */
-export function firstVisitLocale(
-  stored: string | null,
-  languages: readonly string[],
-  ssoReturn: string | null = null,
-): LocaleId {
-  if (isLocaleId(ssoReturn)) {
-    return ssoReturn;
-  }
+export function firstVisitLocale(stored: string | null, languages: readonly string[]): LocaleId {
   if (isLocaleId(stored)) {
     return stored;
   }
@@ -48,15 +39,6 @@ export function firstVisitLocale(
       .map((tag) => tag.split('-')[0].toLowerCase())
       .find((primary) => isLocaleId(primary)) ?? SOURCE_LOCALE
   );
-}
-
-/**
- * Leave the note an SSO sign-in's return reads: the callback redirects to `/` alone, so the seed sends
- * the guest back to the build they left (ADR-0030). A note, not the stored choice: signing in from a
- * deep link is not picking a language. Blocked storage degrades to landing by the usual order.
- */
-export function rememberSsoReturn(): void {
-  writeSessionStorage(SSO_RETURN_KEY, buildLocale());
 }
 
 /**

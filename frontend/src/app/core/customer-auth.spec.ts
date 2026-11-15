@@ -218,27 +218,19 @@ describe('CustomerAuth', () => {
     expect(await result).toBe('blocked-password');
   });
 
-  it('starts SSO with a full-page navigation to the provider authorize endpoint', async () => {
-    const auth = await create('signed-out');
-
-    auth.startSso('google');
-    auth.startSso('apple');
-
-    expect(navigation.left).toEqual([
-      `${AUTH_API}/sso/google/authorize`,
-      `${AUTH_API}/sso/apple/authorize`,
-    ]);
-  });
-
-  it('notes the running locale before leaving, so the return lands in it (ADR-0030)', async () => {
+  it('starts SSO with a full-page navigation naming the build, so the server lands it there (#1804)', async () => {
     const session = installFakeStorage('sessionStorage');
     try {
       const auth = await create('signed-out');
 
       auth.startSso('google');
+      auth.startSso('apple');
 
-      expect(session.get('riviera-sso-locale')).toBe('en');
-      expect(navigation.left).toEqual([`${AUTH_API}/sso/google/authorize`]);
+      expect(navigation.left).toEqual([
+        `${AUTH_API}/sso/google/authorize?locale=en`,
+        `${AUTH_API}/sso/apple/authorize?locale=en`,
+      ]);
+      expect(session.size).toBe(0);
     } finally {
       removeFakeStorage('sessionStorage');
     }

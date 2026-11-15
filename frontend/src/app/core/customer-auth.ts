@@ -23,7 +23,6 @@ import {
   SignInResult,
   signInResultFor,
 } from './session-auth';
-import { rememberSsoReturn } from './locale';
 import { PageNavigation } from './page-navigation';
 
 /** The `/api/me` surface for the signed-in customer's own account writes. */
@@ -130,12 +129,11 @@ export class CustomerAuth extends SessionAuth {
 
   /**
    * Start "Continue with Google/Apple": a full-page navigation (via {@link PageNavigation}, not
-   * `HttpClient`) to the backend authorize endpoint. OIDC + PKCE completes server-side and returns
-   * with the form-login session cookie, which `restore()` picks up on the return load.
+   * `HttpClient`) to the backend authorize endpoint, naming this build so the server lands the return
+   * under its subpath. OIDC + PKCE completes server-side; `restore()` picks up the session on return.
    */
   startSso(provider: SsoProviderId): void {
-    rememberSsoReturn();
-    this.navigation.leaveTo(`${AUTH_API}/sso/${provider}/authorize`);
+    this.navigation.leaveTo(`${AUTH_API}/sso/${provider}/authorize?locale=${buildLocale()}`);
   }
 
   /** Server-validated sign-in: a wrong credential is a generic 401 (the backend never says why, D-8). */

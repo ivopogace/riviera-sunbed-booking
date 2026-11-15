@@ -39,11 +39,13 @@ compiled per locale), or a runtime translation library with an in-page switch.
    link is served in the locale its URL names. `navigator.languages` is the list the browser sends as
    `Accept-Language`. The server cannot do it: it cannot read `localStorage`, and a language cookie
    would make the privacy policy's list of cookies ("a session cookie and a request-forgery-protection
-   cookie") untrue, and the legal text is a human task (#101). An SSO sign-in is the one load of `/`
-   that outranks the stored choice: the callback redirects to `/` alone, so `CustomerAuth.startSso`
-   leaves a per-tab `sessionStorage` note of the build it left (`riviera-sso-locale`) and the seed
-   consumes it first (#1772). The server never reads a locale, and the seed builds its target only from
-   an allow-listed id, so a tampered note cannot leave the origin.
+   cookie") untrue, and the legal text is a human task (#101). An SSO round trip lands in the build it started from, on every outcome and for both
+   audiences (#1804, superseding #1772's client note): the authorize or link request names the build's
+   locale code, `auth` resolves it through `SiteLocale` (English for anything else) into the
+   session-held `SsoAuthorization`, and the callback prefixes its constant landing path with that
+   locale's subpath, so no request value reaches the `Location` header (OWASP's server-side mapping
+   for redirects). The customer landing, `/?sso=signed-in`, carries a marker the seed honours: a
+   return, not a first visit, so it never redirects and strips the marker in place.
 6. **A marked message without a translation fails the build** (`i18nMissingTranslation: error`).
    Translations live in XLIFF 1.2 files (`frontend/src/locale/messages.<locale>.xlf`), each unit with
    its English `<source>` beside the `<target>`, so a native speaker reviews one file per language.

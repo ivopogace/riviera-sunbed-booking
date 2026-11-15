@@ -4,7 +4,12 @@ import path from 'node:path';
 import { expect, test, type Page } from '@playwright/test';
 
 import { ADMIN, mockWholeAdminConsole } from '../support/admin-console.mocks';
-import { mockChallengeFence, mockOwnedVenues } from '../support/auth-mocks';
+import {
+  mockAuthApi,
+  mockChallengeFence,
+  mockOwnedVenues,
+  ssoLanding,
+} from '../support/auth-mocks';
 import { expectNoSeriousAxeViolations } from '../support/axe';
 import { settle } from '../support/booking-dialog';
 import { awaitRoutedPage } from '../support/shell';
@@ -302,11 +307,13 @@ test.describe('choosing a language', () => {
   });
 
   test.describe('an SSO sign-in', () => {
-    // The provider round trip, collapsed: authorize answers with the callback's own fixed 302 to `/`.
+    // The provider round trip, collapsed: authorize answers with the callback's 302 to `/` under the named build.
     test.beforeEach(async ({ page }) => {
-      await page.route(/\/api\/auth\/sso\/google\/authorize$/, (route) =>
-        route.fulfill({ status: 302, headers: { location: '/' } }),
-      );
+      await page.route(/\/api\/auth\/sso\/google\/authorize(\?.*)?$/, (route) => {
+        const locale = new URL(route.request().url()).searchParams.get('locale');
+        const location = ssoLanding(locale, '/?sso=signed-in');
+        return route.fulfill({ status: 302, headers: { location } });
+      });
     });
 
     test('started on /it/ returns to /it/', async ({ page }) => {
@@ -329,6 +336,43 @@ test.describe('choosing a language', () => {
       await expect(page).toHaveURL(/:4300\/$/);
       await expect(page.locator('html')).toHaveAttribute('lang', 'en');
     });
+  });
+
+  test('an operator SSO round trip started on /sq/ lands under /sq/ on every outcome (#1804)', async ({
+    page,
+    baseURL,
+  }) => {
+    const username = 'sereno';
+    const password = 'good-operator-pw';
+    await mockAuthApi(page, { username, validPassword: password, ssoBaseURL: baseURL! });
+
+    await page.goto('/sq/account/sign-in?audience=operator');
+    await awaitRoutedPage(page);
+    await page.getByTestId('sso-google').click();
+    await expect(page).toHaveURL(/\/sq\/account\/sign-in\?audience=operator&sso=failed$/);
+    await expect(page.locator('html')).toHaveAttribute('lang', 'sq');
+    await expect(page.getByTestId('auth-error')).toBeVisible();
+
+    await page.getByTestId('auth-identifier').fill(username);
+    await page.getByTestId('auth-password').fill(password);
+    await page.getByTestId('auth-submit').click();
+    await expect(page).toHaveURL(/\/sq\/operator\//);
+
+    await page.goto('/sq/account/operator-password');
+    await page.getByTestId('osm-current').fill(password);
+    await page.getByTestId('osm-link-google').click();
+    await expect(page).toHaveURL(/\/sq\/account\/operator-password\?sso=linked$/);
+    await expect(page.locator('html')).toHaveAttribute('lang', 'sq');
+    await expect(page.getByTestId('osm-notice')).toHaveText(
+      t('sq', 'Linked. You can now sign in with it on the operator tab.'),
+    );
+
+    await page.evaluate(() => fetch('/api/auth/logout', { method: 'POST' }));
+    await page.goto('/sq/account/sign-in?audience=operator');
+    await awaitRoutedPage(page);
+    await page.getByTestId('sso-google').click();
+    await expect(page).toHaveURL(/\/sq\/operator\//);
+    await expect(page.locator('html')).toHaveAttribute('lang', 'sq');
   });
 
   test.describe('with an Italian browser and nothing stored', () => {

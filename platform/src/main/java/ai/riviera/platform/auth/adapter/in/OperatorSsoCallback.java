@@ -1,6 +1,5 @@
 package ai.riviera.platform.auth.adapter.in;
 
-import java.net.URI;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
@@ -72,7 +71,7 @@ final class OperatorSsoCallback {
 				.filter(account -> AuthRoles.OPERATOR_MAY_AUTHENTICATE.contains(account.status()))
 				.filter(account -> !(flow.cooperative() && account.admin()));
 		if (credential.isEmpty()) {
-			return redirectTo(SIGN_IN_FAILED);
+			return redirectTo(authorization, SIGN_IN_FAILED);
 		}
 		OperatorCredential account = credential.get();
 		List<SimpleGrantedAuthority> authorities = new ArrayList<>(List.of(new SimpleGrantedAuthority(OPERATOR_ROLE)));
@@ -83,19 +82,19 @@ final class OperatorSsoCallback {
 				SessionPrincipal.erased(account.username(), authorities,
 						CredentialStamp.operator(account.username(), account.passwordHash())), null, authorities);
 		SessionAuthentication.establish(securityContextRepository, authentication, request, response);
-		return redirectTo(SIGNED_IN);
+		return redirectTo(authorization, SIGNED_IN);
 	}
 
 	private ResponseEntity<Void> link(SsoAuthorization authorization, String code, HttpServletRequest request) {
 		SsoAuthorization.Linking linking = authorization.linking();
 		if (!stillHeldBy(linking.username())) {
-			return redirectTo(LINK_FAILED);
+			return redirectTo(authorization, LINK_FAILED);
 		}
 		ExternalIdentity identity = flow.exchange(request, authorization, code);
 		return switch (links.link(new OperatorId(linking.operatorId()), identity.issuer(), identity.subject())) {
-			case SsoLinkOutcome.Linked ignored -> redirectTo(LINKED);
-			case SsoLinkOutcome.Conflict ignored -> redirectTo(LINK_FAILED);
-			case SsoLinkOutcome.NotOperable ignored -> redirectTo(LINK_FAILED);
+			case SsoLinkOutcome.Linked ignored -> redirectTo(authorization, LINKED);
+			case SsoLinkOutcome.Conflict ignored -> redirectTo(authorization, LINK_FAILED);
+			case SsoLinkOutcome.NotOperable ignored -> redirectTo(authorization, LINK_FAILED);
 		};
 	}
 
@@ -108,7 +107,7 @@ final class OperatorSsoCallback {
 				&& sessionCredentials.isCurrent(current);
 	}
 
-	private static ResponseEntity<Void> redirectTo(String location) {
-		return ResponseEntity.status(HttpStatus.FOUND).location(URI.create(location)).build();
+	private static ResponseEntity<Void> redirectTo(SsoAuthorization authorization, String path) {
+		return ResponseEntity.status(HttpStatus.FOUND).location(authorization.landing(path)).build();
 	}
 }

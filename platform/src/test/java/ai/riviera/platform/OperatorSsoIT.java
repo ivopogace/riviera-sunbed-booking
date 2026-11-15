@@ -15,6 +15,7 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.MvcResult;
 import org.springframework.test.web.servlet.ResultActions;
+import org.springframework.test.web.servlet.request.MockHttpServletRequestBuilder;
 
 import com.jayway.jsonpath.JsonPath;
 
@@ -119,6 +120,33 @@ class OperatorSsoIT {
 	}
 
 	@Test
+	void everyOutcomeLandsUnderTheLocaleTheRoundTripStartedFrom() throws Exception {
+		String sqLink = "{\"currentPassword\":\"" + PASSWORD + "\",\"locale\":\"sq\"}";
+
+		assertEquals("/sq/account/sign-in?audience=operator&sso=failed", operatorSignIn("google", "sq").location());
+		linkGoogle(SessionLoginSupport.operatorSession(mvc, username, PASSWORD), sqLink)
+				.andExpect(redirectedUrl("/sq/account/operator-password?sso=linked"));
+		assertEquals("/sq/operator", operatorSignIn("google", "sq").location());
+		assertEquals("/de/operator", operatorSignIn("google", "de").location());
+
+		String other = "sso-op-" + UUID.randomUUID().toString().substring(0, 8);
+		provisioning.provision(other, encoder.encode(PASSWORD));
+		linkGoogle(SessionLoginSupport.operatorSession(mvc, other, PASSWORD), sqLink)
+				.andExpect(redirectedUrl("/sq/account/operator-password?sso=link-failed"));
+	}
+
+	@Test
+	void aLocaleOutsideTheServedSetLandsInEnglish() throws Exception {
+		linkGoogle(SessionLoginSupport.operatorSession(mvc, username, PASSWORD),
+				"{\"currentPassword\":\"" + PASSWORD + "\",\"locale\":\"//evil.example\"}")
+				.andExpect(redirectedUrl("/account/operator-password?sso=linked"));
+
+		for (String hostile : new String[] {"//evil.example", "https://evil.example", "SQ", "sq/../..", ""}) {
+			assertEquals("/operator", operatorSignIn("google", hostile).location(), hostile);
+		}
+	}
+
+	@Test
 	void linkingWithoutTheCurrentPasswordIsRefused() throws Exception {
 		Cookie session = SessionLoginSupport.operatorSession(mvc, username, PASSWORD);
 
@@ -213,7 +241,7 @@ class OperatorSsoIT {
 		Cookie pending = authorize.getResponse().getCookie(SESSION_COOKIE);
 
 		MvcResult callback = mvc.perform(MockIdp.callback(mvc, authorize, ip).cookie(pending))
-				.andExpect(redirectedUrl("/")).andReturn();
+				.andExpect(redirectedUrl("/?sso=signed-in")).andReturn();
 
 		mvc.perform(get(ME_PATH).cookie(sessionAfter(callback, pending)))
 				.andExpect(status().isOk())
@@ -276,9 +304,17 @@ class OperatorSsoIT {
 
 	/** Run the operator sign-in round trip on a fresh IP; the redirect and the session the browser now holds. */
 	private SsoResult operatorSignIn(String provider) throws Exception {
+		return operatorSignIn(provider, null);
+	}
+
+	private SsoResult operatorSignIn(String provider, String locale) throws Exception {
 		String ip = SessionLoginSupport.uniqueClientIp();
-		MvcResult authorize = mvc.perform(get(SSO_PATH + "/{provider}/authorize", provider)
-				.header("X-Forwarded-For", ip)).andExpect(status().isFound()).andReturn();
+		MockHttpServletRequestBuilder start = get(SSO_PATH + "/{provider}/authorize", provider)
+				.header("X-Forwarded-For", ip);
+		if (locale != null) {
+			start.param("locale", locale);
+		}
+		MvcResult authorize = mvc.perform(start).andExpect(status().isFound()).andReturn();
 		Cookie pending = authorize.getResponse().getCookie(SESSION_COOKIE);
 		assertNotNull(pending, "authorize must start a session to hold the round trip");
 		MvcResult callback = mvc.perform(MockIdp.callback(mvc, authorize, ip).cookie(pending))
@@ -287,8 +323,12 @@ class OperatorSsoIT {
 	}
 
 	private ResultActions linkGoogle(Cookie session) throws Exception {
+		return linkGoogle(session, linkBody());
+	}
+
+	private ResultActions linkGoogle(Cookie session, String body) throws Exception {
 		String ip = SessionLoginSupport.uniqueClientIp();
-		URI idp = authorizeUrlOf(startLink(session, linkBody()).andExpect(status().isOk()).andReturn());
+		URI idp = authorizeUrlOf(startLink(session, body).andExpect(status().isOk()).andReturn());
 		return mvc.perform(MockIdp.callback(mvc, idp, ip).cookie(session)).andExpect(status().isFound());
 	}
 

@@ -14,6 +14,7 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import ai.riviera.platform.auth.api.SessionRevocation;
@@ -63,8 +64,8 @@ class OperatorSsoController {
 		this.bootstrapOperator = bootstrapOperator;
 	}
 
-	/** Wire DTO for starting a link: the current password, verified before any round trip starts. */
-	record LinkRequest(String currentPassword) {
+	/** Wire DTO for starting a link: the current password, verified before any round trip starts, and the build's locale. */
+	record LinkRequest(String currentPassword, String locale) {
 
 		@Override
 		public String toString() {
@@ -81,9 +82,10 @@ class OperatorSsoController {
 	}
 
 	@GetMapping(SSO_PATH + "/{provider}/authorize")
-	ResponseEntity<Void> authorize(@PathVariable String provider, HttpServletRequest request) {
+	ResponseEntity<Void> authorize(@PathVariable String provider,
+			@RequestParam(name = "locale", required = false) String locale, HttpServletRequest request) {
 		URI authorizeUrl = flow.begin(request, SsoProviders.parse(provider), SsoAuthorization.Audience.OPERATOR,
-				SsoAuthorization.Intent.SIGN_IN, null);
+				SsoAuthorization.Intent.SIGN_IN, null, locale);
 		return ResponseEntity.status(HttpStatus.FOUND).location(authorizeUrl).build();
 	}
 
@@ -116,7 +118,8 @@ class OperatorSsoController {
 		}
 		OperatorId operator = directory.requireOperator(username);
 		return ResponseEntity.ok(new LinkStart(flow.begin(request, parsed, SsoAuthorization.Audience.OPERATOR,
-				SsoAuthorization.Intent.LINK, new SsoAuthorization.Linking(operator.value(), username))));
+				SsoAuthorization.Intent.LINK, new SsoAuthorization.Linking(operator.value(), username),
+				body.locale())));
 	}
 
 	@GetMapping(SSO_PATH)
