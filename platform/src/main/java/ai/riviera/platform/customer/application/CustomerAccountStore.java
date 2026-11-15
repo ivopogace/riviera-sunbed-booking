@@ -96,4 +96,7 @@ public interface CustomerAccountStore {
 
 	/** The account's (normalized) email — its session principal name (for reset session revocation). */
 	String emailOf(CustomerAccountId accountId);
+
+	/** The live account's email while it is verified; empty if unverified, erased or unknown. */
+	Optional<String> verifiedEmailOf(CustomerAccountId accountId);
 }

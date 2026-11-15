@@ -11,6 +11,8 @@ import org.junit.jupiter.api.Test;
 
 import ai.riviera.platform.customer.vocabulary.CustomerAccountCredential;
 import ai.riviera.platform.customer.vocabulary.CustomerAccountId;
+import ai.riviera.platform.customer.vocabulary.CustomerId;
+import ai.riviera.platform.customer.vocabulary.GuestContact;
 import ai.riviera.platform.customer.vocabulary.LiveAccountCredential;
 import ai.riviera.platform.customer.vocabulary.NotSignedInCustomerException;
 import ai.riviera.platform.customer.vocabulary.RegistrationOutcome;
@@ -34,7 +36,8 @@ class CustomerAccountServiceTest {
 
 	private final FakeStore store = new FakeStore();
 	private final FakeTokens tokens = new FakeTokens();
-	private final CustomerAccountService service = new CustomerAccountService(store, tokens);
+	private final FakeGuests guests = new FakeGuests();
+	private final CustomerAccountService service = new CustomerAccountService(store, tokens, guests);
 
 	@Test
 	void registerCreatesAccountUnderNormalizedEmailAndReturnsRegistered() {
@@ -261,6 +264,47 @@ class CustomerAccountServiceTest {
 				.extracting(CustomerAccountCredential::passwordHash).isEqualTo("{bcrypt}pw");
 	}
 
+	@Test
+	void aContactDifferingOnlyByCaseOrPaddingIsTheVerifiedAddress() {
+		CustomerAccountId account = verifiedAccount("owner@example.com");
+		CustomerId contact = guests.add("  Owner@Example.COM ");
+
+		assertThat(service.holdsVerifiedAddress(account, contact)).isTrue();
+	}
+
+	@Test
+	void anUnverifiedAccountHoldsNoAddress() {
+		CustomerAccountId account = registeredId("claimed@example.com");
+		CustomerId contact = guests.add("claimed@example.com");
+
+		assertThat(service.holdsVerifiedAddress(account, contact))
+				.as("registering a victim's address proves nothing until it is verified").isFalse();
+	}
+
+	@Test
+	void aVerifiedAccountDoesNotHoldAnotherAddress() {
+		CustomerAccountId account = verifiedAccount("attacker@example.com");
+		CustomerId contact = guests.add("victim@example.com");
+
+		assertThat(service.holdsVerifiedAddress(account, contact)).isFalse();
+	}
+
+	@Test
+	void anErasedAccountOrAnUnknownContactHoldsNothing() {
+		CustomerAccountId account = verifiedAccount("gone@example.com");
+		CustomerId contact = guests.add("gone@example.com");
+		store.erase("gone@example.com");
+
+		assertThat(service.holdsVerifiedAddress(account, contact)).isFalse();
+		assertThat(service.holdsVerifiedAddress(verifiedAccount("here@example.com"), new CustomerId(999))).isFalse();
+	}
+
+	private CustomerAccountId verifiedAccount(String email) {
+		CustomerAccountId account = registeredId(email);
+		store.markEmailVerified(account);
+		return account;
+	}
+
 	private CustomerAccountId registeredId(String email) {
 		return ((RegistrationOutcome.Registered) service.register(email, "{bcrypt}pw")).accountId();
 	}
@@ -395,6 +439,11 @@ class CustomerAccountServiceTest {
 			return emailForId(accountId.value()).orElseThrow();
 		}
 
+		@Override
+		public Optional<String> verifiedEmailOf(CustomerAccountId accountId) {
+			return emailForId(accountId.value()).filter(email -> verified.contains(accountId.value()));
+		}
+
 		/** The tombstone renames the email, so the erased account is found by neither its email nor its id. */
 		void erase(String email) {
 			idByEmail.remove(email);
@@ -404,6 +453,32 @@ class CustomerAccountServiceTest {
 		private Optional<String> emailForId(long id) {
 			return idByEmail.entrySet().stream()
 					.filter(e -> e.getValue() == id).map(Map.Entry::getKey).findFirst();
+		}
+	}
+
+	/** The guest contacts the owner check reads, keyed by id as stored. */
+	private static final class FakeGuests implements ai.riviera.platform.customer.api.CustomerLookup {
+		private final Map<CustomerId, GuestContact> byId = new HashMap<>();
+
+		CustomerId add(String email) {
+			CustomerId id = new CustomerId(byId.size() + 1L);
+			byId.put(id, new GuestContact(email, "Guest", "+355600"));
+			return id;
+		}
+
+		@Override
+		public Optional<GuestContact> findById(CustomerId id) {
+			return Optional.ofNullable(byId.get(id));
+		}
+
+		@Override
+		public Map<CustomerId, GuestContact> findByIds(java.util.Collection<CustomerId> ids) {
+			throw new UnsupportedOperationException();
+		}
+
+		@Override
+		public Optional<CustomerId> findByEmail(String email) {
+			throw new UnsupportedOperationException();
 		}
 	}
 

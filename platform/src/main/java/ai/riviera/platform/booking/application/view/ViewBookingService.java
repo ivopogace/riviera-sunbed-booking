@@ -1,6 +1,8 @@
 package ai.riviera.platform.booking.application.view;
 
 import ai.riviera.platform.booking.application.BookingCutoff;
+import ai.riviera.platform.booking.application.ConfirmationMailDisclosure;
+import ai.riviera.platform.booking.application.MailDisclosure;
 import ai.riviera.platform.booking.application.cancel.CancellationPolicy;
 import ai.riviera.platform.booking.application.cancel.LiveRemainder;
 import ai.riviera.platform.booking.application.remodel.RemodelReceipts;
@@ -20,6 +22,7 @@ import ai.riviera.platform.booking.domain.BookingStatus;
 import ai.riviera.platform.booking.domain.StayStatus;
 import ai.riviera.platform.booking.domain.BookingTransition;
 import ai.riviera.platform.customer.api.CustomerLookup;
+import ai.riviera.platform.customer.vocabulary.CustomerAccountId;
 import ai.riviera.platform.customer.vocabulary.GuestContact;
 import ai.riviera.platform.review.vocabulary.ReviewPanel;
 import ai.riviera.platform.venue.vocabulary.MoneyView;
@@ -39,8 +42,7 @@ class ViewBookingService implements ViewBooking {
 	private final CancellationPolicy cancellationPolicy;
 	private final BookingCutoff cutoff;
 	private final ai.riviera.platform.payment.api.CheckoutInstructionLookup checkout;
-	private final ai.riviera.platform.booking.spi.ConfirmationMailDelivery confirmationMail;
-	private final ai.riviera.platform.payment.api.CollectionGuarantee collection;
+	private final ConfirmationMailDisclosure mailDisclosure;
 	private final ai.riviera.platform.payment.api.RefundStatusLookup refundStatus;
 	private final ai.riviera.platform.review.api.ReviewEligibility reviewEligibility;
 	private final CustomerLookup customers;
@@ -51,8 +53,7 @@ class ViewBookingService implements ViewBooking {
 
 	ViewBookingService(Bookings bookings, CancellationPolicy cancellationPolicy, BookingCutoff cutoff,
 			ai.riviera.platform.payment.api.CheckoutInstructionLookup checkout,
-			ai.riviera.platform.booking.spi.ConfirmationMailDelivery confirmationMail,
-			ai.riviera.platform.payment.api.CollectionGuarantee collection,
+			ConfirmationMailDisclosure mailDisclosure,
 			ai.riviera.platform.payment.api.RefundStatusLookup refundStatus,
 			ai.riviera.platform.review.api.ReviewEligibility reviewEligibility,
 			CustomerLookup customers, RequestWindows windows, RemodelReceipts receipts, LiveRemainder liveRemainder,
@@ -61,8 +62,7 @@ class ViewBookingService implements ViewBooking {
 		this.cancellationPolicy = cancellationPolicy;
 		this.cutoff = cutoff;
 		this.checkout = checkout;
-		this.confirmationMail = confirmationMail;
-		this.collection = collection;
+		this.mailDisclosure = mailDisclosure;
 		this.refundStatus = refundStatus;
 		this.reviewEligibility = reviewEligibility;
 		this.customers = customers;
@@ -73,9 +73,9 @@ class ViewBookingService implements ViewBooking {
 	}
 
 	@Override
-	public Optional<BookingDetail> byCode(String code) {
-		Optional<BookingDetail> booking = bookings.findByCode(code).map(this::toDetail);
-		return booking.isPresent() ? booking : bookings.findStayByCode(code).map(this::toStayDetail);
+	public Optional<BookingDetail> byCode(String code, Optional<CustomerAccountId> reader) {
+		Optional<BookingDetail> booking = bookings.findByCode(code).map(b -> toDetail(b, reader));
+		return booking.isPresent() ? booking : bookings.findStayByCode(code).map(stay -> toStayDetail(stay, reader));
 	}
 
 	/**
@@ -83,7 +83,7 @@ class ViewBookingService implements ViewBooking {
 	 * intent), money summed, every stretch quoted on the day the cancel judges the {@link LiveRemainder} on, each with its own
 	 * move (the stay's is null: its spot is the first stretch's); cancellable, refund and nothing left are the remainder's (#10).
 	 */
-	private BookingDetail toStayDetail(StayRecord stay) {
+	private BookingDetail toStayDetail(StayRecord stay, Optional<CustomerAccountId> reader) {
 		List<BookingRecord> stretches = stay.stretches();
 		BookingRecord first = stretches.getFirst();
 		BookingRecord summary = stay.asBooking();
@@ -106,8 +106,7 @@ class ViewBookingService implements ViewBooking {
 		ai.riviera.platform.payment.vocabulary.CheckoutInstruction payment = awaitingPayment && !payWindowClosed
 				? checkout.openInstruction(new ai.riviera.platform.payment.vocabulary.BookingRef(first.id())).orElse(null)
 				: null;
-		boolean emailWithheld = status == BookingStatus.CONFIRMED && collection.provenBeforeConfirmation()
-				&& confirmationMail.isWithheld(first.customerId());
+		MailDisclosure mail = mailDisclosure.disclose(status, first.id(), first.customerId(), reader);
 		ReviewPanel panel = reviewEligibility.panelFor(stay.code());
 		List<BookingDetail.StayStretch> stretchViews = new ArrayList<>();
 		for (int i = 0; i < stretches.size(); i++) {
@@ -123,7 +122,7 @@ class ViewBookingService implements ViewBooking {
 				liveQuotes.isEmpty() ? quotes.getFirst().beforeCutoff() : liveQuotes.getFirst().beforeCutoff(),
 				new MoneyView(refundIfCancelledNow, first.currency()),
 				summary.refundMinor() == null ? null : new MoneyView(summary.refundMinor(), first.currency()),
-				refundOutstanding, summary.requestExpiresAt(), payment, emailWithheld, payWindowClosed,
+				refundOutstanding, summary.requestExpiresAt(), payment, mail, payWindowClosed,
 				summary.cancelReason(), summary.declineReason(),
 				cutoff.cancellationWindow(firstSet.bookingCutoff(), stay.firstDay(), first.createdAt()),
 				panel, nameSuggestionFor(panel, first), null, stretchViews,
@@ -131,16 +130,7 @@ class ViewBookingService implements ViewBooking {
 				remainder.nothingLeft());
 	}
 
-	/**
-	 * Gates {@code emailWithheld}: the port must not even be asked until money was provably collected
-	 * ({@code CONFIRMED} under a collecting gateway), or this code-gated view is a suppression oracle.
-	 * Its own predicate, not {@code cancellable}'s. Rationale: {@code RESPONSIBILITIES.md} §booking.
-	 */
-	private boolean mayDiscloseMailStatus(BookingRecord b) {
-		return b.status() == BookingStatus.CONFIRMED && collection.provenBeforeConfirmation();
-	}
-
-	private BookingDetail toDetail(BookingRecord b) {
+	private BookingDetail toDetail(BookingRecord b, Optional<CustomerAccountId> reader) {
 		ReviewPanel panel = reviewEligibility.panelFor(b.code());
 		RefundQuote quote = cancellationPolicy.quote(b);
 		SetBookingInfo set = quote.set();
@@ -148,7 +138,7 @@ class ViewBookingService implements ViewBooking {
 				&& !b.everyDayRefunded();
 		// Its own predicate, not a reuse of cancellable's: see BookingDetail.
 		boolean withdrawable = b.status() == BookingStatus.PENDING_REQUEST;
-		boolean emailWithheld = mayDiscloseMailStatus(b) && confirmationMail.isWithheld(b.customerId());
+		MailDisclosure mail = mailDisclosure.disclose(b.status(), b.id(), b.customerId(), reader);
 
 		MoneyView refunded = b.refundMinor() == null ? null
 				: new MoneyView(b.refundMinor(), b.currency());
@@ -169,7 +159,7 @@ class ViewBookingService implements ViewBooking {
 				set.positionNo(), b.bookingDate(), b.lastDate(), new MoneyView(b.amountMinor(), b.currency()),
 				cancellable, withdrawable, quote.beforeCutoff(),
 				new MoneyView(quote.refundMinor(), b.currency()),
-				refunded, refundOutstanding, b.requestExpiresAt(), payment, emailWithheld,
+				refunded, refundOutstanding, b.requestExpiresAt(), payment, mail,
 				payWindowClosed, b.cancelReason(), b.declineReason(),
 				cutoff.cancellationWindow(set.bookingCutoff(), b.bookingDate(), b.createdAt()),
 				panel, nameSuggestionFor(panel, b), moveOf(b, quote), List.of(),

@@ -1,5 +1,6 @@
 package ai.riviera.platform.booking;
 
+import java.util.Optional;
 import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
@@ -107,7 +108,7 @@ class ViewStayIT {
 		String code = assertInstanceOf(StayOutcome.Confirmed.class, createStay.create(plan(a, 3, b, 4, first)))
 				.confirmation().code();
 
-		BookingDetail view = viewBooking.byCode(code).orElseThrow();
+		BookingDetail view = viewBooking.byCode(code, Optional.empty()).orElseThrow();
 
 		assertEquals(code, view.code());
 		assertEquals(BookingStatus.CONFIRMED, view.status());
@@ -140,7 +141,7 @@ class ViewStayIT {
 		StayFixtures.SeededStay stay = StayFixtures.insertPendingStay(jdbc, venue, "VSR" + System.nanoTime() % 100_000_000L,
 				first, venue.online().get(0), 2, venue.online().get(1), 2, expires);
 
-		BookingDetail pending = viewBooking.byCode(stay.code()).orElseThrow();
+		BookingDetail pending = viewBooking.byCode(stay.code(), Optional.empty()).orElseThrow();
 
 		assertEquals(BookingStatus.PENDING_REQUEST, pending.status());
 		assertTrue(pending.withdrawable(), "a pending stay is withdrawn whole by its code");
@@ -156,7 +157,7 @@ class ViewStayIT {
 		jdbc.sql("UPDATE booking SET status = 'DECLINED', decline_reason = 'ANOTHER_GUEST' WHERE stay_id = :s")
 				.param("s", stay.id()).update();
 
-		BookingDetail declined = viewBooking.byCode(stay.code()).orElseThrow();
+		BookingDetail declined = viewBooking.byCode(stay.code(), Optional.empty()).orElseThrow();
 		assertEquals(BookingStatus.DECLINED, declined.status());
 		assertEquals(false, declined.withdrawable());
 		assertEquals(ai.riviera.platform.booking.vocabulary.DeclineReason.ANOTHER_GUEST, declined.declineReason());
@@ -180,7 +181,7 @@ class ViewStayIT {
 		assertInstanceOf(RemodelCommit.Applied.class,
 				remodelClaims.commit(operator, venueId, List.of(b), PreviewToken.of(claims), RefundConfirmation.NONE));
 
-		BookingDetail view = viewBooking.byCode(code).orElseThrow();
+		BookingDetail view = viewBooking.byCode(code, Optional.empty()).orElseThrow();
 
 		assertNull(view.move(), "the stay's spot is its first stretch's, which never moved");
 		assertNull(view.stretches().get(0).move());

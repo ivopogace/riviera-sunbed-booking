@@ -79,7 +79,7 @@ class StayControllerIT {
 				.andExpect(jsonPath("$.stretches[0].rowLabel").value("A"))
 				.andExpect(jsonPath("$.stretches[0].positionNo").value(1))
 				.andExpect(jsonPath("$.stretches[1].amount.minorUnits").value(4 * PRICE))
-				.andExpect(jsonPath("$.emailWithheld").value(false));
+				.andExpect(jsonPath("$.confirmationMail").value("UNDISCLOSED"));
 	}
 
 	@Test

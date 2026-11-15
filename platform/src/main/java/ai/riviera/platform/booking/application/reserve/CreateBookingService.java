@@ -1,11 +1,14 @@
 package ai.riviera.platform.booking.application.reserve;
 
 import java.time.Clock;
+import java.util.Optional;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 
+import ai.riviera.platform.booking.application.ConfirmationMailDisclosure;
+import ai.riviera.platform.booking.application.MailDisclosure;
 import ai.riviera.platform.booking.vocabulary.BookingId;
 import ai.riviera.platform.booking.application.refund.ReleaseAbandonedBooking;
 import ai.riviera.platform.booking.domain.BookingStatus;
@@ -34,20 +37,17 @@ class CreateBookingService implements CreateBooking {
 	private final CheckoutPort checkout;
 	private final ConfirmBooking confirmBooking;
 	private final ReleaseAbandonedBooking releaseAbandoned;
-	private final ai.riviera.platform.booking.spi.ConfirmationMailDelivery confirmationMail;
-	private final ai.riviera.platform.payment.api.CollectionGuarantee collection;
+	private final ConfirmationMailDisclosure mailDisclosure;
 	private final Clock clock;
 
 	CreateBookingService(ReserveSetService reservation, CheckoutPort checkout,
 			ConfirmBooking confirmBooking, ReleaseAbandonedBooking releaseAbandoned,
-			ai.riviera.platform.booking.spi.ConfirmationMailDelivery confirmationMail,
-			ai.riviera.platform.payment.api.CollectionGuarantee collection, Clock clock) {
+			ConfirmationMailDisclosure mailDisclosure, Clock clock) {
 		this.reservation = reservation;
 		this.checkout = checkout;
 		this.confirmBooking = confirmBooking;
 		this.releaseAbandoned = releaseAbandoned;
-		this.confirmationMail = confirmationMail;
-		this.collection = collection;
+		this.mailDisclosure = mailDisclosure;
 		this.clock = clock;
 	}
 
@@ -66,7 +66,7 @@ class CreateBookingService implements CreateBooking {
 				yield new BookingOutcome.Requested(
 						new BookingConfirmation(pending.code(), BookingStatus.PENDING_REQUEST,
 								pending.set(), command.bookingDate(), command.lastDate(),
-								new MoneyView(pending.amountMinor(), pending.set().price().currency()), false),
+								new MoneyView(pending.amountMinor(), pending.set().price().currency()), MailDisclosure.UNDISCLOSED),
 						pending.requestExpiresAt());
 			}
 		};
@@ -109,15 +109,12 @@ class CreateBookingService implements CreateBooking {
 				}
 				log.info("confirmed booking {} for set {} on {}", reserved.bookingId(),
 						set.setId().value(), command.bookingDate());
-				// Same gate as the code-gated view: only a gateway that actually collects before
-				// confirming makes this post-payment, so the stub's synchronous Succeeded discloses
-				// nothing. Today no shipped gateway both collects AND confirms in-process, so
-				// this branch is unreachable-but-correct rather than dead by construction.
-				boolean emailWithheld = collection.provenBeforeConfirmation()
-						&& confirmationMail.isWithheld(reserved.customerId());
+				// The code-gated view's rule: the stub gateway proves no collection, so this discloses nothing today.
+				MailDisclosure mail = mailDisclosure.disclose(BookingStatus.CONFIRMED, reserved.bookingId(),
+						reserved.customerId(), Optional.ofNullable(command.accountId()));
 				yield new BookingOutcome.Confirmed(new BookingConfirmation(
 						reserved.code(), BookingStatus.CONFIRMED, set, command.bookingDate(),
-						command.lastDate(), amount, emailWithheld));
+						command.lastDate(), amount, mail));
 			}
 			case PaymentOutcome.Pending pending -> {
 				// The booking stays AWAITING_PAYMENT, confirmed only by the verified webhook (invariant #8), never here.
@@ -125,7 +122,7 @@ class CreateBookingService implements CreateBooking {
 						set.setId().value(), command.bookingDate());
 				yield new BookingOutcome.AwaitingPayment(
 						new BookingConfirmation(reserved.code(), BookingStatus.AWAITING_PAYMENT, set,
-								command.bookingDate(), command.lastDate(), amount, false),
+								command.bookingDate(), command.lastDate(), amount, MailDisclosure.UNDISCLOSED),
 						pending.instruction());
 			}
 			case PaymentOutcome.Failed failed -> {

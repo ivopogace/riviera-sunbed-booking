@@ -82,11 +82,12 @@ class BookingController {
 	/**
 	 * View a booking by its code. The code is the bearer credential (invariant #7) — knowing it
 	 * authorizes the view; it is never logged. Returns the summary + server-computed refund terms, or
-	 * {@code 404} for an unknown code.
+	 * {@code 404} for an unknown code. The session's customer, if any, decides only the mail disclosure (#1748).
 	 */
 	@GetMapping("/{code}")
-	ResponseEntity<?> view(@PathVariable String code) {
-		return viewBooking.byCode(code)
+	ResponseEntity<?> view(@PathVariable String code, Authentication authentication) {
+		return viewBooking.byCode(code, customerDirectory.signedInAccount(CustomerPrincipal.name(authentication),
+						CustomerPrincipal.isCustomer(authentication)))
 				.<ResponseEntity<?>>map(detail -> ResponseEntity.ok(BookingDetailView.of(detail)))
 				.orElseGet(() -> error(HttpStatus.NOT_FOUND, UNKNOWN_CODE, UNKNOWN_CODE_DETAIL));
 	}

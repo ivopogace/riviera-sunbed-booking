@@ -299,7 +299,7 @@ public class WebSliceStubs {
 
 	@Bean
 	ViewBooking viewBooking() {
-		return _ -> Optional.empty();
+		return (_, _) -> Optional.empty();
 	}
 
 	@Bean
@@ -549,6 +549,12 @@ public class WebSliceStubs {
 			@Override
 			public CustomerAccountId requireSignedInAccount(String principalName, boolean customerPrincipal) {
 				throw new NotSignedInCustomerException();
+			}
+
+			@Override
+			public boolean holdsVerifiedAddress(CustomerAccountId account,
+					ai.riviera.platform.customer.vocabulary.CustomerId contact) {
+				return false;
 			}
 		};
 	}

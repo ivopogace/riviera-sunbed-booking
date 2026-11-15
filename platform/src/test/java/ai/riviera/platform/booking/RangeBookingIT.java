@@ -1,5 +1,6 @@
 package ai.riviera.platform.booking;
 
+import java.util.Optional;
 import java.time.LocalDate;
 import java.time.ZoneId;
 import java.util.ArrayList;
@@ -145,7 +146,7 @@ class RangeBookingIT {
 		BookingOutcome.Confirmed booked = assertInstanceOf(BookingOutcome.Confirmed.class,
 				createBooking.create(stay(set, first, 4)));
 
-		BookingDetail detail = viewBooking.byCode(booked.confirmation().code()).orElseThrow();
+		BookingDetail detail = viewBooking.byCode(booked.confirmation().code(), Optional.empty()).orElseThrow();
 
 		assertEquals(first, detail.bookingDate());
 		assertEquals(first.plusDays(3), detail.lastDate());

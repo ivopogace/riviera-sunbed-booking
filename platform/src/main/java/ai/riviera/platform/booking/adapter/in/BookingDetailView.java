@@ -13,7 +13,7 @@ import java.util.List;
  * {@link MoneyView} (invariant #5). {@code refundedAmount} is null unless cancelled; {@code cancelReason} (a
  * {@code RefundReason} name) null while live or if cancelled uncharged. {@code payWindowClosed}: the pay deadline
  * passed, so {@code payment} is null (#4). {@code refundOutstanding}: refund decided, not yet gateway-accepted.
- * {@code emailWithheld} is true only once {@code CONFIRMED}, else this code-gated view is a suppression oracle.
+ * {@code confirmationMail}: a {@code MailDisclosure} name, {@code UNDISCLOSED} for all but the address's verified owner.
  * {@code refundedDays}: a storm's days given back; {@code nothingLeft}: every day the guest still holds refunded, so no cancel and "Refunded".
  */
 record BookingDetailView(String code, String status, long venueId, String venueName, String rowLabel,
@@ -21,7 +21,7 @@ record BookingDetailView(String code, String status, long venueId, String venueN
 		boolean withdrawable,
 		boolean beforeCutoff, MoneyView refundIfCancelledNow, MoneyView refundedAmount,
 		boolean refundOutstanding,
-		Instant requestExpiresAt, CheckoutInstructionView payment, boolean emailWithheld,
+		Instant requestExpiresAt, CheckoutInstructionView payment, String confirmationMail,
 		boolean payWindowClosed, String cancelReason, String declineReason, String cancellationWindowAtBirth,
 		ReviewPanelView reviewPanel, MoveView move, List<StretchView> stretches,
 		List<RefundedDayView> refundedDays, boolean nothingLeft) {
@@ -56,7 +56,7 @@ record BookingDetailView(String code, String status, long venueId, String venueN
 				d.withdrawable(), d.beforeCutoff(), d.refundIfCancelledNow(), d.refundedAmount(),
 				d.refundOutstanding(), d.requestExpiresAt(),
 				d.payment() == null ? null : CheckoutInstructionView.of(d.payment()),
-				d.emailWithheld(), d.payWindowClosed(),
+				d.confirmationMail().name(), d.payWindowClosed(),
 				d.cancelReason() == null ? null : d.cancelReason().name(),
 				d.declineReason() == null ? null : d.declineReason().name(),
 				d.cancellationWindowAtBirth().name(),
