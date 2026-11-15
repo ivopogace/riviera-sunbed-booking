@@ -148,6 +148,16 @@ class SsoCallbackIT {
 	}
 
 	@Test
+	void aSignInLandsOnTheRootOfTheBuildItStartedFrom() throws Exception {
+		String ip = SessionLoginSupport.uniqueClientIp();
+		MvcResult authorize = mvc.perform(get("/api/auth/sso/{provider}/authorize", "google").param("locale", "it")
+				.header("X-Forwarded-For", ip)).andExpect(status().isFound()).andReturn();
+		Cookie session = authorize.getResponse().getCookie(SESSION_COOKIE);
+
+		mvc.perform(MockIdp.callback(mvc, authorize, ip).cookie(session)).andExpect(redirectedUrl("/it/"));
+	}
+
+	@Test
 	void callbackWithBadStateIsRejectedAndCreatesNoSessionOrAccount() throws Exception {
 		String ip = SessionLoginSupport.uniqueClientIp();
 		MvcResult authorize = mvc.perform(get("/api/auth/sso/{provider}/authorize", "google")

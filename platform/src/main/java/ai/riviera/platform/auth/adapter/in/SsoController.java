@@ -36,7 +36,7 @@ import jakarta.servlet.http.HttpServletResponse;
  * The customer SSO authorize and the one callback per provider both audiences return to (design D-3): OIDC
  * Authorization Code + PKCE completed server-side, so tokens never reach browser JS and the callback sets the same
  * {@code SESSION} as form login. Anonymous and per-IP rate limited. The callback dispatches on the session-held
- * {@link SsoAuthorization} alone: a customer record resolves via {@link SsoAccountProvisioning} and 302s to /, an
+ * {@link SsoAuthorization} alone: a customer record resolves via {@link SsoAccountProvisioning} and 302s to its locale's /, an
  * operator one goes to {@link OperatorSsoCallback} (#276).
  */
 @RestController
@@ -64,9 +64,10 @@ class SsoController {
 	}
 
 	@GetMapping("/api/auth/sso/{provider}/authorize")
-	ResponseEntity<Void> authorize(@PathVariable String provider, HttpServletRequest request) {
+	ResponseEntity<Void> authorize(@PathVariable String provider,
+			@RequestParam(name = "locale", required = false) String locale, HttpServletRequest request) {
 		return redirectTo(flow.begin(request, SsoProviders.parse(provider), SsoAuthorization.Audience.CUSTOMER,
-				SsoAuthorization.Intent.SIGN_IN, null));
+				SsoAuthorization.Intent.SIGN_IN, null, locale));
 	}
 
 	/** Validate and consume {@code state} before any exchange, write or session: a bad one is a 400 with nothing done. */
@@ -97,7 +98,7 @@ class SsoController {
 				SessionPrincipal.erased(account.email(), authorities,
 						CredentialStamp.customer(resolved, account.passwordHash())), null, authorities);
 		SessionAuthentication.establish(securityContextRepository, authentication, request, response);
-		return redirectTo(URI.create(POST_LOGIN_REDIRECT));
+		return redirectTo(authorization.landing(POST_LOGIN_REDIRECT));
 	}
 
 	private static ResponseEntity<Void> redirectTo(URI location) {

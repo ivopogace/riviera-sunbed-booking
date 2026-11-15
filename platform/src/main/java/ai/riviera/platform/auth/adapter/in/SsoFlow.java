@@ -16,6 +16,7 @@ import ai.riviera.platform.auth.application.SsoGateway;
 import ai.riviera.platform.auth.application.SsoProviders;
 import ai.riviera.platform.customer.vocabulary.SsoProvider;
 import ai.riviera.platform.shared.InvalidApiRequestException;
+import ai.riviera.platform.shared.SiteLocale;
 
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpSession;
@@ -40,11 +41,14 @@ final class SsoFlow {
 		this.gateway = gateway;
 	}
 
-	/** Start a round trip, superseding any earlier one in this session; the authorize URL to send the browser to. */
+	/**
+	 * Start a round trip, superseding any earlier one in this session; the authorize URL to send the browser to. The
+	 * client's {@code localeCode} only selects a {@link SiteLocale} (English for any other value) the landings go under.
+	 */
 	URI begin(HttpServletRequest request, SsoProvider provider, SsoAuthorization.Audience audience,
-			SsoAuthorization.Intent intent, SsoAuthorization.Linking linking) {
+			SsoAuthorization.Intent intent, SsoAuthorization.Linking linking, String localeCode) {
 		SsoAuthorization authorization = new SsoAuthorization(provider, audience, intent, randomToken(),
-				randomToken(), randomToken(), linking);
+				randomToken(), randomToken(), linking, SiteLocale.fromCode(localeCode));
 		request.getSession(true).setAttribute(AUTHORIZATION_ATTR, authorization);
 		return gateway.authorizationRequest(provider, new SsoAuthorizationChallenge(authorization.state(),
 				pkceChallenge(authorization.codeVerifier()), authorization.nonce()), callbackUri(request, provider));
