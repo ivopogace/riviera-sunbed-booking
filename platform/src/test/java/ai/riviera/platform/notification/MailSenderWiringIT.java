@@ -148,7 +148,7 @@ class MailSenderWiringIT {
 		}
 
 		@Override
-		public void sendOperatorApproved(String toEmail, URI signInLink) {
+		public void sendOperatorApproved(String toEmail, SiteLocale locale, URI signInLink) {
 			record();
 		}
 

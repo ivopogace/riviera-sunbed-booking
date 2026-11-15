@@ -1,6 +1,6 @@
 import { HttpErrorResponse } from '@angular/common/http';
 import { computed, inject, Service } from '@angular/core';
-import { firstValueFrom } from 'rxjs';
+import { catchError, firstValueFrom, from, of, timeout } from 'rxjs';
 
 import {
   ChallengeRejection,
@@ -9,6 +9,7 @@ import {
   challengeRejectionMessage,
   isChallengeRejection,
 } from '../shared/challenge';
+import { buildLocale, LocaleId } from '../shared/display-locale';
 import {
   PASSWORD_BLOCKED_MESSAGE,
   PASSWORD_BLOCKED_TERM_CODE,
@@ -96,6 +97,9 @@ export function signInFailureMessage(result: SignInResult): string | undefined {
  */
 export const SESSION_EXPIRED_MESSAGE = $localize`Your operator session has expired. Please sign in again.`;
 
+/** How long a language pick waits on its save before the page loads under the new locale anyway. */
+export const LOCALE_SAVE_TIMEOUT_MS = 2000;
+
 /**
  * Session-aware operator auth state (design D-1) on the shared {@link SessionAuth} base.
  * `signIn` posts username/password once to the operator session-login endpoint; the
@@ -164,9 +168,9 @@ export class OperatorAuth extends SessionAuth {
   }
 
   /**
-   * Self-register a PENDING operator. Fresh and taken usernames both get 202, no session (D-8), so
-   * the caller then does {@link signIn}: a PENDING account authenticates, a taken name just fails.
-   * `challenge` (solved proof-of-work) goes as a header; its rejections return as own results.
+   * Self-register a PENDING operator, in the build's locale (its approval notice's). Fresh and taken usernames
+   * both get 202, no session (D-8), so the caller then does {@link signIn}; a solved `challenge` goes as a
+   * header, its rejections returning as own results.
    */
   async register(
     username: string,
@@ -178,7 +182,7 @@ export class OperatorAuth extends SessionAuth {
       await firstValueFrom(
         this.http.post<void>(
           `${AUTH_API}/operator/register`,
-          { username, password, contactEmail },
+          { username, password, contactEmail, locale: buildLocale() },
           { headers: challengeHeaders(challenge) },
         ),
       );
@@ -214,6 +218,27 @@ export class OperatorAuth extends SessionAuth {
       return 'changed';
     } catch (error) {
       return passwordChangeFailure(error);
+    }
+  }
+
+  /**
+   * Store a language pick as the signed-in operator's own, the one its account mail is written in; nothing
+   * when no operator is signed in. Never rejects, and settles within {@link LOCALE_SAVE_TIMEOUT_MS}, so a
+   * failed or slow save never holds up the switch it rides on.
+   */
+  saveLocale(locale: LocaleId): Promise<void> {
+    return firstValueFrom(
+      from(this.storeLocale(locale)).pipe(
+        timeout(LOCALE_SAVE_TIMEOUT_MS),
+        catchError(() => of(undefined)),
+      ),
+    );
+  }
+
+  private async storeLocale(locale: LocaleId): Promise<void> {
+    await this.whenReady();
+    if (this.signedIn()) {
+      await firstValueFrom(this.http.put<void>(`${AUTH_API}/operator/locale`, { locale }));
     }
   }
 

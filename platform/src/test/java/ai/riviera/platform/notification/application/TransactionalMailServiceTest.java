@@ -223,7 +223,7 @@ class TransactionalMailServiceTest {
 		service.sendPasswordReset(EMAIL, SiteLocale.EN, RESET_LINK);
 		assertThat(dispatchedKind.get()).isEqualTo(MailKind.PASSWORD_RESET);
 
-		service.sendOperatorApproved(OPERATOR_EMAIL, SIGN_IN_LINK);
+		service.sendOperatorApproved(OPERATOR_EMAIL, SiteLocale.EN, SIGN_IN_LINK);
 		assertThat(dispatchedKind.get())
 				.as("the kind whose loss nobody re-sends is the one that most needs naming")
 				.isEqualTo(MailKind.OPERATOR_APPROVED);
@@ -315,11 +315,11 @@ class TransactionalMailServiceTest {
 	 */
 	@Test
 	void dispatchesTheOperatorApprovedSendToo() {
-		service.sendOperatorApproved(OPERATOR_EMAIL, SIGN_IN_LINK);
+		service.sendOperatorApproved(OPERATOR_EMAIL, SiteLocale.EN, SIGN_IN_LINK);
 
-		verify(mailer, never()).sendOperatorApproved(any(), any());
+		verify(mailer, never()).sendOperatorApproved(any(), any(), any());
 		dispatched.get().run();
-		verify(mailer).sendOperatorApproved(OPERATOR_EMAIL, SIGN_IN_LINK);
+		verify(mailer).sendOperatorApproved(OPERATOR_EMAIL, SiteLocale.EN, SIGN_IN_LINK);
 	}
 
 	/**
@@ -330,8 +330,8 @@ class TransactionalMailServiceTest {
 	 */
 	@Test
 	void anOperatorApprovedTransportFailureIsSwallowedAndCounted() {
-		doThrow(new IllegalStateException("relay down")).when(mailer).sendOperatorApproved(any(), any());
-		service.sendOperatorApproved(OPERATOR_EMAIL, SIGN_IN_LINK);
+		doThrow(new IllegalStateException("relay down")).when(mailer).sendOperatorApproved(any(), any(), any());
+		service.sendOperatorApproved(OPERATOR_EMAIL, SiteLocale.EN, SIGN_IN_LINK);
 
 		assertThatCode(() -> dispatched.get().run()).doesNotThrowAnyException();
 
@@ -348,10 +348,10 @@ class TransactionalMailServiceTest {
 	void anOperatorApprovedMailToASuppressedAddressIsSkipped() {
 		when(suppressions.isSuppressed(OPERATOR_EMAIL)).thenReturn(true);
 
-		service.sendOperatorApproved(OPERATOR_EMAIL, SIGN_IN_LINK);
+		service.sendOperatorApproved(OPERATOR_EMAIL, SiteLocale.EN, SIGN_IN_LINK);
 		assertThatCode(() -> dispatched.get().run()).doesNotThrowAnyException();
 
-		verify(mailer, never()).sendOperatorApproved(any(), any());
+		verify(mailer, never()).sendOperatorApproved(any(), any(), any());
 		assertThat(failedTotal()).as("a withheld mail is the policy working, not a loss").isZero();
 	}
 

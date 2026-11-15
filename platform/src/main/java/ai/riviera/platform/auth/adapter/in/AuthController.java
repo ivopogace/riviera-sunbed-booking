@@ -93,11 +93,11 @@ class AuthController {
 	}
 
 	/**
-	 * Wire DTO for an operator self-registration: the login {@code username}, the
-	 * {@code password}, and a {@code contactEmail} for the admin's approval decision. Presence checks in
-	 * the compact constructor (§6b centralized-explicit style) → a malformed body is {@code 400 INVALID_REQUEST}.
+	 * Wire DTO for an operator self-registration: the login {@code username}, the {@code password}, a
+	 * {@code contactEmail} for the admin's approval decision and the SPA's build {@code locale} for the approval
+	 * notice. Presence checks in the compact constructor (§6b) → a malformed body is {@code 400 INVALID_REQUEST}.
 	 */
-	record OperatorRegistrationRequest(String username, String password, String contactEmail) {
+	record OperatorRegistrationRequest(String username, String password, String contactEmail, String locale) {
 		OperatorRegistrationRequest {
 			if (username == null || username.isBlank() || password == null || password.isEmpty()
 					|| contactEmail == null || contactEmail.isBlank()) {
@@ -171,7 +171,7 @@ class AuthController {
 		// INSERT … ON CONFLICT DO NOTHING either way, so only a fresh username creates the PENDING row; the
 		// outcome distinction never surfaces (the response is byte-identical) so it is deliberately unused.
 		operatorRegistration.register(username, passwordEncoder.encode(registration.password()),
-				registration.contactEmail().trim());
+				registration.contactEmail().trim(), SiteLocale.fromCode(registration.locale()));
 		// No session either branch; the client signs in next, as a PENDING operator may. Byte-identical body.
 		return ResponseEntity.status(HttpStatus.ACCEPTED).body(new OperatorRegistrationResponse("PENDING"));
 	}

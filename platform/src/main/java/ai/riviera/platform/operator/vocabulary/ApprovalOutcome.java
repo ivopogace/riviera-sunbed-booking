@@ -1,5 +1,7 @@
 package ai.riviera.platform.operator.vocabulary;
 
+import ai.riviera.platform.shared.SiteLocale;
+
 /**
  * The result of an admin approve/reject decision on a self-registered operator: a closed,
  * caller-mappable set, so the edge admin controller maps each case to an HTTP status exhaustively.
@@ -19,8 +21,9 @@ public sealed interface ApprovalOutcome
 	 *     Nullable because the column is (V29 — the env-managed bootstrap admin has no contact email);
 	 *     self-registration always supplies one, so in practice only a seeded row arrives without it.
 	 *     A caller that mails it must treat null <strong>and</strong> blank as "no address".
+	 * @param locale the language the notice is written in: the stored one, English for a row without one.
 	 */
-	record Approved(String contactEmail) implements ApprovalOutcome {
+	record Approved(String contactEmail, SiteLocale locale) implements ApprovalOutcome {
 	}
 
 	/**

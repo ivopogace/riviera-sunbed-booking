@@ -87,7 +87,7 @@ public final class ControllableMailer implements Mailer {
 	}
 
 	@Override
-	public void sendOperatorApproved(String toEmail, URI signInLink) {
+	public void sendOperatorApproved(String toEmail, SiteLocale locale, URI signInLink) {
 		// See above — also a recovery-vehicle kind, so also not this pool's business.
 	}
 

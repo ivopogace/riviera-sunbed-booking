@@ -52,8 +52,8 @@ public record SentEmail(String toEmail, Kind kind, URI link, BookingConfirmation
 	 * The operator-approval notice. It shares the {@link #link} slot with {@link #recovery} but not its
 	 * factory: that link is a bearer credential, this one the public sign-in URL the mock may log.
 	 */
-	static SentEmail operatorApproved(String toEmail, URI signInLink) {
-		return new SentEmail(toEmail, Kind.OPERATOR_APPROVED, signInLink, null, null, null, null, null, null, null, null, null, SiteLocale.EN);
+	static SentEmail operatorApproved(String toEmail, SiteLocale locale, URI signInLink) {
+		return new SentEmail(toEmail, Kind.OPERATOR_APPROVED, signInLink, null, null, null, null, null, null, null, null, null, locale);
 	}
 
 	/** A booking confirmation, identified by the details it renders. */

@@ -21,6 +21,7 @@ import ai.riviera.platform.operator.vocabulary.ApprovalOutcome;
 import ai.riviera.platform.operator.vocabulary.OperatorId;
 import ai.riviera.platform.operator.vocabulary.OperatorLifecycleOutcome;
 import ai.riviera.platform.operator.vocabulary.OperatorStatus;
+import ai.riviera.platform.shared.SiteLocale;
 
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
@@ -221,14 +222,14 @@ class AdminOperatorControllerTest {
 	 */
 	@Test
 	void approveMailsTheOperatorAfterTheTransition() throws Exception {
-		when(lifecycle.approve(TARGET)).thenReturn(new ApprovalOutcome.Approved("owner@vala-beach.example"));
+		when(lifecycle.approve(TARGET)).thenReturn(new ApprovalOutcome.Approved("owner@vala-beach.example", SiteLocale.EN));
 
 		mvc.perform(isolated(post(APPROVE, TARGET.value())).with(user(ADMIN_USERNAME).roles("ADMIN")))
 				.andExpect(status().isNoContent());
 
 		InOrder ordered = inOrder(lifecycle, mails);
 		ordered.verify(lifecycle).approve(TARGET);
-		ordered.verify(mails).sendOperatorApproved(eq("owner@vala-beach.example"), any());
+		ordered.verify(mails).sendOperatorApproved(eq("owner@vala-beach.example"), any(), any());
 	}
 
 	/** An approval that did not happen mails nothing — the address only rides the winning transition. */
@@ -239,7 +240,7 @@ class AdminOperatorControllerTest {
 		mvc.perform(isolated(post(APPROVE, TARGET.value())).with(user(ADMIN_USERNAME).roles("ADMIN")))
 				.andExpect(status().isConflict());
 
-		verify(mails, never()).sendOperatorApproved(anyString(), any());
+		verify(mails, never()).sendOperatorApproved(anyString(), any(), any());
 	}
 
 	/** The three wire answers are unchanged by the sealed rewrite — the parity claim, asserted. */
@@ -260,7 +261,7 @@ class AdminOperatorControllerTest {
 				.andExpect(status().isNoContent());
 
 		// Rejection mails nothing — the one lifecycle transition that could plausibly have grown a mail.
-		verify(mails, never()).sendOperatorApproved(anyString(), any());
+		verify(mails, never()).sendOperatorApproved(anyString(), any(), any());
 	}
 
 	/** The reject bracket mirrors suspend's: pre-read the PENDING username, revoke, transition, revoke. */
