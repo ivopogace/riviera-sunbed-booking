@@ -4,6 +4,9 @@
   beach map show the WHOLE beach and still let them pick a set on a ≥44px target?
   Three structurally different variants on one page, switchable with ?variant=A|B|C and
   ?theme=porcelain|riviera|dark (floating bar, or ←/→). Open the file directly in a browser.
+  Round 2 (design critique): free = tint + edge, SOLID = your pick only, strike = taken; partly-free
+  and walk-in sets added to the fixture to design their overview look; C rows carry a chevron,
+  aria-expanded, a close control, scroll pinned to the tapped row and focus moved into it.
   Fixture: Miramar (frontend/e2e/support/miramar-map.ts): row A 13 wide, B–I 7, five price zones,
   taken where (position + row) % 5 === 0. Colours are copied from src/tailwind.css's theme tokens.
     A — Overview → zoom: whole beach small; tap a zone to zoom to 44px tiles, mini-map while zoomed.
@@ -46,6 +49,12 @@
         --tk-fill: rgba(255, 255, 255, 0.2);
         --tk-border: #6b7d77;
         --tk-ink: #566560;
+        --av-tint: rgba(15, 125, 140, 0.18);
+        --pr-tint: rgba(135, 89, 17, 0.16);
+        --wk-fill: rgba(239, 224, 189, 0.6);
+        --wk-hatch: rgba(95, 77, 42, 0.16);
+        --wk-border: #c8ab62;
+        --wk-ink: #5f4d2a;
         --focus: #0f7d8c;
         --sel-fill: #0f7d8c;
         --sel-ink: #ffffff;
@@ -90,6 +99,12 @@
         --tk-fill: rgba(255, 255, 255, 0.05);
         --tk-border: #7d8f89;
         --tk-ink: #a7b5b0;
+        --av-tint: rgba(143, 214, 226, 0.18);
+        --pr-tint: rgba(236, 208, 154, 0.18);
+        --wk-fill: rgba(239, 224, 189, 0.12);
+        --wk-hatch: rgba(229, 211, 168, 0.14);
+        --wk-border: #a08a50;
+        --wk-ink: #e5d3a8;
         --focus: #8fd6e2;
         --sel-fill: #8fd6e2;
         --sel-ink: #0b1418;
@@ -178,7 +193,7 @@
         display: inline-flex;
         align-items: center;
         gap: 6px;
-        font-size: 11px;
+        font-size: 12px;
         font-weight: 700;
         color: var(--rail-ink);
         background: var(--chip-fill);
@@ -234,10 +249,71 @@
         color: var(--tk-ink);
         cursor: default;
       }
+      .tile.pt {
+        border: 2px dotted var(--av-ink);
+      }
+      .tile.wk {
+        border-color: var(--wk-border);
+        background:
+          repeating-linear-gradient(135deg, var(--wk-hatch) 0 4px, transparent 4px 8px),
+          var(--wk-fill);
+        color: var(--wk-ink);
+        cursor: default;
+      }
       .tile.sel {
         background: var(--sel-fill);
         border-color: var(--sel-fill);
         color: var(--sel-ink);
+        position: relative;
+      }
+      .tile.sel::after {
+        content: '✓';
+        position: absolute;
+        top: -7px;
+        right: -7px;
+        width: 18px;
+        height: 18px;
+        border-radius: 999px;
+        display: grid;
+        place-items: center;
+        font-size: 11px;
+        background: var(--sel-ink);
+        color: var(--sel-fill);
+        box-shadow: 0 0 0 1.5px var(--sel-fill);
+      }
+      .lens .chev {
+        flex: none;
+        width: 24px;
+        text-align: center;
+        font-size: 18px;
+        line-height: 1;
+        color: var(--accent-ink);
+      }
+      .closebtn {
+        min-width: 44px;
+        min-height: 44px;
+        margin: -12px -8px -12px 0;
+        border: 0;
+        background: transparent;
+        color: var(--accent-ink);
+        font-size: 18px;
+        cursor: pointer;
+        border-radius: 12px;
+      }
+      .open {
+        animation: lens-open 180ms ease-out;
+      }
+      @keyframes lens-open {
+        from {
+          opacity: 0.4;
+          transform: scaleY(0.6);
+          transform-origin: top;
+        }
+      }
+      @media (prefers-reduced-motion: reduce) {
+        .open {
+          animation: none;
+        }
       }
       .tile:focus-visible,
       .lens:focus-visible,
@@ -279,19 +355,45 @@
         gap: 3px;
         flex: 1;
       }
-      .cell {
+      /* one vocabulary at both scales: tint + edge = free, strike = taken, SOLID = your pick only */
+      .cell,
+      .sw {
         aspect-ratio: 1;
         border-radius: 4px;
-        background: var(--av-ink);
+        background: var(--av-tint);
+        box-shadow: inset 0 0 0 1.5px var(--av-ink);
       }
-      .cell.pr {
-        background: var(--pr-ink);
+      .cell.pr,
+      .sw.pr {
+        background: var(--pr-tint);
+        box-shadow: inset 0 0 0 1.5px var(--pr-ink);
       }
-      .cell.tk {
-        background: transparent;
+      .cell.pt,
+      .sw.pt {
+        background: linear-gradient(135deg, var(--av-ink) 0 50%, transparent 50%);
+        box-shadow: inset 0 0 0 1.5px var(--av-ink);
+      }
+      .cell.wk,
+      .sw.wk {
+        background: radial-gradient(circle, var(--wk-ink) 0 28%, transparent 30%);
+        box-shadow: inset 0 0 0 1.5px var(--wk-ink);
+        opacity: 0.9;
+      }
+      .cell.tk,
+      .sw.tk {
+        background: linear-gradient(
+          135deg,
+          transparent 0 44%,
+          var(--tk-border) 44% 56%,
+          transparent 56%
+        );
         box-shadow: inset 0 0 0 1.5px var(--tk-border);
       }
-      .cell.sel {
+      .legend .sw.sel {
+        margin: 0 4px;
+      }
+      .cell.sel,
+      .sw.sel {
         background: var(--sel-fill);
         box-shadow:
           0 0 0 2px var(--card-glass),
@@ -542,7 +644,17 @@
           pos: p + 1,
           minor,
           premium: label === 'A',
-          taken: (p + r) % 5 === 0,
+          state:
+            (p + r) % 5 === 0
+              ? 'taken'
+              : label !== 'A' && p === 6 && r < 4
+                ? 'walkin'
+                : (p + r) % 7 === 3
+                  ? 'partly'
+                  : 'free',
+          get taken() {
+            return this.state === 'taken' || this.state === 'walkin';
+          },
         })),
       }));
       const ZONES = [
@@ -585,10 +697,12 @@
         const sets = rs.flatMap((r) => r.sets);
         return `<div class="band">${span(sets)} <em>· ${freeIn(rs)} of ${totalIn(rs)} free</em></div>`;
       };
+      const cls = (s) =>
+        ({ taken: 'tk', walkin: 'wk', partly: 'pt' })[s.state] || (s.premium ? 'pr' : '');
       const tile = (s) =>
         s.taken
-          ? `<button class="tile tk" aria-label="${s.code}, taken" aria-disabled="true">${s.pos}</button>`
-          : `<button class="tile ${s.premium ? 'pr' : ''} ${state.sel === s.code ? 'sel' : ''}" data-sel="${s.code}" aria-label="${s.code}, ${eur(s.minor)}, free" aria-pressed="${state.sel === s.code}">${s.pos}</button>`;
+          ? `<button class="tile ${cls(s)}" aria-label="${s.code}, ${s.state === 'walkin' ? 'walk-in only' : 'taken'}" aria-disabled="true">${s.pos}</button>`
+          : `<button class="tile ${s.premium ? 'pr' : ''} ${s.state === 'partly' ? 'pt' : ''} ${state.sel === s.code ? 'sel' : ''}" data-sel="${s.code}" aria-label="${s.code}, ${eur(s.minor)}, ${s.state === 'partly' ? 'partly free' : 'free'}" aria-pressed="${state.sel === s.code}">${s.pos}</button>`;
       const cells = (r) => {
         let h = '';
         for (let c = 1; c <= COLS; c++) {
@@ -597,7 +711,7 @@
             h += '<i class="cell hole"></i>';
             continue;
           }
-          h += `<i class="cell ${s.taken ? 'tk' : s.premium ? 'pr' : ''} ${state.sel === s.code ? 'sel' : ''}"></i>`;
+          h += `<i class="cell ${state.sel === s.code ? 'sel' : cls(s)}"></i>`;
         }
         return `<div class="ov" aria-hidden="true">${h}</div>`;
       };
@@ -613,14 +727,17 @@
       const legend = (small) =>
         small
           ? `<div class="legend">
-              <span><i class="sw" style="background:var(--av-ink)"></i>Free</span>
-              <span><i class="sw" style="background:var(--pr-ink)"></i>Free, front row</span>
-              <span><i class="sw" style="box-shadow:inset 0 0 0 1.5px var(--tk-border)"></i>Taken</span>
+              <span><i class="sw"></i>Free</span>
+              <span><i class="sw pr"></i>Front row</span>
+              <span><i class="sw pt"></i>Partly free</span>
+              <span><i class="sw wk"></i>Walk-in only</span>
+              <span><i class="sw tk"></i>Taken</span>
+              <span><i class="sw sel"></i>Your pick</span>
             </div>`
           : `<div class="legend">
-              <span><i class="sw" style="background:var(--av-fill);border:1.5px solid var(--av-border)"></i>Available</span>
-              <span><i class="sw" style="background:var(--pr-fill);border:1.5px solid var(--pr-border)"></i>Front row</span>
-              <span><i class="sw" style="border:1.5px dashed var(--tk-border)"></i>Taken</span>
+              <span><i class="sw" style="box-shadow:none;background:var(--av-fill);border:1.5px solid var(--av-border)"></i>Available</span>
+              <span><i class="sw" style="box-shadow:none;background:var(--pr-fill);border:1.5px solid var(--pr-border)"></i>Front row</span>
+              <span><i class="sw" style="box-shadow:none;background:none;border:1.5px dashed var(--tk-border)"></i>Taken</span>
             </div>`;
 
       // ---- A: overview → zoom ----
@@ -675,12 +792,12 @@
             const free = r.sets.filter((s) => !s.taken).length;
             if (r.label === state.lens) {
               h += `<div class="open" id="open">
-                  <div class="open-head"><span>Row ${r.label} · ${span(r.sets)}</span><span>${free} of ${r.sets.length} free</span></div>
+                  <div class="open-head"><span>Row ${r.label} · ${span(r.sets)} · ${free} of ${r.sets.length} free</span><button class="closebtn" data-lens="" aria-expanded="true" aria-label="Close row ${r.label}">⌃</button></div>
                   <div class="row"><span class="chip">${r.label}</span><div class="pan" id="pan"><div class="track">${r.sets.map(tile).join('')}</div></div></div>
                 </div>`;
             } else {
-              h += `<button class="lens" data-lens="${r.label}" aria-label="Row ${r.label}, ${span(r.sets)}, ${free} of ${r.sets.length} free. Open">
-                  <span class="chip">${r.label}</span>${cells(r)}
+              h += `<button class="lens" data-lens="${r.label}" aria-expanded="false" aria-label="Row ${r.label}, ${span(r.sets)}, ${free} of ${r.sets.length} free">
+                  <span class="chip">${r.label}</span>${cells(r)}<span class="chev" aria-hidden="true">›</span>
                 </button>`;
             }
           }
@@ -792,8 +909,18 @@
         } else if (t.dataset.t) state.theme = t.dataset.t;
         else if (t.dataset.zone)
           state.zone = t.dataset.zone === 'out' ? null : Number(t.dataset.zone);
-        else if (t.dataset.lens) state.lens = t.dataset.lens;
-        else if (t.dataset.sel) state.sel = state.sel === t.dataset.sel ? null : t.dataset.sel;
+        else if (t.dataset.lens !== undefined) {
+          const y = t.getBoundingClientRect().top;
+          state.lens = t.dataset.lens || null;
+          render();
+          const open = document.getElementById('open');
+          const anchor = open || document.querySelector(`[data-lens="${t.dataset.lens}"]`);
+          if (open) {
+            window.scrollBy(0, open.getBoundingClientRect().top - y);
+            open.querySelector('.tile:not([aria-disabled])')?.focus({ preventScroll: true });
+          } else if (anchor) anchor.focus({ preventScroll: true });
+          return;
+        } else if (t.dataset.sel) state.sel = state.sel === t.dataset.sel ? null : t.dataset.sel;
         else return;
         render();
       });
