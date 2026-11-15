@@ -16,7 +16,7 @@ import org.springframework.test.context.MergedContextConfiguration;
  * The properties every Spring test context starts from, so the common case is one cached context (#1599):
  * the bootstrap admin's password, a build commit id, a public origin, the no-show sweep off, the request and
  * abandoned-payment sweeps held outside the test window. Registered in {@code META-INF/spring.factories}, so it reaches every test
- * class under any profile; placed above the application's configuration and below a class's own
+ * class under any profile; placed above the process environment and the application's configuration, and below a class's own
  * {@code @SpringBootTest(properties)} / {@code @TestPropertySource}, so a class declares one of these
  * keys only to opt out ({@code TestContextDriftArchitectureTests} fails a restated shared value).
  */
@@ -56,8 +56,10 @@ public final class SharedTestProperties implements ContextCustomizerFactory {
 		public void customizeContext(ConfigurableApplicationContext context, MergedContextConfiguration mergedConfig) {
 			MutablePropertySources sources = context.getEnvironment().getPropertySources();
 			MapPropertySource shared = new MapPropertySource(SOURCE_NAME, VALUES);
+			// Above the process environment, not below it: RIVIERA_OPERATOR_PASSWORD on a developer's machine
+			// relaxed-binds to riviera.operator.password and would otherwise beat the pinned value (#1751).
 			if (sources.contains(StandardEnvironment.SYSTEM_ENVIRONMENT_PROPERTY_SOURCE_NAME)) {
-				sources.addAfter(StandardEnvironment.SYSTEM_ENVIRONMENT_PROPERTY_SOURCE_NAME, shared);
+				sources.addBefore(StandardEnvironment.SYSTEM_ENVIRONMENT_PROPERTY_SOURCE_NAME, shared);
 			} else {
 				sources.addLast(shared);
 			}

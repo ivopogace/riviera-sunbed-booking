@@ -1,4 +1,5 @@
-import { readFileSync, readdirSync } from 'node:fs';
+import { readFileSync } from 'node:fs';
+import { recursivePaths } from '../../testing/source-paths';
 import { join } from 'node:path';
 
 import { AA_NORMAL, contrastRatio, rgbToHex } from '../../testing/contrast';
@@ -45,7 +46,7 @@ const LITERAL_ROLES = [/#f6e8e7/i, /text-\[#a3160e\]/i];
  */
 function componentsPaintingLiterals(): readonly string[] {
   const root = join(process.cwd(), 'src/app');
-  return readdirSync(root, { recursive: true, encoding: 'utf8' })
+  return recursivePaths(root)
     .filter((path) => /\.(ts|html)$/.test(path) && !path.endsWith('.spec.ts'))
     .filter((path) => {
       const source = readFileSync(join(root, path), 'utf8');

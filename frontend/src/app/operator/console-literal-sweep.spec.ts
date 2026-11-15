@@ -1,4 +1,5 @@
-import { readFileSync, readdirSync } from 'node:fs';
+import { readFileSync } from 'node:fs';
+import { recursivePaths } from '../../testing/source-paths';
 import { join } from 'node:path';
 
 /**
@@ -54,9 +55,9 @@ const NAMED = new RegExp(
 const RESIDUE = /^(?:[\w:&-]*:)?(?:text-white|outline-white)$|^bg-black\/80$/;
 
 function sourcesUnder(folder: string): readonly string[] {
-  return readdirSync(join(APP, folder), { recursive: true, encoding: 'utf8' })
+  return recursivePaths(join(APP, folder))
     .filter((path) => /\.(ts|html)$/.test(path) && !path.endsWith('.spec.ts'))
-    .map((path) => join(folder, path));
+    .map((path) => `${folder}/${path}`);
 }
 
 /** `path: utility` per hit, so the failure names what to change. */
