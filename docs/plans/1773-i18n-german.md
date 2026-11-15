@@ -63,4 +63,11 @@ widening `booking_locale_check`.
 - [x] Phase 2 — frontend: locale rows, `messages.de.xlf` (from a `{id: target}` map, kept beside the
   wave's shared notes as `1773-de-translations.json`), specs, locale e2e. Build: 1660/1660 targets;
   the `de` copy adds 3.1 MB to a 35 MB static tree.
-- [ ] Phase 3 — PR, review gate, Sonar, resolve against final main (#1785, #1783).
+- [ ] Phase 3 — PR #1791 open; review round 1 (`code-review:code-review`, high) on `f0f91a4a`: no
+  issues. Left at the final merge of main:
+  - #1785's V84 adds `operator_locale_check IN ('en','sq','it')`, pinned by `OperatorLocaleIT` over
+    every `SiteLocale`. V85 must widen it too, in the same file, once V84 is on main; until then V85
+    cannot name `operator.locale`.
+  - Give German values to #1785's operator mail keys (`MailCopyBundleTest`).
+  - Give `de` targets to #1783's Stripe units: take main's xlf, run
+    `npm run i18n:sync -- --fill de=<map>`, then translate the new ids.
