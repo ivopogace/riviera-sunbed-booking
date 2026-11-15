@@ -9,8 +9,8 @@ import ai.riviera.platform.customer.vocabulary.SsoProvider;
  * D-3/D-4): login machinery stays in {@code auth}, never in a domain module (RV-BE-11); {@code customer} owns only
  * the resulting account identity. The code exchange runs server-side, so tokens never reach browser JS.
  *
- * <p>One implementation per profile: {@code MockSsoGateway} under {@code !sso}, kept out of prod by
- * {@code MockSsoProdGuard}; under {@code sso} the real adapters throw
+ * <p>One implementation per profile: {@code MockSsoGateway} under {@code !sso}, refused without {@code demo}
+ * by {@code MockSsoProdGuard}; under {@code sso} the real adapters throw
  * {@link UnsupportedOperationException} until credentials ship, never falling back to the mock.
  */
 public interface SsoGateway {

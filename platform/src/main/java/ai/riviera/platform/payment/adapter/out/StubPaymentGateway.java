@@ -19,9 +19,10 @@ import ai.riviera.platform.payment.application.UnpaidTransactions;
 import ai.riviera.platform.payment.domain.RefundScope;
 
 /**
- * Default-profile stub for the outbound {@link PaymentGateway}: collection always succeeds,
- * synchronously and in-process (no external call, so safe inside the booking's transaction). The
- * {@code stripe}-profile {@code StripePaymentGateway} collects for real via webhook (invariant #8).
+ * Stub for the outbound {@link PaymentGateway}, accepted in a {@code demo} boot only
+ * ({@code StubPaymentGatewayProdGuard}): collection always succeeds, synchronously and in-process (no external
+ * call, so safe inside the booking's transaction). The {@code stripe}-profile {@code StripePaymentGateway}
+ * collects for real via webhook (invariant #8).
  *
  * <p>{@code @Profile("!stripe")} so exactly one {@link PaymentGateway} bean exists. Package-private
  * (invariant #11). No Stripe types here.
