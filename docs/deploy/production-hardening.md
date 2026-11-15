@@ -12,39 +12,54 @@ Related: [ADR-0004](../adr/0004-non-prod-hosting-render-neon-pages.md) (hosting)
 ## Actuator endpoints
 
 Only **`/actuator/health`** and **`/actuator/info`** (public) and **`/actuator/prometheus`**
-(ADMIN-only) are web-exposed. The exposure allowlist is **explicit** — we do not rely on the framework default —
+(the metrics scraper's bearer token only) are web-exposed. The exposure allowlist is **explicit** — we do not rely on the framework default —
 so a dependency that ships its own endpoint cannot silently widen the surface:
 
 ```properties
 management.endpoints.web.exposure.include=health,info,prometheus
 management.endpoint.health.show-details=when-authorized
-management.endpoint.health.roles=ADMIN
+management.endpoint.health.roles=METRICS
 management.info.defaults.enabled=false
 riviera.observability.build-commit=${RENDER_GIT_COMMIT:}
+riviera.observability.scrape-token-sha256=${RIVIERA_SCRAPE_TOKEN_SHA256:}
+riviera.observability.scrape-token-sha256-next=${RIVIERA_SCRAPE_TOKEN_SHA256_NEXT:}
 ```
 
-**Why ADMIN, not OPERATOR** (#1652). `POST /api/auth/operator/register` is anonymous and a PENDING
-operator may sign in, so "any operator" includes any stranger who registers. Prometheus and the health
-details are platform-wide (refund and outbox signals, per-URI traffic, the database's state), not
-venue-scoped, so they take the ADMIN gate the payout batches take. A customer session is never enough.
+**Why a scrape token, not a session** ([ADR-0032](../adr/ADR-0032-the-metrics-scraper-holds-its-own-bearer-token.md),
+#130). Prometheus and the health details are platform-wide (refund and outbox signals, per-URI traffic, the
+database's state), so no operator may read them: `POST /api/auth/operator/register` is anonymous and a PENDING
+operator may sign in (#1652). An admin session would be enough reach but far too much: it opens all of
+`/api/admin/**`. So the scraper holds its own 256-bit bearer token, which grants `ROLE_METRICS` and nothing
+else. The server keeps only its SHA-256, in two slots for overlap rotation, and refuses every bearer request
+while neither is set. Minting, rotation and revocation:
+[metrics-scrape-token.md](../runbooks/metrics-scrape-token.md).
 
 Consequences, enforced by **two independent layers**:
 
-| Endpoint | Anonymous | Customer or plain operator | Admin | Why |
+The actuator chain reads no session, so any session cookie (customer, operator or admin) is anonymous there.
+
+| Endpoint | Anonymous (any session included) | Scrape token | Wrong or malformed `Authorization` | Why |
 |---|---|---|---|---|
-| `GET /actuator/health` | `200 {"status":"UP"}` (no component details) | the same, no details | `200` **with** `components` (db/diskSpace/…) | Render health check + CD poll need it public; details `when-authorized` for `ADMIN` only |
-| `GET /actuator/info` | `200 {"commit":"<sha>"}`, nothing else | the same body | the same body | The CD poll tells the new build from the old (#1632); see below |
-| `GET /actuator/prometheus` | `401` | `403` | `200` scrape body | Metrics scrape (`docs/runbooks/observability.md`); never public |
-| any other `/actuator/**` path (`env`, `beans`, `mappings`, `configprops`, `heapdump`, `threaddump`, `loggers`, `metrics`, the `/actuator` index, a non-`GET` of `info` or `prometheus`) | `401` | `403` | `403` | Leak config / resolved secrets / bean wiring / internals — never reachable |
+| `GET /actuator/health` | `200 {"status":"UP"}` (no component details) | `200` **with** `components` (db/diskSpace/…) | `401` | Render health check + CD poll need it public; details `when-authorized` for `METRICS` only |
+| `GET /actuator/info` | `200 {"commit":"<sha>"}`, nothing else | the same body | `401` | The CD poll tells the new build from the old (#1632); see below |
+| `GET /actuator/prometheus` | `401` | `200` scrape body | `401` | Metrics scrape (`docs/runbooks/observability.md`); never public |
+| any other `/actuator/**` path (`env`, `beans`, `mappings`, `configprops`, `heapdump`, `threaddump`, `loggers`, `metrics`, the `/actuator` index, any non-`GET`) | `401` | `403` | `401` | Leak config / resolved secrets / bean wiring / internals — never reachable |
+
+The token means nothing under `/api/**`: the API chain never reads the bearer header, so a token there is
+anonymous (`401` on a gated route).
 
 - **Layer 1 — exposure allowlist:** an endpoint other than `health`/`info`/`prometheus` has no
   HTTP handler. This is the primary control; `ActuatorHardeningIT` pins the exposed set directly,
   since layer 2 answers before a missing handler could `404`.
-- **Layer 2 — `SecurityConfig`, fail closed:** `/actuator/health/**` and `GET /actuator/info` are
-  public, `GET /actuator/prometheus` is `hasRole(ADMIN)`, and every other `/actuator/**` path is
-  `denyAll()` — anonymous `401` (the entry point), any session `403`. An endpoint added to the
-  allowlist stays unreachable until it gets its own rule above the `denyAll()`; it never falls through
-  to the chain's `anyRequest().authenticated()`.
+- **Layer 2 — `SecurityConfig`'s actuator chain, fail closed:** an `@Order(0)` chain owns `/actuator/**`
+  (only the first matching chain runs), stateless, with no session read or created and CSRF ignored because
+  it honours no ambient credential. `GET`/`HEAD /actuator/health/**` and `GET /actuator/info` are public,
+  `GET /actuator/prometheus` is `hasRole(METRICS)`, and everything else is `denyAll()`: anonymous `401`
+  (the entry point, with `WWW-Authenticate: Bearer`), the scrape token `403`. An endpoint added to the
+  allowlist stays unreachable until it gets its own rule above the `denyAll()`.
+- **Deferred defence in depth:** `management.server.port` (or `management.server.address` on an ops-only
+  network) would take the actuator off the public listener entirely. It waits for the production topology
+  (Hetzner) to be known.
 
 **Why a public commit id is acceptable.** `management.info.defaults.enabled=false` turns off every
 auto-configured info contributor (build, git, env, java, os, process, ssl), so the body is

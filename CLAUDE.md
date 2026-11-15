@@ -107,7 +107,7 @@ ownership, never reuse) and the closed non-context modules with `allowedDependen
 `admin_audit_record`) and `monitoring` (correlation id, metric names, money-path alert check, the
 build's commit on `/actuator/info`; writes nothing). Also closed and non-context, but adapter layers depending on the surfaces they need: `auth`
 (sign-in and sessions: the `UserDetailsService`s, session establishment, credential stamp and revocation,
-SSO, password policy, recovery, the login, self-service, admin-lifecycle and erasure controllers; writes nothing) and `web` (the
+the metrics scraper's token check, SSO, password policy, recovery, the login, self-service, admin-lifecycle and erasure controllers; writes nothing) and `web` (the
 HTTP boundary: `SecurityConfig`'s chains and route policy, the chain's filters, CORS, `ApiErrorHandler`
 as the one advice, `/error`'s problem body, the crawl policy (`/robots.txt`, `/sitemap.xml`), the SPA shell
 and its link-preview head; publishes nothing, writes nothing). No module writes
@@ -134,7 +134,8 @@ customer account and guest row never linked; auth endpoints non-enumerating and 
 default (ADR-0031): mocks fenced out of every boot without `demo`, dev secrets out of every boot without `local`; revocation orchestrated by `auth`, synchronous; account creation, password recovery
 and booking/stay create fenced by `challenge`'s proof-of-work against a single-use registry; every
 mutating `/api/admin/**` action audited by `web`'s fence; the anonymous actuator surface is `health`
-and `GET /actuator/info`'s commit id alone; map tiles self-hosted under `/map/**`, no third-party map
+and `GET /actuator/info`'s commit id alone, and the metrics scrape takes its own bearer token on a stateless
+actuator chain, never a session (ADR-0032); map tiles self-hosted under `/map/**`, no third-party map
 host; absolute URLs in a served page from `riviera.web.public-origin`, never the request's `Host`.
 
 ## Cross-cutting invariants

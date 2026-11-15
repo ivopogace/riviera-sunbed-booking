@@ -17,6 +17,8 @@ public final class AuthRoles {
 	public static final String ADMIN = "ADMIN";
 	/** Every customer principal; gates {@code /api/me/**}. */
 	public static final String CUSTOMER = "CUSTOMER";
+	/** The metrics scraper's bearer token (ADR-0032); gates the actuator scrape alone, meaningless under {@code /api}. */
+	public static final String METRICS = "METRICS";
 
 	public static final Set<OperatorStatus> OPERATOR_MAY_AUTHENTICATE =
 			Set.of(OperatorStatus.ACTIVE, OperatorStatus.PENDING);

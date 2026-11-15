@@ -7,12 +7,12 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
 import org.springframework.boot.context.properties.bind.DefaultValue;
 
 /**
- * {@link RateLimitFilter} limits from {@code riviera.ratelimit.*} (shipped values in {@code application.properties});
- * buckets are in-process, so single-instance only (ADR-0004). A {@link Limit} bursts {@code capacity}, refilled over
- * {@code refillPeriod}; {@code perCode} must stay well above the payment poll (~20 GETs / 30s, ADR-0006). {@code username}
- * keys the submitted identity, not the IP, and only failed logins net-consume it. {@code trustedProxies} defaults to
- * empty — trust no proxy, so an unset value throttles more, never less — and {@code clientIpHeader} is honoured only
- * behind a trusted peer. Verify on deploy: docs/runbooks/rate-limit-client-ip.md.
+ * {@link RateLimitFilter} and {@link PrincipalRateLimitFilter} limits from {@code riviera.ratelimit.*} (shipped values
+ * in {@code application.properties}); in-process buckets, so single-instance only (ADR-0004). A {@link Limit} bursts
+ * {@code capacity}, refilled over {@code refillPeriod}; {@code perCode} stays well above the payment poll (~20 GETs /
+ * 30s, ADR-0006). {@code username} is one budget per account (a login's identity, a credential change's principal),
+ * never the IP. {@code trustedProxies} defaults to empty — trust no proxy, so unset throttles more, never less — and
+ * {@code clientIpHeader} is honoured only behind a trusted peer. Verify on deploy: docs/runbooks/rate-limit-client-ip.md.
  */
 @ConfigurationProperties("riviera.ratelimit")
 record RateLimitProperties(
@@ -33,7 +33,7 @@ record RateLimitProperties(
 	static final int MIN_TRACKED_KEY_CAP = 1_000;
 
 	/**
-	 * Ceiling, 5× the shipped 100 000: each of the eleven dimension maps is capped independently, so more risks hundreds
+	 * Ceiling, 5× the shipped 100 000: each dimension map ({@link BucketMap}) is capped independently, so more risks hundreds
 	 * of megabytes on the single instance (ADR-0004). Also catches the shipped value typed with one extra digit.
 	 */
 	static final int MAX_TRACKED_KEY_CAP = 500_000;
@@ -51,7 +51,7 @@ record RateLimitProperties(
 							+ "; the map-bounding check is size() >= cap, so a non-positive cap fires on "
 							+ "every new key and clears every other key's spent tokens — the limiter boots "
 							+ "clean and throttles nobody — while an oversized one restores the unbounded "
-							+ "growth the cap exists to prevent, across eleven dimension maps");
+							+ "growth the cap exists to prevent, in every dimension map");
 		}
 	}
 

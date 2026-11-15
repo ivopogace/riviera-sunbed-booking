@@ -27,6 +27,9 @@ import ai.riviera.platform.customer.api.CustomerAccountDirectory;
 import ai.riviera.platform.customer.api.CustomerAccounts;
 import ai.riviera.platform.customer.vocabulary.CustomerAccountCredential;
 import ai.riviera.platform.customer.vocabulary.CustomerAccountId;
+import ai.riviera.platform.operator.api.OperatorAccounts;
+import ai.riviera.platform.operator.vocabulary.OperatorCredential;
+import ai.riviera.platform.operator.vocabulary.OperatorStatus;
 
 import ch.qos.logback.classic.Level;
 import ch.qos.logback.classic.Logger;
@@ -38,6 +41,7 @@ import jakarta.servlet.ServletContext;
 import static ai.riviera.platform.WebSliceStubs.fromIp;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.when;
@@ -107,11 +111,18 @@ class RateLimitFilterTest {
 	 * Overrides the {@link WebSliceStubs} bean for the same reason: its default resolves every email to
 	 * {@link Optional#empty()}, which sends {@code MyAccountController#setPassword} down the SSO-onboarding
 	 * "no password yet" branch — so the customer tests would assert throttling on a path that never reaches
-	 * the credential check, while their operator twins do. Stubbed per-email rather than for {@code any()}
-	 * so the customer <em>login</em> tests below keep their empty-store {@code 401}.
+	 * the credential check, while their operator twins do. Stubbed for the {@link #TOURIST_DOMAIN} addresses
+	 * rather than for {@code any()}, so the customer <em>login</em> tests below keep their empty-store {@code 401}.
 	 */
 	@MockitoBean
 	CustomerAccounts customerAccounts;
+
+	/**
+	 * Overrides the {@link WebSliceStubs} empty store so one operator, {@link #ROTATING_OPERATOR}, can complete a
+	 * password change ({@code 204}); every other name still resolves to nothing.
+	 */
+	@MockitoBean
+	OperatorAccounts operatorAccounts;
 
 	@Autowired
 	PasswordEncoder passwordEncoder;
@@ -119,9 +130,15 @@ class RateLimitFilterTest {
 	@BeforeEach
 	void resolveTheSignedInCustomer() {
 		when(customerAccountDirectory.requireSignedInAccount(any(), eq(true))).thenReturn(new CustomerAccountId(1));
-		when(customerAccounts.findByEmail(any())).thenReturn(Optional.empty());
-		when(customerAccounts.findByEmail(TEST_CUSTOMER)).thenReturn(Optional.of(
-				new CustomerAccountCredential(TEST_CUSTOMER, passwordEncoder.encode("not-the-submitted-one"))));
+		String touristHash = passwordEncoder.encode("not-the-submitted-one");
+		when(customerAccounts.findByEmail(any())).thenAnswer(invocation -> {
+			String email = invocation.getArgument(0);
+			return email.endsWith(TOURIST_DOMAIN)
+					? Optional.of(new CustomerAccountCredential(email, touristHash))
+					: Optional.empty();
+		});
+		when(operatorAccounts.findByUsername(ROTATING_OPERATOR)).thenReturn(Optional.of(new OperatorCredential(
+				ROTATING_OPERATOR, passwordEncoder.encode(ROTATING_PASSWORD), OperatorStatus.ACTIVE, false)));
 	}
 
 	private ResultActions viewFromIp(String ip, String code) throws Exception {
@@ -550,20 +567,37 @@ class RateLimitFilterTest {
 
 	/** Deliberately not {@code operator}: the env-managed bootstrap admin is refused with a 409. */
 	private static final String TEST_OPERATOR = "venue-op";
-	private static final String TEST_CUSTOMER = "tourist@example.com";
+	/** The customer addresses {@link #customerAccounts} resolves to an account with a password. */
+	private static final String TOURIST_DOMAIN = "@tourist.example";
 
-	/** The signed-in operator's own change — the only caller that reaches the credential oracle. */
+	private static String uniqueTourist() {
+		return "tourist-" + IDENTITY_SEQ.incrementAndGet() + TOURIST_DOMAIN;
+	}
+
+	/**
+	 * The signed-in operator's own change — the only caller that reaches the credential oracle. A fresh principal
+	 * per call, so the per-IP tests never spend a shared account's per-principal budget.
+	 */
 	private ResultActions authenticatedChangePasswordFromIp(String ip) throws Exception {
+		return operatorPasswordChange(ip, uniqueUsername());
+	}
+
+	private ResultActions authenticatedCustomerPasswordChangeFromIp(String ip) throws Exception {
+		return customerPasswordChange(ip, uniqueTourist());
+	}
+
+	/** A failing change ({@code 400}: the new password is under the policy's floor) by {@code username}. */
+	private ResultActions operatorPasswordChange(String ip, String username) throws Exception {
 		return mvc.perform(post("/api/auth/operator/password").with(fromIp(ip)).with(csrf())
-				.with(user(TEST_OPERATOR).roles("OPERATOR"))
+				.with(user(username).roles("OPERATOR"))
 				.contentType(MediaType.APPLICATION_JSON)
 				.content("""
 						{"currentPassword": "irrelevant1", "newPassword": "irrelevant2"}"""));
 	}
 
-	private ResultActions authenticatedCustomerPasswordChangeFromIp(String ip) throws Exception {
+	private ResultActions customerPasswordChange(String ip, String email) throws Exception {
 		return mvc.perform(post("/api/me/password").with(fromIp(ip)).with(csrf())
-				.with(user(TEST_CUSTOMER).roles("CUSTOMER"))
+				.with(user(email).roles("CUSTOMER"))
 				.contentType(MediaType.APPLICATION_JSON)
 				.content("""
 						{"currentPassword": "irrelevant1", "newPassword": "irrelevant2"}"""));
@@ -606,8 +640,12 @@ class RateLimitFilterTest {
 	}
 
 	private ResultActions authenticatedResendFromIp(String ip) throws Exception {
+		return resend(ip, uniqueTourist());
+	}
+
+	private ResultActions resend(String ip, String email) throws Exception {
 		return mvc.perform(post("/api/me/verify-email/request").with(fromIp(ip)).with(csrf())
-				.with(user(TEST_CUSTOMER).roles("CUSTOMER")));
+				.with(user(email).roles("CUSTOMER")));
 	}
 
 	/**
@@ -650,6 +688,173 @@ class RateLimitFilterTest {
 		forgotPasswordFromIp(ip)
 				.andExpect(status().isTooManyRequests())
 				.andExpect(jsonPath("$.code").value("RATE_LIMITED"));
+	}
+
+	// ---- Per-principal budget on the authenticated credential endpoints (#364) ----
+
+	private static final String ROTATING_OPERATOR = "rotating-op";
+	private static final String ROTATING_PASSWORD = "current-passphrase-1";
+	private static final String SHORT_CHANGE_BODY = """
+			{"currentPassword": "irrelevant1", "newPassword": "irrelevant2"}""";
+
+	/** {@link #ROTATING_OPERATOR}'s change with its real current password: answered {@code 204}. */
+	private ResultActions successfulOperatorPasswordChange(String ip) throws Exception {
+		return mvc.perform(post("/api/auth/operator/password").with(fromIp(ip)).with(csrf())
+				.with(user(ROTATING_OPERATOR).roles("OPERATOR"))
+				.contentType(MediaType.APPLICATION_JSON)
+				.content("""
+						{"currentPassword": "%s", "newPassword": "a-fresh-passphrase-2"}""".formatted(ROTATING_PASSWORD)));
+	}
+
+	/** A stolen session guessing from a botnet: a fresh IP per request, so only the account's budget can trip. */
+	@Test
+	void oneOperatorIsThrottledAcrossManyIpsWhileAnotherIsUnaffected() throws Exception {
+		operatorPasswordChange("10.40.0.1", "botnet-target").andExpect(status().isBadRequest());
+		operatorPasswordChange("10.40.0.2", "botnet-target").andExpect(status().isBadRequest());
+		operatorPasswordChange("10.40.0.3", "botnet-target").andExpect(status().isTooManyRequests());
+
+		operatorPasswordChange("10.40.0.4", "bystander-op").andExpect(status().isBadRequest());
+	}
+
+	@Test
+	void oneCustomerIsThrottledAcrossManyIpsWhileAnotherIsUnaffected() throws Exception {
+		String target = "botnet-target" + TOURIST_DOMAIN;
+		customerPasswordChange("10.40.1.1", target).andExpect(status().isBadRequest());
+		customerPasswordChange("10.40.1.2", target).andExpect(status().isBadRequest());
+		customerPasswordChange("10.40.1.3", target).andExpect(status().isTooManyRequests());
+
+		customerPasswordChange("10.40.1.4", "bystander" + TOURIST_DOMAIN).andExpect(status().isBadRequest());
+	}
+
+	/** Two completed rotations leave the whole budget: the next two failures pass, the third is refused. */
+	@Test
+	void aSuccessfulPasswordChangeCostsNothing() throws Exception {
+		successfulOperatorPasswordChange("10.41.0.1").andExpect(status().isNoContent());
+		successfulOperatorPasswordChange("10.41.0.2").andExpect(status().isNoContent());
+
+		operatorPasswordChange("10.41.0.3", ROTATING_OPERATOR).andExpect(status().isBadRequest());
+		operatorPasswordChange("10.41.0.4", ROTATING_OPERATOR).andExpect(status().isBadRequest());
+		operatorPasswordChange("10.41.0.5", ROTATING_OPERATOR).andExpect(status().isTooManyRequests());
+	}
+
+	/**
+	 * CSRF-less, wrong-role and anonymous requests are denied before the filter runs, so ten of each leave the
+	 * named accounts their whole budget. A wrong-role request carries the very name a role-blind key would charge.
+	 */
+	@Test
+	void requestsDeniedBeforeTheControllerSpendNoPrincipalToken() throws Exception {
+		String operator = "flooded-op";
+		String customer = "flooded" + TOURIST_DOMAIN;
+		for (int i = 1; i <= 10; i++) {
+			String ip = "10.42.0." + i;
+			mvc.perform(post("/api/auth/operator/password").with(fromIp(ip)).with(user(operator).roles("OPERATOR"))
+					.contentType(MediaType.APPLICATION_JSON).content(SHORT_CHANGE_BODY))
+					.andExpect(status().isForbidden());
+			mvc.perform(post("/api/me/password").with(fromIp(ip)).with(user(customer).roles("CUSTOMER"))
+					.contentType(MediaType.APPLICATION_JSON).content(SHORT_CHANGE_BODY))
+					.andExpect(status().isForbidden());
+			mvc.perform(post("/api/auth/operator/password").with(fromIp(ip)).with(csrf())
+					.with(user(operator).roles("CUSTOMER"))
+					.contentType(MediaType.APPLICATION_JSON).content(SHORT_CHANGE_BODY))
+					.andExpect(status().isForbidden());
+			mvc.perform(post("/api/me/password").with(fromIp(ip)).with(csrf()).with(user(customer).roles("OPERATOR"))
+					.contentType(MediaType.APPLICATION_JSON).content(SHORT_CHANGE_BODY))
+					.andExpect(status().isForbidden());
+			mvc.perform(post("/api/me/verify-email/request").with(fromIp(ip)).with(csrf())
+					.with(user(customer).roles("OPERATOR")))
+					.andExpect(status().isForbidden());
+			changePasswordFromIp(ip).andExpect(status().isUnauthorized());
+			customerPasswordChangeFromIp(ip).andExpect(status().isUnauthorized());
+		}
+
+		operatorPasswordChange("10.42.1.1", operator).andExpect(status().isBadRequest());
+		operatorPasswordChange("10.42.1.2", operator).andExpect(status().isBadRequest());
+		operatorPasswordChange("10.42.1.3", operator).andExpect(status().isTooManyRequests());
+		customerPasswordChange("10.42.2.1", customer).andExpect(status().isBadRequest());
+		customerPasswordChange("10.42.2.2", customer).andExpect(status().isBadRequest());
+		customerPasswordChange("10.42.2.3", customer).andExpect(status().isTooManyRequests());
+		resend("10.42.3.1", customer).andExpect(status().isOk());
+		resend("10.42.3.2", customer).andExpect(status().isOk());
+		resend("10.42.3.3", customer).andExpect(status().isTooManyRequests());
+	}
+
+	/** One budget per account: NIST SP 800-63B-4 §3.2.2 counts failures per authenticator, not per endpoint. */
+	@Test
+	void anOperatorsFailedLoginsAndPasswordChangesDrainOneBucket() throws Exception {
+		operatorLogin("10.43.0.1", "shared-op").andExpect(status().isUnauthorized());
+		operatorLogin("10.43.0.2", "shared-op").andExpect(status().isUnauthorized());
+		operatorPasswordChange("10.43.0.3", "shared-op").andExpect(status().isTooManyRequests());
+	}
+
+	@Test
+	void failedPasswordChangesAlsoSpendTheLoginBudget() throws Exception {
+		operatorPasswordChange("10.43.1.1", "reverse-op").andExpect(status().isBadRequest());
+		operatorPasswordChange("10.43.1.2", "reverse-op").andExpect(status().isBadRequest());
+		operatorLogin("10.43.1.3", "reverse-op").andExpect(status().isTooManyRequests());
+	}
+
+	/** {@code operator.username} is {@code TEXT UNIQUE} compared with {@code =}, so case variants are two accounts. */
+	@Test
+	void operatorUsernamesKeyCaseSensitivelyAsTheyCompare() throws Exception {
+		operatorLogin("10.43.2.1", "Cased-Op").andExpect(status().isUnauthorized());
+		operatorLogin("10.43.2.2", "Cased-Op").andExpect(status().isUnauthorized());
+
+		operatorPasswordChange("10.43.2.3", "cased-op").andExpect(status().isBadRequest());
+		operatorPasswordChange("10.43.2.4", "Cased-Op").andExpect(status().isTooManyRequests());
+	}
+
+	/** The principal carries the stored, canonical email; the login keys on the submitted one, normalised. */
+	@Test
+	void aCustomersFailedLoginsAndPasswordChangesDrainOneNormalisedBucket() throws Exception {
+		customerLogin("10.43.3.1", " Shared-Shopper@Tourist.Example ").andExpect(status().isUnauthorized());
+		customerLogin("10.43.3.2", "SHARED-SHOPPER@TOURIST.EXAMPLE").andExpect(status().isUnauthorized());
+		customerPasswordChange("10.43.3.3", "shared-shopper" + TOURIST_DOMAIN).andExpect(status().isTooManyRequests());
+	}
+
+	/** Mail volume, not guessing: every resend spends, on a map of its own, so the password budget is untouched. */
+	@Test
+	void everyVerificationResendSpendsTheCustomersOwnBudget() throws Exception {
+		String customer = "resender" + TOURIST_DOMAIN;
+		resend("10.44.0.1", customer).andExpect(status().isOk());
+		resend("10.44.0.2", customer).andExpect(status().isOk());
+		resend("10.44.0.3", customer)
+				.andExpect(status().isTooManyRequests())
+				.andExpect(jsonPath("$.code").value("RATE_LIMITED"));
+
+		customerPasswordChange("10.44.0.4", customer).andExpect(status().isBadRequest());
+	}
+
+	/** The edge package's logger, so the assertion holds whichever web filter writes the line. */
+	@Test
+	void aPrincipalRejectionKeepsTheRateLimitContractAndNeverLogsTheName() throws Exception {
+		Logger edgeLogger = (Logger) LoggerFactory.getLogger(RateLimitFilter.class.getPackageName());
+		Level original = edgeLogger.getLevel();
+		ListAppender<ILoggingEvent> appender = new ListAppender<>();
+		appender.start();
+		edgeLogger.setLevel(Level.DEBUG);
+		edgeLogger.addAppender(appender);
+		try {
+			String name = "SecretOperator77";
+			operatorPasswordChange("10.45.0.1", name).andExpect(status().isBadRequest());
+			operatorPasswordChange("10.45.0.2", name).andExpect(status().isBadRequest());
+			operatorPasswordChange("10.45.0.3", name)
+					.andExpect(status().isTooManyRequests())
+					.andExpect(header().exists("Retry-After"))
+					.andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_PROBLEM_JSON))
+					.andExpect(jsonPath("$.code").value("RATE_LIMITED"))
+					.andExpect(jsonPath("$.status").value(429))
+					.andExpect(jsonPath("$.detail").value("Too many requests."))
+					.andExpect(jsonPath("$.instance").doesNotExist());
+
+			assertTrue(appender.list.stream().map(ILoggingEvent::getFormattedMessage)
+					.anyMatch(message -> message.contains("principal")), "the rejection logs its dimension");
+			assertFalse(appender.list.stream().map(ILoggingEvent::getFormattedMessage)
+					.anyMatch(message -> message.contains(name)), "the principal's name must never be logged (D-8)");
+		}
+		finally {
+			edgeLogger.detachAppender(appender);
+			edgeLogger.setLevel(original);
+		}
 	}
 
 	// ---- Per-submitted-identity login budget, keyed on username/email not IP ----

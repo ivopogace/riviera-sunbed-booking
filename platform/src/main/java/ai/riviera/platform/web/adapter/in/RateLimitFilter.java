@@ -1,21 +1,14 @@
 package ai.riviera.platform.web.adapter.in;
 
-import ai.riviera.platform.customer.vocabulary.Emails;
 import java.io.IOException;
 import java.nio.charset.Charset;
 import java.nio.charset.IllegalCharsetNameException;
 import java.nio.charset.StandardCharsets;
 import java.nio.charset.UnsupportedCharsetException;
-import java.security.MessageDigest;
-import java.security.NoSuchAlgorithmException;
-import java.security.SecureRandom;
 import java.time.Clock;
 import java.time.Instant;
-import java.util.HexFormat;
-import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
-import java.util.concurrent.ConcurrentHashMap;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -50,14 +43,6 @@ final class RateLimitFilter extends OncePerRequestFilter {
 
 	private static final Logger log = LoggerFactory.getLogger(RateLimitFilter.class);
 
-	/**
-	 * Hand-built RFC-7807 body: this filter rejects before MVC, so {@code ApiErrorHandler} never maps it.
-	 * No {@code instance}, as everywhere (invariant #7); the wait is in {@code Retry-After}.
-	 */
-	private static final String RATE_LIMITED_BODY = """
-			{"type":"about:blank","title":"Too Many Requests","status":429,\
-			"detail":"Too many requests.","code":"RATE_LIMITED"}""";
-
 	// Mirrors the SecurityConfig matchers for the public booking and stay endpoints.
 	private static final String CREATE_PATH = "/api/bookings";
 	/** A stitched stay's create: as {@link #CREATE_PATH}, no code to key on, per-IP only. */
@@ -76,20 +61,22 @@ final class RateLimitFilter extends OncePerRequestFilter {
 	// The auth POSTs, each on its own budget below; mirrors SecurityConfig's paths.
 	private static final String LOGIN_PATH = "/api/auth/operator/login";
 	private static final String OPERATOR_REGISTER_PATH = "/api/auth/operator/register";
-	private static final String OPERATOR_PASSWORD_PATH = "/api/auth/operator/password";
+	/** Also {@link PrincipalRateLimitFilter}'s, as are the customer twin and the resend below. */
+	static final String OPERATOR_PASSWORD_PATH = "/api/auth/operator/password";
 	private static final String OPERATOR_RESET_PASSWORD_PATH = "/api/auth/operator/reset-password";
-	private static final String CUSTOMER_PASSWORD_PATH = "/api/me/password";
+	static final String CUSTOMER_PASSWORD_PATH = "/api/me/password";
 	private static final String CUSTOMER_LOGIN_PATH = "/api/auth/customer/login";
 	private static final String CUSTOMER_REGISTER_PATH = "/api/auth/customer/register";
+	static final String VERIFICATION_RESEND_PATH = "/api/me/verify-email/request";
 
 	/**
-	 * The account-recovery POSTs; {@code /api/me/verify-email/request} is CUSTOMER-only, hence a refunding
+	 * The account-recovery POSTs; {@link #VERIFICATION_RESEND_PATH} is CUSTOMER-only, hence a refunding
 	 * budget. Safe for the three public paths: their only refunded pre-controller denial is a CSRF
 	 * {@code 403}, which sends no mail and redeems no token.
 	 */
 	private static final Set<String> RECOVERY_PATHS = Set.of(
 			"/api/auth/customer/forgot-password", "/api/auth/customer/reset-password",
-			"/api/auth/customer/verify-email", "/api/me/verify-email/request");
+			"/api/auth/customer/verify-email", VERIFICATION_RESEND_PATH);
 
 	// Templates (one {provider} segment), so the deeper mock-authorize path never matches.
 	private static final String SSO_PATH_PREFIX = "/api/auth/sso/";
@@ -120,26 +107,20 @@ final class RateLimitFilter extends OncePerRequestFilter {
 	private static final int FAILED_AUTH_STATUS = HttpStatus.UNAUTHORIZED.value();
 
 	/**
-	 * The two login endpoints carrying the per-identity budget, and the JSON field each is keyed on.
-	 * Operator login keys on the raw {@code username} (mirroring what {@code AuthController} passes to
-	 * {@code authenticate()}); customer login on the {@code email} normalised the way the {@code customer}
-	 * module stores it, so case/whitespace variants share one bucket. The {@code scope} prefix keeps the
-	 * two identity spaces from ever colliding in the shared bucket map.
+	 * The two login endpoints carrying the per-identity budget, and the JSON field each is keyed on. Each keys
+	 * the submitted identity the way {@link IdentityBuckets} keys the signed-in principal, so a login's failures
+	 * and a password change's share one account bucket.
 	 */
 	private enum LoginEndpoint {
-		OPERATOR(LOGIN_PATH, "username", false, "op"),
-		CUSTOMER(CUSTOMER_LOGIN_PATH, "email", true, "cust");
+		OPERATOR(LOGIN_PATH, "username"),
+		CUSTOMER(CUSTOMER_LOGIN_PATH, "email");
 
 		private final String path;
 		private final String identityField;
-		private final boolean normalizeEmail;
-		private final String scope;
 
-		LoginEndpoint(String path, String identityField, boolean normalizeEmail, String scope) {
+		LoginEndpoint(String path, String identityField) {
 			this.path = path;
 			this.identityField = identityField;
-			this.normalizeEmail = normalizeEmail;
-			this.scope = scope;
 		}
 	}
 
@@ -149,32 +130,41 @@ final class RateLimitFilter extends OncePerRequestFilter {
 	private final AntPathMatcher paths = new AntPathMatcher();
 
 	// One map per surface, never shared — see the class Javadoc.
-	private final Map<String, TokenBucket> ipBuckets = new ConcurrentHashMap<>();
-	private final Map<String, TokenBucket> codeBuckets = new ConcurrentHashMap<>();
-	private final Map<String, TokenBucket> loginBuckets = new ConcurrentHashMap<>();
-	private final Map<String, TokenBucket> customerAuthBuckets = new ConcurrentHashMap<>();
-	private final Map<String, TokenBucket> operatorRegisterBuckets = new ConcurrentHashMap<>();
-	private final Map<String, TokenBucket> operatorPasswordBuckets = new ConcurrentHashMap<>();
-	private final Map<String, TokenBucket> operatorResetBuckets = new ConcurrentHashMap<>();
-	private final Map<String, TokenBucket> customerPasswordBuckets = new ConcurrentHashMap<>();
-	private final Map<String, TokenBucket> ssoBuckets = new ConcurrentHashMap<>();
-	private final Map<String, TokenBucket> recoveryBuckets = new ConcurrentHashMap<>();
-	private final Map<String, TokenBucket> challengeBuckets = new ConcurrentHashMap<>();
+	private final BucketMap ipBuckets;
+	private final BucketMap codeBuckets;
+	private final BucketMap loginBuckets;
+	private final BucketMap customerAuthBuckets;
+	private final BucketMap operatorRegisterBuckets;
+	private final BucketMap operatorPasswordBuckets;
+	private final BucketMap operatorResetBuckets;
+	private final BucketMap customerPasswordBuckets;
+	private final BucketMap ssoBuckets;
+	private final BucketMap recoveryBuckets;
+	private final BucketMap challengeBuckets;
 
-	/** Both logins share this one, keyed by a scoped hash so their identity spaces never collide. */
-	private final Map<String, TokenBucket> usernameBuckets = new ConcurrentHashMap<>();
+	/** Both logins' per-identity budget, shared with {@link PrincipalRateLimitFilter}'s password changes. */
+	private final IdentityBuckets identities;
 
 	private final ObjectMapper objectMapper;
 
-	/** Regenerated each restart; the buckets are in-memory, so no key stability is needed across them. */
-	private final byte[] identitySalt = new byte[16];
-
-	RateLimitFilter(RateLimitProperties props, Clock clock, ObjectMapper objectMapper) {
+	RateLimitFilter(RateLimitProperties props, Clock clock, ObjectMapper objectMapper, IdentityBuckets identities) {
 		this.props = props;
 		this.clock = clock;
 		this.objectMapper = objectMapper;
+		this.identities = identities;
 		this.clientIps = new ClientIpResolver(props.trustedProxies(), props.clientIpHeader());
-		new SecureRandom().nextBytes(identitySalt);
+		int cap = props.maxTrackedKeys();
+		this.ipBuckets = new BucketMap(cap);
+		this.codeBuckets = new BucketMap(cap);
+		this.loginBuckets = new BucketMap(cap);
+		this.customerAuthBuckets = new BucketMap(cap);
+		this.operatorRegisterBuckets = new BucketMap(cap);
+		this.operatorPasswordBuckets = new BucketMap(cap);
+		this.operatorResetBuckets = new BucketMap(cap);
+		this.customerPasswordBuckets = new BucketMap(cap);
+		this.ssoBuckets = new BucketMap(cap);
+		this.recoveryBuckets = new BucketMap(cap);
+		this.challengeBuckets = new BucketMap(cap);
 	}
 
 	@Override
@@ -200,7 +190,7 @@ final class RateLimitFilter extends OncePerRequestFilter {
 		String ip = clientIps.resolve(request);
 
 		// Per-IP: all eight endpoints.
-		TokenBucket ipBucket = bucketFor(ipBuckets, ip, props.perIp(), now);
+		TokenBucket ipBucket = ipBuckets.bucketFor(ip, props.perIp(), now);
 		if (!ipBucket.tryAcquire(now)) {
 			reject(response, ipBucket.retryAfterSeconds(now), ip, "ip");
 			return;
@@ -208,7 +198,7 @@ final class RateLimitFilter extends OncePerRequestFilter {
 
 		// Per-code: only the six code-keyed endpoints carry a code.
 		if (target.code() != null) {
-			TokenBucket codeBucket = bucketFor(codeBuckets, target.code(), props.perCode(), now);
+			TokenBucket codeBucket = codeBuckets.bucketFor(target.code(), props.perCode(), now);
 			if (!codeBucket.tryAcquire(now)) {
 				reject(response, codeBucket.retryAfterSeconds(now), ip, "code");
 				return;
@@ -230,16 +220,16 @@ final class RateLimitFilter extends OncePerRequestFilter {
 	 * be charged. Accepted cost: a CSRF-token-less flood is refunded too, as {@code CsrfFilter} rejects it
 	 * before any DB read, bcrypt or mail.
 	 */
-	private record AuthBudget(Map<String, TokenBucket> buckets, RateLimitProperties.Limit limit,
+	private record AuthBudget(BucketMap buckets, RateLimitProperties.Limit limit,
 			boolean refundedWhenAccessDenied) {
 
 		/** An anonymous surface: every request spends, because request volume IS what is being limited. */
-		static AuthBudget spendsEveryRequest(Map<String, TokenBucket> buckets, RateLimitProperties.Limit limit) {
+		static AuthBudget spendsEveryRequest(BucketMap buckets, RateLimitProperties.Limit limit) {
 			return new AuthBudget(buckets, limit, false);
 		}
 
 		/** A budget guarding authenticated work: a request denied before reaching it must cost nothing. */
-		static AuthBudget guardsAuthenticatedWork(Map<String, TokenBucket> buckets, RateLimitProperties.Limit limit) {
+		static AuthBudget guardsAuthenticatedWork(BucketMap buckets, RateLimitProperties.Limit limit) {
 			return new AuthBudget(buckets, limit, true);
 		}
 	}
@@ -253,7 +243,7 @@ final class RateLimitFilter extends OncePerRequestFilter {
 			HttpServletResponse response, FilterChain chain) throws ServletException, IOException {
 		Instant now = clock.instant();
 		String ip = clientIps.resolve(request);
-		TokenBucket ipBucket = bucketFor(budget.buckets(), ip, budget.limit(), now);
+		TokenBucket ipBucket = budget.buckets().bucketFor(ip, budget.limit(), now);
 		if (!ipBucket.tryAcquire(now)) {
 			reject(response, ipBucket.retryAfterSeconds(now), ip, "login");
 			return;
@@ -370,27 +360,6 @@ final class RateLimitFilter extends OncePerRequestFilter {
 	}
 
 	/**
-	 * Fetch or create the bucket for {@code key}, hard-bounded by {@code maxTrackedKeys}: past the cap a
-	 * new key first prunes full (idle) buckets, losslessly, and only if that frees nothing resets the map.
-	 */
-	private TokenBucket bucketFor(Map<String, TokenBucket> buckets, String key,
-			RateLimitProperties.Limit limit, Instant now) {
-		TokenBucket existing = buckets.get(key);
-		if (existing != null) {
-			return existing;
-		}
-		if (buckets.size() >= props.maxTrackedKeys()) {
-			buckets.values().removeIf(bucket -> bucket.isFull(now)); // lossless: full == fresh
-			if (buckets.size() >= props.maxTrackedKeys()) {
-				log.debug("Rate-limit key map hit the {} cap under heavy churn — resetting", props.maxTrackedKeys());
-				buckets.clear(); // backstop: bounds memory; only reachable under a flood the per-IP limit gates
-			}
-		}
-		return buckets.computeIfAbsent(key,
-				ignored -> new TokenBucket(limit.capacity(), limit.refillPeriod(), now));
-	}
-
-	/**
 	 * The per-identity login budget: only a failed authentication ({@code 401}) net-spends a token, so a
 	 * successful login never does. A body past the cap is refused unspent; an absent identity passes unbudgeted.
 	 */
@@ -410,7 +379,7 @@ final class RateLimitFilter extends OncePerRequestFilter {
 			return;
 		}
 		// Spend-then-refund so the cap is exact under concurrency; only a 401 net-consumes a token.
-		TokenBucket bucket = bucketFor(usernameBuckets, identityKey, props.username(), now);
+		TokenBucket bucket = identities.bucketFor(identityKey, now);
 		if (!bucket.tryAcquire(now)) {
 			reject(response, bucket.retryAfterSeconds(now), ip, "username");
 			return;
@@ -440,18 +409,13 @@ final class RateLimitFilter extends OncePerRequestFilter {
 		return null;
 	}
 
-	/**
-	 * The scoped, salted SHA-256 bucket key for the identity in {@code body}, or {@code null} if absent or
-	 * unparseable. The customer email goes through {@link Emails#normalize}; the operator username is raw.
-	 * Hashing keeps any valid username out of the tracking map and the logs.
-	 */
+	/** {@link IdentityBuckets}' key for the identity in {@code body}, or {@code null} if absent or unparseable. */
 	private String identityKeyOf(LoginEndpoint login, byte[] body, HttpServletRequest request) {
 		String raw = readJsonField(body, request, login.identityField);
 		if (raw == null || raw.isBlank()) {
 			return null;
 		}
-		String identity = login.normalizeEmail ? Emails.normalize(raw) : raw;
-		return login.scope + ':' + saltedSha256Hex(identity);
+		return login == LoginEndpoint.CUSTOMER ? identities.customerKey(raw) : identities.operatorKey(raw);
 	}
 
 	/**
@@ -510,25 +474,9 @@ final class RateLimitFilter extends OncePerRequestFilter {
 		return body.length > MAX_CACHED_BODY_BYTES ? Optional.empty() : Optional.of(body);
 	}
 
-	/**
-	 * SHA-256 hex of {@code value} under the per-process random {@link #identitySalt}, so tracking-map keys
-	 * cannot be dictionary-confirmed against a username list (non-enumeration, D-8).
-	 */
-	private String saltedSha256Hex(String value) {
-		try {
-			MessageDigest digest = MessageDigest.getInstance("SHA-256");
-			digest.update(identitySalt);
-			return HexFormat.of().formatHex(digest.digest(value.getBytes(StandardCharsets.UTF_8)));
-		}
-		catch (NoSuchAlgorithmException impossible) {
-			throw new IllegalStateException("SHA-256 is a required JDK algorithm", impossible);
-		}
-	}
-
 	private void reject(HttpServletResponse response, long retryAfterSeconds, String ip, String dimension)
 			throws IOException {
-		response.setHeader(HttpHeaders.RETRY_AFTER, Long.toString(retryAfterSeconds));
-		writeProblem(response, HttpStatus.TOO_MANY_REQUESTS.value(), RATE_LIMITED_BODY);
+		SecurityProblemResponses.writeRateLimited(response, retryAfterSeconds);
 		// IP is newline-sanitised by ClientIpResolver; the booking code is NEVER logged (invariant #7).
 		log.debug("Rate-limited request from {} on the {} dimension", ip, dimension);
 	}
@@ -538,11 +486,5 @@ final class RateLimitFilter extends OncePerRequestFilter {
 		response.setHeader(HttpHeaders.CONNECTION, "close");
 		SecurityProblemResponses.writeBodyTooLarge(response);
 		log.debug("Login body over the {}-byte cap refused, from {}", MAX_CACHED_BODY_BYTES, ip);
-	}
-
-	private static void writeProblem(HttpServletResponse response, int status, String body) throws IOException {
-		response.setStatus(status);
-		response.setContentType(MediaType.APPLICATION_PROBLEM_JSON_VALUE);
-		response.getWriter().write(body);
 	}
 }

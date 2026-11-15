@@ -157,6 +157,15 @@ credentials" (no account enumeration — registration responses likewise avoid
 confirming whether an email exists). Password storage uses the existing delegating
 encoder (`{bcrypt}`).
 
+**One throttle budget per account** (#364): on top of the per-IP budgets, an account's failures
+share one bucket (`riviera.ratelimit.username`) whether they arrive as logins (keyed on the
+submitted username or normalised email) or as self-service password changes (keyed on the
+session's principal, by a second filter after authorization). So a stolen session dialling from
+many addresses gets the account's budget, not one per address. Bucket keys are salted SHA-256,
+and a rejection logs the `principal` dimension, never the name. The verification resend charges
+every request on its own map. Sources: NIST SP 800-63B-4 §3.2.2, the OWASP Authentication Cheat
+Sheet, ASVS 5.0 6.1.1/6.3.1/2.4.1.
+
 **Password policy** — shipped with #904. Chosen ahead of the first live deploy, so no existing
 credential needs a migration path; the rule applies where a password is chosen, never at sign-in:
 

@@ -1257,7 +1257,8 @@ measured; the meaning of a crossed threshold and the response → `docs/runbooks
 **Sign-in and sessions** (ADR-0028 Decision 2): a closed non-context module, an adapter layer rather
 than a mechanism, owning no table. Depends on `customer` and `operator` (`api` + `vocabulary`),
 `notification` (`api` + `vocabulary`) and `shared`; publishes `api.SessionRevocation`, `api.SessionCredentials` (the
-per-request check the chain's filter calls) and `vocabulary` (`AuthRoles`, `BlockedPasswordException`).
+per-request check the chain's filter calls), `api.ScrapeCredentials` (the scraper's token check) and `vocabulary`
+(`AuthRoles`, `BlockedPasswordException`).
 
 **Job:** turn a credential into a server-side session and keep it honest: both `UserDetailsService`s
 and their `AuthenticationManager`s, session establishment and rotation, the credential stamp, session
@@ -1293,6 +1294,10 @@ opaque hash through their `api`; no Spring Security, Spring Session or mail type
   is the only session writer (`SessionWriterArchitectureTests`). A customer's self-service change writes only
   over the hash it verified, so a reset landing first wins; either self-service change re-stamps the session it
   keeps. Residual: a request already past the filter completes. Cost: one indexed read per authenticated request.
+- **The metrics scraper's bearer token is the one credential that opens no session (ADR-0032).**
+  `ScrapeCredentials` hashes the presented token (SHA-256) and compares it in constant time with
+  `riviera.observability.scrape-token-sha256` and its `-next` rotation slot, granting `ROLE_METRICS` alone; neither
+  set refuses every token. Revocation is removing the hash and redeploying: no session or row exists.
 - **The bootstrap credential is stamped by `auth`'s runner, and only that one.**
   `OperatorCredentialInitializer` (full context only; a `@WebMvcTest` slice does not scan it)
   touches only the bootstrap admin; every other operator self-registers (`OperatorRegistration`,
@@ -1313,12 +1318,15 @@ module test is better without the chain than with every collaborator mocked. Eve
 arrive by framework type.
 
 **Job:** the fence every request crosses before a controller (§ *Platform edge*):
-- `SecurityConfig`: both chains, the route policy (role gates), CSRF, the session cookie and the
-  `SecurityContextRepository`. Credentials and the authentication managers are `auth`'s.
-- The chain's filters, in order: `RateLimitFilter` (+ `RateLimitProperties`, `TokenBucket`,
+- `SecurityConfig`: the chains (actuator, API, SPA shell, matched in that order), the route policy (role gates),
+  CSRF, the session cookie and the `SecurityContextRepository`. Credentials and the authentication managers are
+  `auth`'s.
+- The chain's filters, in order: `RateLimitFilter` (+ `RateLimitProperties`, `TokenBucket`, `BucketMap`,
   `ClientIpResolver`), `RequestBodyCapFilter`, `ChallengeVerificationFilter` (calls `challenge::api`),
-  `SessionCredentialFilter` (calls `auth::api`), `AdminAuditFilter` + `AdminAuditReasons` (calls
-  `audit::api`); `CachedBodyRequest` replays a body an edge filter read within its cap.
+  `SessionCredentialFilter` (calls `auth::api`), then after `AuthorizationFilter` `AdminAuditFilter` +
+  `AdminAuditReasons` (calls `audit::api`) and `PrincipalRateLimitFilter`, which shares `IdentityBuckets` with
+  `RateLimitFilter`; `CachedBodyRequest` replays a body an edge filter read within its cap. The actuator chain runs
+  `RateLimitFilter` and `ScrapeTokenFilter` (calls `auth::api`) alone.
 - The chain's problem bodies (`SecurityProblemResponses`), `RequestPaths`, CORS (`WebCorsConfig`).
 - **The crawl policy** (`CrawlerController`, #1761): anonymous `GET /robots.txt` disallows every signed-in and
   booking SPA route in every served locale and `/api`, and names the sitemap; `GET /sitemap.xml` lists `/`,
@@ -1374,10 +1382,11 @@ revocation orchestrated by `auth` and synchronous, bracketing the state change; 
 session's credential stamp.
 
 **The anonymous actuator surface is `health` (status only) and `GET /actuator/info`, the build's commit id
-alone (#1632)**: the route policy admits nothing more anonymously; `prometheus`, the one other exposed
-endpoint, and health's details are ADMIN-only, since a plain operator may be a PENDING self-registrant
-(#1652); every other `/actuator/**` path is `denyAll()`, so a newly exposed endpoint fails closed
-(`ActuatorHardeningIT`; posture: `docs/deploy/production-hardening.md`).
+alone (#1632)**: `prometheus`, the one other exposed endpoint, and health's details take the metrics
+scraper's bearer token (`ROLE_METRICS`, ADR-0032), never a session: the actuator chain is stateless, so every
+session is anonymous there, and the token means nothing under `/api/**`. Every other `/actuator/**` path is
+`denyAll()`, so a newly exposed endpoint fails closed (`ActuatorHardeningIT`; posture:
+`docs/deploy/production-hardening.md`).
 
 **Where the edge's types may appear (RV-BE-11):** no Spring Security, Spring Session or mail (Spring
 Mail, Jakarta Mail, Angus Mail) type in `availability`, `booking`, `payment`, `payout`, `review`,
@@ -1415,6 +1424,13 @@ mutating `/api/admin/**` action, §`audit`) live in `web`; `challenge` and `audi
   before the controller; it decodes the identity in the charset the controller binds with, so
   neither size, framing nor encoding lets a login skip the per-identity budget (#1288). Forgot-password stays
   non-enumerating (D-8): a refusal precedes the account lookup, identical for every address.
+- **One throttle budget per account, across login and password change (#364):** the per-IP budgets are volume
+  control; the account's (`riviera.ratelimit.username`, `IdentityBuckets`) is keyed on the submitted identity at login
+  and on the session's principal at `POST /api/auth/operator/password` and `/api/me/password`, by
+  `PrincipalRateLimitFilter` after `AuthorizationFilter`, so a CSRF-less, anonymous or wrong-role request never spends
+  it. A change spends first and is refunded on a 2xx; `/api/me/verify-email/request` charges every resend on a map of
+  its own (mail volume). Accepted cost: a session thief can lock the owner's sign-in for one refill period, as a
+  username-holder already can through the login (NIST SP 800-63B-4 §3.2.2; OWASP Authentication Cheat Sheet).
 - **Forgot-password is constant-time by doing the same work on both branches (#1336):** the request
   thread makes the one account read and answers `204`; a known address only enqueues the send, whose
   task mints and stores the reset token (under a transaction timeout, as one drainer serves every
