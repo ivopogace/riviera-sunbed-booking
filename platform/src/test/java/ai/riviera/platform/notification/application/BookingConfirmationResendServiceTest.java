@@ -52,7 +52,7 @@ class BookingConfirmationResendServiceTest {
 			LocalDate.of(2026, 8, 1), 4500L, "EUR", CODE, new CustomerId(9L), true,
 			CancellationWindow.CLOSED, 0);
 	private static final BookingMailFacts.Resolved RESOLVED =
-			new BookingMailFacts.Resolved(EMAIL, CODE, "Vala Beach", "A", 3, SiteLocale.EN);
+			new BookingMailFacts.Resolved(EMAIL, CODE, "Vala Beach", "A", 3, SiteLocale.EN, null);
 
 	private final BookingNotificationFacts bookings = mock(BookingNotificationFacts.class);
 	private final BookingMailFactsService mailFacts = mock(BookingMailFactsService.class);
@@ -86,7 +86,7 @@ class BookingConfirmationResendServiceTest {
 
 		verify(mails).sendBookingConfirmation(EMAIL, SiteLocale.EN, new BookingConfirmationMail(
 				CODE, "Vala Beach", LocalDate.of(2026, 8, 1), "A", 3, 4500L, "EUR",
-				CancellationWindow.CLOSED, 0));
+				CancellationWindow.CLOSED, 0, null));
 	}
 
 	@Test
@@ -170,7 +170,7 @@ class BookingConfirmationResendServiceTest {
 							LocalDate.of(2026, 8, 4))),
 			18000L, "EUR", true, CancellationWindow.LATE, 2500, SiteLocale.EN);
 	private static final StayConfirmationMail STAY_MAIL = new StayConfirmationMail("STAYCODE", "Vala Beach",
-			LocalDate.of(2026, 8, 1), LocalDate.of(2026, 8, 4), List.of(), 18000L, "EUR", CancellationWindow.LATE, 2500);
+			LocalDate.of(2026, 8, 1), LocalDate.of(2026, 8, 4), List.of(), 18000L, "EUR", CancellationWindow.LATE, 2500, null);
 
 	@Test
 	void aStretchResendsItsStaysMailWithTheReDerivedTermsAndLogsEveryStretch() {

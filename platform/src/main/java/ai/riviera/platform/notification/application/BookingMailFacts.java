@@ -13,8 +13,8 @@ import ai.riviera.platform.shared.SiteLocale;
 public sealed interface BookingMailFacts {
 
 	/**
-	 * Everything a booking mail renders about the booking, its spot and its recipient, gathered from
-	 * three modules' published ports.
+	 * Everything a booking mail renders about the booking, its spot, its venue's phone (E.164, null if none)
+	 * and its recipient, gathered from three modules' published ports.
 	 *
 	 * <p>{@code bookingCode} is the tourist's arrival credential (invariant #7) — mailed, never
 	 * logged. Not every consumer uses every field (the cancellation mail renders no spot): the
@@ -22,7 +22,7 @@ public sealed interface BookingMailFacts {
 	 * would cost a second port call. {@code locale} is the language the guest booked in.
 	 */
 	record Resolved(String toEmail, String bookingCode, String venueName, String rowLabel,
-			int positionNo, SiteLocale locale) implements BookingMailFacts {
+			int positionNo, SiteLocale locale, String venuePhone) implements BookingMailFacts {
 	}
 
 	/** The first fact that did not resolve — the reads short-circuit, so exactly one is named. */

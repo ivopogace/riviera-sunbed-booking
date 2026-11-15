@@ -260,6 +260,11 @@ export interface BookingDetail {
    * so no cancel is offered and the page reads "Refunded" rather than held or missed. Absent on an older payload.
    */
   readonly nothingLeft?: boolean;
+  /**
+   * The venue's own phone in E.164 for the "Need help?" block, or null (absent on an older payload) when
+   * the venue gave none. Only this code-gated read carries it, never a public venue read.
+   */
+  readonly venuePhone?: string | null;
 }
 
 /**

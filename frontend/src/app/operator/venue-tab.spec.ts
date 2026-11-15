@@ -23,6 +23,7 @@ interface SentBody {
   salesClose: string;
   location: VenueLocation | null;
   maxStayDays: number | null;
+  phone: string | null;
   expectedVersion: number;
   commissionBps?: number;
   payoutCurrency?: string;
@@ -169,6 +170,7 @@ describe('VenueTab (#177)', () => {
       distanceToWaterM: 20,
       location: null, // an unpinned venue re-sends none; a full replace has no "absent means keep"
       maxStayDays: null,
+      phone: null,
       expectedVersion: 7, // the loaded optimistic-concurrency token
     });
     // Read-only fields must not be on the wire.
@@ -248,6 +250,45 @@ describe('VenueTab (#177)', () => {
     await save();
     http.expectNone((r) => r.method === 'PATCH');
     expect(byId('venue-max-stay-error')).toBeTruthy();
+  });
+
+  it('sends the venue phone as typed with the full-replace PATCH', async () => {
+    render();
+
+    setValue('venue-phone', '  +355 69 123 4567 ');
+    await save();
+
+    const req = http.expectOne((r) => r.method === 'PATCH' && r.url.endsWith('/api/venues/1'));
+    expect(body(req).phone).toBe('+355 69 123 4567');
+    req.flush(null);
+  });
+
+  it('seeds the venue phone from the profile and clears it with null', async () => {
+    render({ ...PROFILE, phone: '+355691234567' });
+    expect((byId('venue-phone') as HTMLInputElement).value).toBe('+355691234567');
+
+    setValue('venue-phone', '');
+    await save();
+
+    const req = http.expectOne((r) => r.method === 'PATCH' && r.url.endsWith('/api/venues/1'));
+    expect(body(req).phone).toBeNull();
+    req.flush(null);
+  });
+
+  it('refuses a phone without its country code at the field and sends no PATCH', async () => {
+    render();
+
+    setValue('venue-phone', '069 123 4567');
+    await save();
+
+    http.expectNone((r) => r.method === 'PATCH');
+    expect(byId('venue-phone-error').textContent).toContain('country code');
+
+    setValue('venue-phone', '00355 69 123 4567');
+    await save();
+    const req = http.expectOne((r) => r.method === 'PATCH' && r.url.endsWith('/api/venues/1'));
+    expect(body(req).phone).toBe('00355 69 123 4567');
+    req.flush(null);
   });
 
   it('seeds the sales-close control from the profile and reflects the checked option (#794)', () => {

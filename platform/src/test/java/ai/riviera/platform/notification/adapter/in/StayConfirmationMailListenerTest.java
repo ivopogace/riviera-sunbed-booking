@@ -55,7 +55,7 @@ class StayConfirmationMailListenerTest {
 							LocalDate.of(2026, 8, 4))),
 			18000, "EUR", true, CancellationWindow.FREE, 0, SiteLocale.EN);
 	private static final StayConfirmationMail MAIL = new StayConfirmationMail("STAYCODE", "Vala Beach",
-			LocalDate.of(2026, 8, 1), LocalDate.of(2026, 8, 4), List.of(), 18000, "EUR", CancellationWindow.LATE, 2500);
+			LocalDate.of(2026, 8, 1), LocalDate.of(2026, 8, 4), List.of(), 18000, "EUR", CancellationWindow.LATE, 2500, null);
 
 	private final BookingNotificationFacts bookings = mock(BookingNotificationFacts.class);
 	private final BookingMailFactsService facts = mock(BookingMailFactsService.class);

@@ -52,7 +52,8 @@ class RequestExpiredMailListener {
 			case BookingMailFacts.Missing(MissingBookingFact fact) -> abandon(fact, event);
 			case BookingMailFacts.Resolved booking -> mails.sendRequestExpired(booking.toEmail(), booking.locale(),
 					new RequestExpiredMail(booking.bookingCode(), booking.venueName(),
-							event.bookingDate(), event.lastDay(), links.forBooking(booking.bookingCode(), booking.locale())));
+							event.bookingDate(), event.lastDay(), links.forBooking(booking.bookingCode(), booking.locale()),
+							booking.venuePhone()));
 		}
 	}
 
@@ -70,7 +71,7 @@ class RequestExpiredMailListener {
 			}
 			case StayRequestMailFacts.Resolved stay -> mails.sendRequestExpired(stay.toEmail(), stay.locale(),
 					new RequestExpiredMail(stay.stayCode(), stay.venueName(), stay.firstDate(), stay.lastDate(),
-							links.forBooking(stay.stayCode(), stay.locale())));
+							links.forBooking(stay.stayCode(), stay.locale()), stay.venuePhone()));
 		}
 	}
 

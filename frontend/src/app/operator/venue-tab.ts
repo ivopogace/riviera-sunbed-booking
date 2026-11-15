@@ -67,6 +67,8 @@ interface VenueDetailsModel {
   salesClose: SalesCloseTime;
   /** The maximum stay in days as typed; blank means any length this season. */
   maxStayDays: string;
+  /** The venue's own phone as typed; blank means none. */
+  phone: string;
 }
 
 const EMPTY_DETAILS: VenueDetailsModel = {
@@ -77,6 +79,7 @@ const EMPTY_DETAILS: VenueDetailsModel = {
   bookingCutoff: '18:00',
   salesClose: '16:00',
   maxStayDays: '',
+  phone: '',
 };
 
 /** Blank, or a whole number of days from one up — the server's `max_stay_days` check, mirrored. */
@@ -86,6 +89,12 @@ function isMaxStayInput(raw: string): boolean {
   }
   const parsed = parseWholeNumber(raw);
   return parsed !== undefined && parsed >= 1;
+}
+
+/** Blank, or an international number — the server's `VenuePhone` rule (E.164 via `+` or `00`), mirrored. */
+function isPhoneInput(raw: string): boolean {
+  const compact = raw.replace(/[\s.()-]/g, '').replace(/^00/, '+');
+  return compact === '' || /^\+[1-9]\d{7,14}$/.test(compact);
 }
 
 /** The three fixed sales-close choices (invariant #4) — the union type IS the validator, so the
@@ -269,6 +278,14 @@ export class VenueTab {
             message: $localize`Enter a whole number of days from 1, or leave it blank.`,
           },
     );
+    validate(path.phone, ({ value }) =>
+      isPhoneInput(value())
+        ? null
+        : {
+            kind: 'phone',
+            message: $localize`Enter the number with its country code, e.g. +355 69 123 4567, or leave it blank.`,
+          },
+    );
   });
 
   /** The three-choice sales-close options rendered by the segmented control. */
@@ -449,6 +466,7 @@ export class VenueTab {
         distanceToWaterM,
         location: this.locationDraft(),
         maxStayDays: m.maxStayDays.trim() === '' ? null : parseWholeNumber(m.maxStayDays)!,
+        phone: m.phone.trim() === '' ? null : m.phone.trim(),
         expectedVersion,
       };
       const epoch = this.epoch;
@@ -526,6 +544,7 @@ export class VenueTab {
       bookingCutoff: profile.bookingCutoff,
       salesClose: profile.salesClose,
       maxStayDays: profile.maxStayDays == null ? '' : String(profile.maxStayDays),
+      phone: profile.phone ?? '',
     });
     this.amenityDraft.set(new Set(profile.amenities));
     this.distanceDraft.set(

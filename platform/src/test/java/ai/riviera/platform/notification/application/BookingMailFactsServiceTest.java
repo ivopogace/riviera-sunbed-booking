@@ -13,6 +13,7 @@ import ai.riviera.platform.booking.vocabulary.CancellationWindow;
 import ai.riviera.platform.booking.vocabulary.RefundReason;
 import ai.riviera.platform.booking.vocabulary.StayConfirmationFacts;
 import ai.riviera.platform.booking.vocabulary.StayId;
+import ai.riviera.platform.booking.vocabulary.StayMoveFacts;
 import ai.riviera.platform.customer.api.CustomerLookup;
 import ai.riviera.platform.customer.vocabulary.CustomerId;
 import ai.riviera.platform.customer.vocabulary.GuestContact;
@@ -25,6 +26,7 @@ import ai.riviera.platform.venue.vocabulary.SeasonClosure;
 import ai.riviera.platform.venue.vocabulary.SetBookingInfo;
 import ai.riviera.platform.venue.vocabulary.SetId;
 import ai.riviera.platform.venue.vocabulary.VenueId;
+import ai.riviera.platform.venue.vocabulary.VenuePhone;
 
 import org.junit.jupiter.api.Test;
 
@@ -53,9 +55,10 @@ class BookingMailFactsServiceTest {
 
 	private static final BookingNotificationInfo BOOKING =
 			new BookingNotificationInfo("ABCD2345", CUSTOMER_ID, SiteLocale.EN);
+	private static final String VENUE_PHONE = "+355692223333";
 	private static final SetBookingInfo SET = new SetBookingInfo(SET_ID, new VenueId(3L), "Vala Beach",
 			"A", 3, Pool.ONLINE, new MoneyView(4500, "EUR"), LocalTime.of(18, 0), LocalTime.of(16, 0),
-			BookingMode.INSTANT, SeasonClosure.open(), null);
+			BookingMode.INSTANT, SeasonClosure.open(), null, new VenuePhone(VENUE_PHONE));
 	private static final GuestContact CONTACT =
 			new GuestContact("tourist@example.com", "Tourist", "+355691234567");
 
@@ -75,7 +78,7 @@ class BookingMailFactsServiceTest {
 		BookingMailFacts resolved = facts.resolve(BOOKING_ID, SET_ID);
 
 		assertThat(resolved).isEqualTo(new BookingMailFacts.Resolved(
-				"tourist@example.com", "ABCD2345", "Vala Beach", "A", 3, SiteLocale.EN));
+				"tourist@example.com", "ABCD2345", "Vala Beach", "A", 3, SiteLocale.EN, VENUE_PHONE));
 	}
 
 	@Test
@@ -134,7 +137,7 @@ class BookingMailFactsServiceTest {
 		when(sets.setBookingInfo(SET_ID)).thenReturn(Optional.of(SET));
 		when(sets.setBookingInfo(SECOND_SET_ID)).thenReturn(Optional.of(new SetBookingInfo(SECOND_SET_ID,
 				new VenueId(3L), "Vala Beach", "B", 5, Pool.ONLINE, new MoneyView(4500, "EUR"), LocalTime.of(18, 0),
-				LocalTime.of(16, 0), BookingMode.INSTANT, SeasonClosure.open(), null)));
+				LocalTime.of(16, 0), BookingMode.INSTANT, SeasonClosure.open(), null, new VenuePhone(VENUE_PHONE))));
 		when(customers.findById(CUSTOMER_ID)).thenReturn(Optional.of(CONTACT));
 
 		assertThat(facts.resolveStay(STAY, CancellationWindow.LATE, 2500)).isEqualTo(new StayMailFacts.Resolved(
@@ -142,7 +145,32 @@ class BookingMailFactsServiceTest {
 						LocalDate.of(2026, 8, 3),
 						List.of(new StayConfirmationMail.Stop(LocalDate.of(2026, 8, 1), LocalDate.of(2026, 8, 2), "A", 3),
 								new StayConfirmationMail.Stop(LocalDate.of(2026, 8, 3), LocalDate.of(2026, 8, 3), "B", 5)),
-						13500, "EUR", CancellationWindow.LATE, 2500), SiteLocale.EN));
+						13500, "EUR", CancellationWindow.LATE, 2500, VENUE_PHONE), SiteLocale.EN));
+	}
+
+	@Test
+	void aStayRequestMailCarriesTheVenuePhone() {
+		when(bookings.stayConfirmationFacts(new StayId(9L))).thenReturn(Optional.of(STAY));
+		when(sets.setBookingInfo(SET_ID)).thenReturn(Optional.of(SET));
+		when(customers.findById(CUSTOMER_ID)).thenReturn(Optional.of(CONTACT));
+
+		assertThat(facts.resolveStayRequest(new StayId(9L))).isEqualTo(new StayRequestMailFacts.Resolved(
+				"tourist@example.com", "STAYCODE", "Vala Beach", LocalDate.of(2026, 8, 1), LocalDate.of(2026, 8, 3),
+				SiteLocale.EN, VENUE_PHONE));
+	}
+
+	@Test
+	void aMoveReminderCarriesTheVenuePhone() {
+		URI link = URI.create("https://riviera.test/booking/STAYCODE");
+		when(sets.setBookingInfos(List.of(SET_ID, SET_ID))).thenReturn(java.util.Map.of(SET_ID, SET));
+		when(customers.findById(CUSTOMER_ID)).thenReturn(Optional.of(CONTACT));
+
+		MoveReminderMailFacts reminder = facts.resolveMoveReminder(new StayMoveFacts(new StayId(9L), "STAYCODE",
+				CUSTOMER_ID, LocalDate.of(2026, 8, 2), LocalDate.of(2026, 8, 3), SET_ID, SET_ID, 0, 0, true,
+				SiteLocale.EN), link);
+
+		assertThat(reminder).isInstanceOfSatisfying(MoveReminderMailFacts.Resolved.class,
+				resolved -> assertThat(resolved.mail().venuePhone()).isEqualTo(VENUE_PHONE));
 	}
 
 	@Test
@@ -173,7 +201,7 @@ class BookingMailFactsServiceTest {
 		assertThat(facts.resolveStayCancellation(STAY, 6750, "EUR", RefundReason.POLICY, false))
 				.isEqualTo(new StayCancellationMailFacts.Resolved("tourist@example.com", new BookingCancellationMail(
 						"STAYCODE", "Vala Beach", LocalDate.of(2026, 8, 1), LocalDate.of(2026, 8, 3), 6750, "EUR",
-						RefundReason.POLICY, null), SiteLocale.EN));
+						RefundReason.POLICY, null, VENUE_PHONE), SiteLocale.EN));
 		verifyNoInteractions(rebookLinks);
 	}
 
@@ -188,7 +216,7 @@ class BookingMailFactsServiceTest {
 		assertThat(facts.resolveStayCancellation(STAY, 0, "EUR", RefundReason.VENUE_CHANGE, true))
 				.isEqualTo(new StayCancellationMailFacts.Resolved("tourist@example.com", new BookingCancellationMail(
 						"STAYCODE", "Vala Beach", LocalDate.of(2026, 8, 1), LocalDate.of(2026, 8, 3), 0, "EUR",
-						RefundReason.VENUE_CHANGE, rebook), SiteLocale.EN));
+						RefundReason.VENUE_CHANGE, rebook, VENUE_PHONE), SiteLocale.EN));
 	}
 
 	@Test

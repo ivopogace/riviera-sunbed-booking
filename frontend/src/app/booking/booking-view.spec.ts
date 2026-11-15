@@ -409,6 +409,36 @@ describe('BookingView', () => {
     await expectNoAxeViolations(fixture.nativeElement as HTMLElement);
   });
 
+  it('names the venue phone above the support channels as a tel: link (#1746)', async () => {
+    supportContact = { email: 'help@example.com', whatsapp: null, sameDayReply: false };
+    const fixture = await render(
+      stubService({ detail: { ...DETAIL, venuePhone: '+355692223333' } }),
+    );
+    const block = (fixture.nativeElement as HTMLElement).querySelector(
+      '[data-testid="bv-support"]',
+    );
+    const phone = block?.querySelector('[data-testid="bv-venue-phone"]');
+
+    expect(phone?.getAttribute('href')).toBe('tel:+355692223333');
+    expect(phone?.textContent).toContain(`Call ${DETAIL.venueName}`);
+    expect(phone?.textContent).toContain('+355692223333');
+    expect(block?.querySelector('[data-testid="support-email"]')).not.toBeNull();
+    await expectNoAxeViolations(fixture.nativeElement as HTMLElement);
+  });
+
+  it('renders the block for a venue phone alone, without the Riviera copy (#1746)', async () => {
+    supportContact = { email: null, whatsapp: null, sameDayReply: true };
+    const fixture = await render(
+      stubService({ detail: { ...DETAIL, venuePhone: '+355692223333' } }),
+    );
+    const block = (fixture.nativeElement as HTMLElement).querySelector(
+      '[data-testid="bv-support"]',
+    );
+
+    expect(block?.querySelector('[data-testid="bv-venue-phone"]')).not.toBeNull();
+    expect(block?.textContent).not.toContain('contact Riviera');
+  });
+
   it('renders no support block while no channel is configured', async () => {
     supportContact = { email: null, whatsapp: null, sameDayReply: true };
     const fixture = await render(stubService({ detail: DETAIL }));

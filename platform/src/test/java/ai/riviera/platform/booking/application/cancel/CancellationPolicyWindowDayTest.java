@@ -51,7 +51,7 @@ class CancellationPolicyWindowDayTest {
 		Clock clock = Clock.fixed(tiraneNow.toInstant(), ZoneId.of("UTC"));
 		when(setFacts.setBookingInfo(SET)).thenReturn(Optional.of(new SetBookingInfo(SET, VENUE,
 				"Blue Marlin", "A", 1, Pool.ONLINE, new MoneyView(4500, "EUR"), LocalTime.of(18, 0),
-				LocalTime.of(16, 0), BookingMode.INSTANT, SeasonClosure.open(), null)));
+				LocalTime.of(16, 0), BookingMode.INSTANT, SeasonClosure.open(), null, null)));
 		when(rates.lateCancelRefundBps(VENUE)).thenReturn(OptionalInt.of(2500));
 		return new CancellationPolicy(setFacts, rates, new BookingCutoff(clock), clock);
 	}

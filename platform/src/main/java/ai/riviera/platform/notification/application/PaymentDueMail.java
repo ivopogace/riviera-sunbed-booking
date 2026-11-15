@@ -15,5 +15,5 @@ import ai.riviera.platform.booking.vocabulary.CancellationWindow;
  */
 public record PaymentDueMail(String bookingCode, String venueName, LocalDate bookingDate,
 		LocalDate lastDate, Instant payBy, long amountMinor, String currency, URI payLink,
-		CancellationWindow cancellationWindowAtBirth, int lateCancelRefundBps) {
+		CancellationWindow cancellationWindowAtBirth, int lateCancelRefundBps, String venuePhone) {
 }

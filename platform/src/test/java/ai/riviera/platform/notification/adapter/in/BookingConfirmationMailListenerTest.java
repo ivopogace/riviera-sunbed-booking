@@ -79,7 +79,7 @@ class BookingConfirmationMailListenerTest {
 	private static final BookingConfirmed EVENT = new BookingConfirmed(BOOKING_ID, new VenueId(3L),
 			SET_ID, LocalDate.of(2026, 8, 1), 4500, "EUR", CancellationWindow.LATE, 2500);
 	private static final BookingMailFacts.Resolved FACTS =
-			new BookingMailFacts.Resolved(EMAIL, CODE, "Vala Beach", "A", 3, SiteLocale.EN);
+			new BookingMailFacts.Resolved(EMAIL, CODE, "Vala Beach", "A", 3, SiteLocale.EN, "+355692223333");
 
 	private final BookingMailFactsService facts = mock(BookingMailFactsService.class);
 	private final TransactionalMailService mails = mock(TransactionalMailService.class);
@@ -142,7 +142,7 @@ class BookingConfirmationMailListenerTest {
 	}
 
 	/**
-	 * The five resolved fields and the three that ride the event, each in its own slot. Positional
+	 * The six resolved fields and the three that ride the event, each in its own slot. Positional
 	 * records make a transposition of two same-typed neighbours ({@code venueName}/{@code rowLabel})
 	 * invisible to the compiler, so it is asserted rather than eyeballed.
 	 */
@@ -154,7 +154,7 @@ class BookingConfirmationMailListenerTest {
 
 		verify(mails).sendBookingConfirmation(EMAIL, SiteLocale.EN, new BookingConfirmationMail(
 				CODE, "Vala Beach", LocalDate.of(2026, 8, 1), "A", 3, 4500, "EUR",
-				CancellationWindow.LATE, 2500));
+				CancellationWindow.LATE, 2500, "+355692223333"));
 	}
 
 	/**
@@ -172,7 +172,7 @@ class BookingConfirmationMailListenerTest {
 		assertThatCode(() -> listener.on(legacy)).doesNotThrowAnyException();
 
 		verify(mails).sendBookingConfirmation(EMAIL, SiteLocale.EN, new BookingConfirmationMail(
-				CODE, "Vala Beach", LocalDate.of(2026, 8, 1), "A", 3, 4500, "EUR", null, 0));
+				CODE, "Vala Beach", LocalDate.of(2026, 8, 1), "A", 3, 4500, "EUR", null, 0, "+355692223333"));
 	}
 
 	/**

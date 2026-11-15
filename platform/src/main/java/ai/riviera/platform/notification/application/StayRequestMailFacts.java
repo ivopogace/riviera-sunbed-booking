@@ -11,7 +11,7 @@ import ai.riviera.platform.shared.SiteLocale;
 public sealed interface StayRequestMailFacts {
 
 	record Resolved(String toEmail, String stayCode, String venueName, LocalDate firstDate, LocalDate lastDate,
-			SiteLocale locale)
+			SiteLocale locale, String venuePhone)
 			implements StayRequestMailFacts {
 	}
 

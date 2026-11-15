@@ -32,6 +32,7 @@ import ai.riviera.platform.venue.vocabulary.SetId;
 import ai.riviera.platform.venue.vocabulary.SetPlacement;
 import ai.riviera.platform.venue.vocabulary.VenueId;
 import ai.riviera.platform.venue.vocabulary.VenueLocation;
+import ai.riviera.platform.venue.vocabulary.VenuePhone;
 import ai.riviera.platform.venue.application.CommissionRateStore;
 import ai.riviera.platform.venue.application.NewVenueCommand;
 import ai.riviera.platform.venue.application.OwnedVenueView;
@@ -462,7 +463,7 @@ class JdbcVenues implements Venues, CommissionRateStore, VenueRatings {
 				SET name = :name, beach = :beach, description = :description,
 				    booking_mode = :mode, booking_cutoff = :cutoff, sales_close = :salesClose,
 				    distance_to_water_m = :distance, latitude = :latitude, longitude = :longitude,
-				    max_stay_days = :maxStayDays, version = version + 1
+				    max_stay_days = :maxStayDays, phone = :phone, version = version + 1
 				WHERE id = :id AND version = :version
 				""")
 				.param(COL_NAME, command.name())
@@ -475,6 +476,7 @@ class JdbcVenues implements Venues, CommissionRateStore, VenueRatings {
 				.param(P_SALES_CLOSE, command.salesClose().time())
 				.param("distance", command.distanceToWaterM())
 				.param("maxStayDays", command.maxStayDays())
+				.param("phone", command.phone() == null ? null : command.phone().e164())
 				.param("id", venueId.value())
 				.param("version", expectedVersion)
 				.update();
@@ -516,7 +518,7 @@ class JdbcVenues implements Venues, CommissionRateStore, VenueRatings {
 		Optional<ProfileRow> venue = jdbc.sql("""
 				SELECT name, beach, description, booking_mode, booking_cutoff, sales_close,
 				       commission_bps, payout_currency, distance_to_water_m, version,
-				       closed_at, reopen_on, advance_sales, latitude, longitude, max_stay_days
+				       closed_at, reopen_on, advance_sales, latitude, longitude, max_stay_days, phone
 				FROM venue
 				WHERE id = :id
 				""")
@@ -535,7 +537,7 @@ class JdbcVenues implements Venues, CommissionRateStore, VenueRatings {
 								: SeasonClosure.closed(rs.getObject("reopen_on", LocalDate.class),
 										rs.getBoolean("advance_sales")),
 						locationOf(rs.getBigDecimal(COL_LATITUDE), rs.getBigDecimal(COL_LONGITUDE)),
-						rs.getObject("max_stay_days", Integer.class)))
+						rs.getObject("max_stay_days", Integer.class), phoneOf(rs.getString("phone"))))
 				.optional();
 		if (venue.isEmpty()) {
 			return Optional.empty();
@@ -551,7 +553,7 @@ class JdbcVenues implements Venues, CommissionRateStore, VenueRatings {
 				v.bookingMode(), v.bookingCutoff(), v.salesClose(), v.commissionBps(), v.payoutCurrency(),
 				amenities, v.distanceToWaterM(), v.version(), slotPhotos(venueId), v.seasonClosure(),
 				salesWindow.closedForSeason(v.seasonClosure(), clock.instant()), v.location(),
-				v.maxStayDays()));
+				v.maxStayDays(), v.phone()));
 	}
 
 	@Override
@@ -606,11 +608,16 @@ class JdbcVenues implements Venues, CommissionRateStore, VenueRatings {
 		return latitude == null ? null : new VenueLocation(latitude, longitude);
 	}
 
+	/** The stored E.164 phone, or none: {@code venue_phone_check} guarantees its shape. */
+	static VenuePhone phoneOf(String e164) {
+		return e164 == null ? null : new VenuePhone(e164);
+	}
+
 	/** The venue row backing a {@link VenueProfileView}, before its amenity set is folded in. */
 	private record ProfileRow(String name, String beach, String description,
 			BookingMode bookingMode, LocalTime bookingCutoff, LocalTime salesClose, int commissionBps,
 			String payoutCurrency, Integer distanceToWaterM, long version, SeasonClosure seasonClosure,
-			VenueLocation location, Integer maxStayDays) {
+			VenueLocation location, Integer maxStayDays, VenuePhone phone) {
 	}
 
 	private static Map<String, Object> setParams(SetCommand c) {

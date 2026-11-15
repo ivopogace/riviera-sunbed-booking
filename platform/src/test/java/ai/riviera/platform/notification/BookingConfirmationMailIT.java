@@ -187,7 +187,7 @@ class BookingConfirmationMailIT {
 		// FREE + 0 pin the real ConfirmBookingService stamping for an advance booking (#795 AC-5 absent case).
 		assertThat(sent.confirmation()).isEqualTo(new BookingConfirmationMail(
 				code, set.venueName(), date, set.rowLabel(), set.positionNo(), amountMinor, "EUR",
-				CancellationWindow.FREE, 0));
+				CancellationWindow.FREE, 0, null));
 	}
 
 	@Test
@@ -213,7 +213,7 @@ class BookingConfirmationMailIT {
 		SentEmail sent = mailer.lastTo(email).orElseThrow();
 		assertThat(sent.confirmation()).isEqualTo(new BookingConfirmationMail(
 				code, set.venueName(), first, first.plusDays(2), set.rowLabel(), set.positionNo(),
-				amountMinor, "EUR", CancellationWindow.FREE, 0));
+				amountMinor, "EUR", CancellationWindow.FREE, 0, null));
 	}
 
 	/**
@@ -277,7 +277,7 @@ class BookingConfirmationMailIT {
 		Awaitility.await().atMost(WAIT).until(() -> countTo(contactEmail) == 1L);
 		assertThat(mailer.lastTo(contactEmail).orElseThrow().confirmation())
 				.isEqualTo(new BookingConfirmationMail("PAIDPATH", set.venueName(), date,
-						set.rowLabel(), set.positionNo(), 4400L, "EUR", CancellationWindow.FREE, 0));
+						set.rowLabel(), set.positionNo(), 4400L, "EUR", CancellationWindow.FREE, 0, null));
 	}
 
 	@Test

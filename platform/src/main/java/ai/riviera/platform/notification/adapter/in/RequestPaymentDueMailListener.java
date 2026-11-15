@@ -54,7 +54,7 @@ class RequestPaymentDueMailListener {
 					new PaymentDueMail(booking.bookingCode(), booking.venueName(), event.bookingDate(), event.lastDay(),
 							event.payBy(), event.amountMinor(), event.currency(),
 							links.forBooking(booking.bookingCode(), booking.locale()),
-							event.cancellationWindowAtBirth(), event.lateCancelRefundBps()));
+							event.cancellationWindowAtBirth(), event.lateCancelRefundBps(), booking.venuePhone()));
 		}
 	}
 
@@ -73,7 +73,7 @@ class RequestPaymentDueMailListener {
 			case StayRequestMailFacts.Resolved stay -> mails.sendPaymentDue(stay.toEmail(), stay.locale(),
 					new PaymentDueMail(stay.stayCode(), stay.venueName(), stay.firstDate(), stay.lastDate(),
 							event.payBy(), event.amountMinor(), event.currency(), links.forBooking(stay.stayCode(), stay.locale()),
-							event.cancellationWindowAtBirth(), event.lateCancelRefundBps()));
+							event.cancellationWindowAtBirth(), event.lateCancelRefundBps(), stay.venuePhone()));
 		}
 	}
 

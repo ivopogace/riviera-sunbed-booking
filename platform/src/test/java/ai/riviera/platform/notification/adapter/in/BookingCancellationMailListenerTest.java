@@ -72,7 +72,7 @@ class BookingCancellationMailListenerTest {
 	private static final URI MAP_LINK = URI.create("https://riviera.test/venues/4?date=2026-08-12");
 	private static final URI DISCOVERY_LINK = URI.create("https://riviera.test/?date=2026-08-12");
 	private static final BookingMailFacts.Resolved FACTS =
-			new BookingMailFacts.Resolved(EMAIL, CODE, "Vala Beach", "A", 3, SiteLocale.EN);
+			new BookingMailFacts.Resolved(EMAIL, CODE, "Vala Beach", "A", 3, SiteLocale.EN, null);
 
 	private final BookingMailFactsService facts = mock(BookingMailFactsService.class);
 	private final TransactionalMailService mails = mock(TransactionalMailService.class);
@@ -113,7 +113,7 @@ class BookingCancellationMailListenerTest {
 		listener.on(EVENT);
 
 		verify(mails).sendBookingCancellation(EMAIL, SiteLocale.EN, new BookingCancellationMail(
-				CODE, "Vala Beach", BOOKING_DATE, 4500, "EUR", RefundReason.POLICY, null));
+				CODE, "Vala Beach", BOOKING_DATE, 4500, "EUR", RefundReason.POLICY, null, null));
 		verifyNoInteractions(rebookLinks);
 	}
 
@@ -136,7 +136,7 @@ class BookingCancellationMailListenerTest {
 		listener.on(nothingRefunded);
 
 		verify(mails).sendBookingCancellation(EMAIL, SiteLocale.EN, new BookingCancellationMail(
-				CODE, "Vala Beach", BOOKING_DATE, 0, "EUR", RefundReason.POLICY, null));
+				CODE, "Vala Beach", BOOKING_DATE, 0, "EUR", RefundReason.POLICY, null, null));
 	}
 
 	/** AC-3: one event, every channel — the reason reaches the transport rather than being flattened. */
@@ -153,7 +153,7 @@ class BookingCancellationMailListenerTest {
 
 		verify(mails).sendBookingCancellation(EMAIL, SiteLocale.EN, new BookingCancellationMail(
 				CODE, "Vala Beach", BOOKING_DATE, 4500, "EUR", reason,
-				reason == RefundReason.VENUE_CHANGE ? MAP_LINK : null));
+				reason == RefundReason.VENUE_CHANGE ? MAP_LINK : null, null));
 	}
 
 	/**
@@ -173,9 +173,9 @@ class BookingCancellationMailListenerTest {
 		listener.on(venueCaused);
 
 		verify(mails).sendBookingCancellation(EMAIL, SiteLocale.EN, new BookingCancellationMail(
-				CODE, "Vala Beach", BOOKING_DATE, 4500, "EUR", RefundReason.VENUE_CHANGE, MAP_LINK));
+				CODE, "Vala Beach", BOOKING_DATE, 4500, "EUR", RefundReason.VENUE_CHANGE, MAP_LINK, null));
 		verify(mails).sendBookingCancellation(EMAIL, SiteLocale.EN, new BookingCancellationMail(
-				CODE, "Vala Beach", BOOKING_DATE, 4500, "EUR", RefundReason.VENUE_CHANGE, DISCOVERY_LINK));
+				CODE, "Vala Beach", BOOKING_DATE, 4500, "EUR", RefundReason.VENUE_CHANGE, DISCOVERY_LINK, null));
 	}
 
 	/** A released unpaid claim is the same fact with nothing to return, and still gets the way back. */
@@ -189,13 +189,13 @@ class BookingCancellationMailListenerTest {
 				RefundReason.VENUE_CHANGE));
 
 		verify(mails).sendBookingCancellation(EMAIL, SiteLocale.EN, new BookingCancellationMail(
-				CODE, "Vala Beach", BOOKING_DATE, 0, "EUR", RefundReason.VENUE_CHANGE, DISCOVERY_LINK));
+				CODE, "Vala Beach", BOOKING_DATE, 0, "EUR", RefundReason.VENUE_CHANGE, DISCOVERY_LINK, null));
 	}
 
 	/** #1770: a booking made in Italian is cancelled in Italian, its way back under the Italian subpath. */
 	@Test
 	void aTranslatedBookingIsMailedAndLinkedInItsLanguage() {
-		givenTheFactsAre(new BookingMailFacts.Resolved(EMAIL, CODE, "Vala Beach", "A", 3, SiteLocale.IT));
+		givenTheFactsAre(new BookingMailFacts.Resolved(EMAIL, CODE, "Vala Beach", "A", 3, SiteLocale.IT, null));
 		givenTheRemodelEndedIt();
 		when(rebookLinks.forDate(new VenueId(4L), BOOKING_DATE, SiteLocale.IT)).thenReturn(DISCOVERY_LINK);
 
@@ -203,7 +203,7 @@ class BookingCancellationMailListenerTest {
 				RefundReason.VENUE_CHANGE));
 
 		verify(mails).sendBookingCancellation(EMAIL, SiteLocale.IT, new BookingCancellationMail(
-				CODE, "Vala Beach", BOOKING_DATE, 0, "EUR", RefundReason.VENUE_CHANGE, DISCOVERY_LINK));
+				CODE, "Vala Beach", BOOKING_DATE, 0, "EUR", RefundReason.VENUE_CHANGE, DISCOVERY_LINK, null));
 	}
 
 	@ParameterizedTest(name = "{0}")
@@ -278,7 +278,7 @@ class BookingCancellationMailListenerTest {
 				RefundReason.VENUE_CHANGE));
 
 		verify(mails).sendBookingCancellation(EMAIL, SiteLocale.EN, new BookingCancellationMail(
-				CODE, "Vala Beach", BOOKING_DATE, 4500, "EUR", RefundReason.VENUE_CHANGE, null));
+				CODE, "Vala Beach", BOOKING_DATE, 4500, "EUR", RefundReason.VENUE_CHANGE, null, null));
 		verifyNoInteractions(rebookLinks);
 	}
 

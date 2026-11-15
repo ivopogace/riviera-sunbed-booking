@@ -85,7 +85,7 @@ class StayRequestMailIT {
 
 		awaitExactlyOne(email, SentEmail.Kind.REQUEST_DECLINED);
 		assertEquals(new RequestDeclinedMail(stay.code(), sets.get(0).venueName(), stay.first(), stay.first().plusDays(3),
-				links.forBooking(stay.code(), SiteLocale.EN), DeclineReason.ANOTHER_GUEST), mailer.lastTo(email).orElseThrow().requestDeclined());
+				links.forBooking(stay.code(), SiteLocale.EN), DeclineReason.ANOTHER_GUEST, null), mailer.lastTo(email).orElseThrow().requestDeclined());
 	}
 
 	@Test
@@ -98,7 +98,7 @@ class StayRequestMailIT {
 
 		awaitExactlyOne(email, SentEmail.Kind.REQUEST_EXPIRED);
 		assertEquals(new RequestExpiredMail(stay.code(), sets.get(0).venueName(), stay.first(), stay.first().plusDays(3),
-				links.forBooking(stay.code(), SiteLocale.EN)), mailer.lastTo(email).orElseThrow().requestExpired());
+				links.forBooking(stay.code(), SiteLocale.EN), null), mailer.lastTo(email).orElseThrow().requestExpired());
 	}
 
 	@Test
@@ -112,7 +112,7 @@ class StayRequestMailIT {
 
 		awaitExactlyOne(email, SentEmail.Kind.PAYMENT_DUE);
 		assertEquals(new PaymentDueMail(stay.code(), sets.get(0).venueName(), stay.first(), stay.first().plusDays(3), payBy,
-				2 * STRETCH_AMOUNT, "EUR", links.forBooking(stay.code(), SiteLocale.EN), null, 0),
+				2 * STRETCH_AMOUNT, "EUR", links.forBooking(stay.code(), SiteLocale.EN), null, 0, null),
 				mailer.lastTo(email).orElseThrow().paymentDue());
 	}
 
