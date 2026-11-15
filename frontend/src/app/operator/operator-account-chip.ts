@@ -13,6 +13,7 @@ import { NavigationEnd, Router, RouterLink, RouterLinkActive } from '@angular/ro
 import { filter } from 'rxjs';
 
 import { ConsoleTheme, ConsoleThemeId } from '../core/console-theme';
+import { LocaleId, LocaleService } from '../core/locale';
 import { OperatorAuth } from '../core/operator-auth';
 import { SupportContact } from '../core/support-contact';
 import {
@@ -30,8 +31,8 @@ import { TouchTarget } from '../shared/touch-target';
 
 /**
  * The signed-in operator's account chip (the host gates on the session): a disclosure revealing
- * identity, Change password, console theme, the configured Contact Riviera channels and Sign out —
- * account actions only. Sign-out is an output: each header runs its own teardown.
+ * identity, Change password, console theme, language, the configured Contact Riviera channels and Sign
+ * out — account actions only. Sign-out is an output: each header runs its own teardown.
  * Escape, the backdrop and a row return focus to the chip (WCAG 2.4.3); a navigation or an outside
  * click closes without moving it. Outside clicks need the document listener: the header's
  * `backdrop-filter` contains the `fixed` backdrop, so that backdrop covers only the header.
@@ -128,6 +129,28 @@ import { TouchTarget } from '../shared/touch-target';
             </button>
           }
         </div>
+        <p [class]="cls.groupLabel" [attr.id]="ids().languageLabel" i18n>Language</p>
+        <div role="group" [attr.aria-labelledby]="ids().languageLabel">
+          @for (option of locales.options; track option.id) {
+            <button
+              appTouchTarget
+              type="button"
+              [class]="cls.button"
+              [attr.aria-pressed]="option.id === locales.current.id"
+              [attr.data-testid]="ids().language + '-' + option.id"
+              (click)="chooseLanguage(option.id)"
+            >
+              <span class="flex items-center gap-2.5">
+                <span class="flex-1" [attr.lang]="option.id">{{ option.name }}</span>
+                @if (option.id === locales.current.id) {
+                  <span class="text-[15px] font-bold text-riv-pop-accent" aria-hidden="true"
+                    >&#10003;</span
+                  >
+                }
+              </span>
+            </button>
+          }
+        </div>
         @if (support.contact(); as contact) {
           @if (contact.email || contact.whatsapp) {
             <p [class]="cls.groupLabel" [attr.id]="ids().contactLabel" i18n>Contact Riviera</p>
@@ -186,6 +209,8 @@ export class OperatorAccountChip {
   protected readonly operator = inject(OperatorAuth);
   /** The console's porcelain-or-dark choice the two rows switch; never the tourist theme. */
   protected readonly consoleTheme = inject(ConsoleTheme);
+  /** The build's language; a pick here is also the operator's own, its mail's language (#1785). */
+  protected readonly locales = inject(LocaleService);
   /** The platform's support channels, read when the menu first opens; an unconfigured one renders no row. */
   protected readonly support = inject(SupportContact);
   private readonly host = inject<ElementRef<HTMLElement>>(ElementRef);
@@ -224,6 +249,8 @@ export class OperatorAccountChip {
       changePassword: `${prefix}-change-password`,
       themeLabel: `${prefix}-theme-label`,
       theme: `${prefix}-theme`,
+      languageLabel: `${prefix}-language-label`,
+      language: `${prefix}-language`,
       signout: `${prefix}-signout`,
       contactLabel: `${prefix}-contact-label`,
       contactEmail: `${prefix}-contact-email`,
@@ -251,6 +278,16 @@ export class OperatorAccountChip {
   protected choose(id: ConsoleThemeId): void {
     this.consoleTheme.select(id);
     this.activate();
+  }
+
+  /**
+   * A language row: close, save the pick as the operator's own, then load the page in it. The save
+   * settles within a bound and never rejects, so it can only delay the switch, never block it.
+   */
+  protected async chooseLanguage(id: LocaleId): Promise<void> {
+    this.activate();
+    await this.operator.saveLocale(id);
+    this.locales.select(id);
   }
 
   /** A row was activated: close, and hand focus back to the chip the row's unmount would strand it from. */

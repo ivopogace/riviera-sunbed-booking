@@ -69,7 +69,7 @@ class EmailedLinkOriginTest {
 		IllegalArgumentException rejected = reject(value);
 
 		assertTrue(rejected.getMessage().contains("is not a valid emailed-link origin"), rejected.getMessage());
-		assertTrue(rejected.getMessage().contains("RIVIERA_RECOVERY_LINK_BASE_URL in docs/deploy/cd-pipeline.md"),
+		assertTrue(rejected.getMessage().contains("RIVIERA_PUBLIC_ORIGIN in docs/deploy/cd-pipeline.md"),
 				rejected.getMessage());
 	}
 

@@ -14,6 +14,7 @@ import ai.riviera.platform.operator.vocabulary.OperatorRegistrationOutcome;
 import ai.riviera.platform.operator.vocabulary.OperatorStatus;
 import ai.riviera.platform.operator.vocabulary.PendingOperator;
 import ai.riviera.platform.operator.vocabulary.VenueRef;
+import ai.riviera.platform.shared.SiteLocale;
 
 /**
  * Driven (outbound) persistence port for the {@code operator} module — the operator accounts (incl.
@@ -41,10 +42,11 @@ public interface Operators {
 
 	/**
 	 * Insert a self-registered {@code PENDING} operator with this username + pre-encoded hash + contact
-	 * email, non-enumerating: a free username returns {@link OperatorRegistrationOutcome.Registered}, a
-	 * taken one returns {@link OperatorRegistrationOutcome.AlreadyRegistered} writing nothing (D-8).
+	 * email + locale, non-enumerating: a free username returns {@link OperatorRegistrationOutcome.Registered},
+	 * a taken one returns {@link OperatorRegistrationOutcome.AlreadyRegistered} writing nothing (D-8).
 	 */
-	OperatorRegistrationOutcome insertPending(String username, String passwordHash, String contactEmail);
+	OperatorRegistrationOutcome insertPending(String username, String passwordHash, String contactEmail,
+			SiteLocale locale);
 
 	/** Every operator awaiting admin approval (status PENDING), oldest first. */
 	List<PendingOperator> pendingOperators();
@@ -89,6 +91,9 @@ public interface Operators {
 
 	/** Update the stored credential of the operator with this username; returns rows affected. */
 	int updatePassword(String username, String passwordHash);
+
+	/** Store the language of the operator with this username; the count of rows updated (0 or 1). */
+	int updateLocale(String username, SiteLocale locale);
 
 	/**
 	 * Whether {@code operator} owns {@code venue} — true iff an explicit {@code operator_venue}

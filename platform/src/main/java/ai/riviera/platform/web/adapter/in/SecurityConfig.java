@@ -236,6 +236,11 @@ public class SecurityConfig {
 	 * change flood can never starve operator login.
 	 */
 	private static final String OPERATOR_PASSWORD_PATH = "/api/auth/operator/password";
+	/**
+	 * The signed-in operator's own language: <strong>operator-only</strong>, as it writes the row named by the
+	 * principal, so a customer's name must never reach it. No rate budget: no secret to guess.
+	 */
+	private static final String OPERATOR_LOCALE_PATH = "/api/auth/operator/locale";
 	/** Redeem an admin-issued operator reset link: anonymous, the token is the credential (#7); CSRF-protected. */
 	private static final String OPERATOR_RESET_PASSWORD_PATH = "/api/auth/operator/reset-password";
 	/** Customer session login + registration; anonymous by definition, like the operator login. */
@@ -419,6 +424,7 @@ public class SecurityConfig {
 						// Server-to-server from Scaleway Topics & Events, authenticated by its SNS signature.
 						.requestMatchers(HttpMethod.POST, TEM_WEBHOOK_PATH).permitAll()
 						.requestMatchers(HttpMethod.POST, OPERATOR_PASSWORD_PATH).hasRole(OPERATOR_ROLE)
+						.requestMatchers(HttpMethod.PUT, OPERATOR_LOCALE_PATH).hasRole(OPERATOR_ROLE)
 						// Every verb, not just GET — anonymous → 401, operator session → 403.
 						.requestMatchers(ME_PATHS).hasRole(CUSTOMER_ROLE)
 						.anyRequest().authenticated())

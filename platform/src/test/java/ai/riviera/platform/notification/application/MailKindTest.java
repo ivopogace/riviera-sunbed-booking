@@ -85,13 +85,13 @@ class MailKindTest {
 		when(suppressions.isSuppressed(any())).thenReturn(false);
 		doThrow(new IllegalStateException("relay down")).when(mailer).sendEmailVerification(any(), any(), any());
 		doThrow(new IllegalStateException("relay down")).when(mailer).sendPasswordReset(any(), any(), any());
-		doThrow(new IllegalStateException("relay down")).when(mailer).sendOperatorApproved(any(), any());
+		doThrow(new IllegalStateException("relay down")).when(mailer).sendOperatorApproved(any(), any(), any());
 
 		TransactionalMailService service =
 				new TransactionalMailService(mailer, (kind, send) -> send.run(), suppressions, meters);
 		service.sendEmailVerification(EMAIL, SiteLocale.EN, LINK);
 		service.sendPasswordReset(EMAIL, SiteLocale.EN, () -> Optional.of(LINK));
-		service.sendOperatorApproved(EMAIL, LINK);
+		service.sendOperatorApproved(EMAIL, SiteLocale.EN, LINK);
 	}
 
 	private List<String> kindTagsOn(String meterName) {

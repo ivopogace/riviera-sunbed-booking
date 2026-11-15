@@ -279,6 +279,28 @@ test.describe('choosing a language', () => {
     await expect(page.locator('html')).toHaveAttribute('lang', 'en');
   });
 
+  test('the operator console’s language rows save the pick as the operator’s own, then load the console in it', async ({
+    page,
+  }) => {
+    await mockWholeConsole(page);
+    let saved: unknown;
+    await page.route(/\/api\/auth\/operator\/locale$/, (route) => {
+      saved = route.request().postDataJSON();
+      return route.fulfill({ status: 204, body: '' });
+    });
+    await page.goto('/operator/1/pricing');
+    await signInAsOperator(page);
+    await expect(page.getByTestId('oc-header')).toBeVisible();
+
+    await page.getByTestId('oc-account').click();
+    await page.getByTestId('oc-language-sq').click();
+
+    await expect(page).toHaveURL(/\/sq\/operator\/1\/pricing$/);
+    await expect(page.locator('html')).toHaveAttribute('lang', 'sq');
+    // The approval notice is written in the operator's stored language (#1785).
+    expect(saved).toEqual({ locale: 'sq' });
+  });
+
   test.describe('an SSO sign-in', () => {
     // The provider round trip, collapsed: authorize answers with the callback's own fixed 302 to `/`.
     test.beforeEach(async ({ page }) => {

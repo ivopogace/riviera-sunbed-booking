@@ -21,6 +21,7 @@ import ai.riviera.platform.operator.vocabulary.OperatorRegistrationOutcome;
 import ai.riviera.platform.operator.vocabulary.PendingOperator;
 import ai.riviera.platform.operator.vocabulary.OperatorStatus;
 import ai.riviera.platform.operator.vocabulary.VenueRef;
+import ai.riviera.platform.shared.SiteLocale;
 
 /**
  * JDBC adapter for the {@code operator} module's {@link Operators} port (ADR-0007 {@code adapter/out}).
@@ -57,6 +58,8 @@ class JdbcOperators implements Operators {
 	private static final String TARGET_PARAM = "target";
 	/** Result-set column holding an operator's registered contact address (named, not duplicated — §6a). */
 	private static final String CONTACT_EMAIL = "contact_email";
+	/** SQL named-param / column key for an operator's stored {@link SiteLocale} code (S1192). */
+	private static final String LOCALE = "locale";
 
 	private final JdbcClient jdbc;
 
@@ -103,14 +106,15 @@ class JdbcOperators implements Operators {
 	}
 
 	@Override
-	public OperatorRegistrationOutcome insertPending(String username, String passwordHash, String contactEmail) {
+	public OperatorRegistrationOutcome insertPending(String username, String passwordHash, String contactEmail,
+			SiteLocale locale) {
 		// ON CONFLICT DO NOTHING → non-enumerating + idempotent (D-8): a taken username writes nothing
 		// and RETURNING yields no row (empty → AlreadyRegistered), and an existing hash is never
 		// overwritten. Status PENDING + is_admin FALSE — it may sign in, its venues unlisted until
 		// an admin approves it, and is never an admin. PENDING is bound, not inlined (conventions §6a).
 		return jdbc.sql("""
-				INSERT INTO operator (username, status, is_admin, password_hash, contact_email)
-				VALUES (:username, :pending, FALSE, :hash, :email)
+				INSERT INTO operator (username, status, is_admin, password_hash, contact_email, locale)
+				VALUES (:username, :pending, FALSE, :hash, :email, :locale)
 				ON CONFLICT (username) DO NOTHING
 				RETURNING id
 				""")
@@ -118,6 +122,7 @@ class JdbcOperators implements Operators {
 				.param(PENDING_PARAM, OperatorStatus.PENDING.name())
 				.param("hash", passwordHash)
 				.param("email", contactEmail)
+				.param(LOCALE, locale.code())
 				.query(Long.class)
 				.optional()
 				.<OperatorRegistrationOutcome>map(id -> new OperatorRegistrationOutcome.Registered(new OperatorId(id)))
@@ -128,6 +133,14 @@ class JdbcOperators implements Operators {
 	public int updatePassword(String username, String passwordHash) {
 		return jdbc.sql("UPDATE operator SET password_hash = :hash WHERE username = :username")
 				.param("hash", passwordHash)
+				.param(USERNAME, username)
+				.update();
+	}
+
+	@Override
+	public int updateLocale(String username, SiteLocale locale) {
+		return jdbc.sql("UPDATE operator SET locale = :locale WHERE username = :username")
+				.param(LOCALE, locale.code())
 				.param(USERNAME, username)
 				.update();
 	}
@@ -182,7 +195,8 @@ class JdbcOperators implements Operators {
 	@Override
 	public ApprovalOutcome activate(OperatorId operatorId) {
 		return transitionFromPending(operatorId, OperatorStatus.ACTIVE)
-				.<ApprovalOutcome>map(row -> new ApprovalOutcome.Approved(row.contactEmail()))
+				.<ApprovalOutcome>map(row -> new ApprovalOutcome.Approved(row.contactEmail(),
+						SiteLocale.fromCode(row.locale())))
 				.orElseGet(() -> classifyMissedTransition(operatorId));
 	}
 
@@ -194,24 +208,25 @@ class JdbcOperators implements Operators {
 	}
 
 	/** What the transition wrote — present iff this call is the one that flipped the row. */
-	private record TransitionedRow(String contactEmail, String username) {
+	private record TransitionedRow(String contactEmail, String username, String locale) {
 	}
 
 	/**
 	 * Move a PENDING operator to {@code target}; present iff this call won. The status guard means
 	 * two concurrent approvals cannot both win, and {@code RETURNING} hands only the winner the
-	 * contact email + username in the same statement. Rationale: RESPONSIBILITIES.md §operator.
+	 * contact email, username and locale in the same statement. Rationale: RESPONSIBILITIES.md §operator.
 	 */
 	private Optional<TransitionedRow> transitionFromPending(OperatorId operatorId, OperatorStatus target) {
 		return jdbc.sql("""
 				UPDATE operator SET status = :target
 				WHERE id = :id AND status = :pending
-				RETURNING contact_email, username
+				RETURNING contact_email, username, locale
 				""")
 				.param(TARGET_PARAM, target.name())
 				.param(ID_PARAM, operatorId.value())
 				.param(PENDING_PARAM, OperatorStatus.PENDING.name())
-				.query((rs, rowNum) -> new TransitionedRow(rs.getString(CONTACT_EMAIL), rs.getString(USERNAME)))
+				.query((rs, rowNum) -> new TransitionedRow(rs.getString(CONTACT_EMAIL), rs.getString(USERNAME),
+						rs.getString(LOCALE)))
 				.optional();
 	}
 

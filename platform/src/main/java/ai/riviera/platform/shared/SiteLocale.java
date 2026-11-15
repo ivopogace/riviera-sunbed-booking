@@ -2,6 +2,7 @@ package ai.riviera.platform.shared;
 
 import java.util.Arrays;
 import java.util.Locale;
+import java.util.Optional;
 
 /**
  * A locale the SPA is built and served in (ADR-0030): English at the root, each other one under its
@@ -41,6 +42,11 @@ public enum SiteLocale {
 
 	/** The served locale with exactly this code; English for any other value, absent included. */
 	public static SiteLocale fromCode(String code) {
-		return Arrays.stream(values()).filter(l -> l.code.equals(code)).findFirst().orElse(EN);
+		return ofCode(code).orElse(EN);
+	}
+
+	/** The served locale with exactly this code, or empty: for a write that must refuse what it cannot serve. */
+	public static Optional<SiteLocale> ofCode(String code) {
+		return Arrays.stream(values()).filter(l -> l.code.equals(code)).findFirst();
 	}
 }

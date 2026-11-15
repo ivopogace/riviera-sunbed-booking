@@ -47,7 +47,7 @@ public interface Mailer {
 	 * on this port carrying no bearer credential at all, so the mock's dev-only link echo needs no
 	 * invariant-#7 argument here.
 	 */
-	void sendOperatorApproved(String toEmail, URI signInLink);
+	void sendOperatorApproved(String toEmail, SiteLocale locale, URI signInLink);
 
 	/**
 	 * Send the "the venue declined your request" record: the outcome, that nothing is held and

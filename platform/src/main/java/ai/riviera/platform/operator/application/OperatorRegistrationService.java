@@ -15,6 +15,7 @@ import ai.riviera.platform.operator.vocabulary.OperatorLifecycleOutcome;
 import ai.riviera.platform.operator.vocabulary.OperatorRegistrationOutcome;
 import ai.riviera.platform.operator.vocabulary.OperatorStatus;
 import ai.riviera.platform.operator.vocabulary.PendingOperator;
+import ai.riviera.platform.shared.SiteLocale;
 
 /**
  * Application service for operator self-registration and the admin-driven lifecycle (approve,
@@ -36,8 +37,9 @@ class OperatorRegistrationService implements OperatorRegistration, OperatorLifec
 
 	@Override
 	@Transactional
-	public OperatorRegistrationOutcome register(String username, String passwordHash, String contactEmail) {
-		return operators.insertPending(username, passwordHash, contactEmail);
+	public OperatorRegistrationOutcome register(String username, String passwordHash, String contactEmail,
+			SiteLocale locale) {
+		return operators.insertPending(username, passwordHash, contactEmail, locale);
 	}
 
 	@Override

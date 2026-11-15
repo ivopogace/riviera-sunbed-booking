@@ -1,9 +1,49 @@
 import { Injectable } from '@angular/core';
-import type { Stripe, StripeElements } from '@stripe/stripe-js';
+import type { Stripe, StripeElementLocale, StripeElements, StripeError } from '@stripe/stripe-js';
 import { loadStripe } from '@stripe/stripe-js/pure';
 
 import { environment } from '../../environments/environment';
+import { buildLocale } from '../shared/display-locale';
 import { CheckoutSession, EmbeddedCheckoutGateway } from './checkout.gateway';
+import { PaymentFailure, paymentFailureMessage } from './payment-failure';
+
+const STRIPE_LOCALES: Readonly<Record<string, StripeElementLocale>> = {
+  en: 'en',
+  it: 'it',
+  de: 'de',
+};
+
+/**
+ * The Elements locale for a build: its own language where Stripe has it, else English. Never
+ * `'auto'`, which follows the browser rather than the guest's chosen build; Albanian (`sq`) is not
+ * a Stripe locale.
+ */
+export function stripeElementsLocale(locale: string): StripeElementLocale {
+  return STRIPE_LOCALES[locale] ?? 'en';
+}
+
+const FAILURES_BY_CODE: Readonly<Record<string, PaymentFailure>> = {
+  card_declined: 'declined',
+  insufficient_funds: 'insufficient-funds',
+  expired_card: 'expired-card',
+  incorrect_cvc: 'incorrect-cvc',
+  authentication_required: 'authentication-required',
+  payment_intent_authentication_failure: 'authentication-failed',
+};
+
+/**
+ * Reads a Stripe error as a {@link PaymentFailure}: a known `decline_code` first, then the `code`,
+ * so an unlisted decline (`stolen_card`, `fraudulent`) stays a plain `card_declined`, as Stripe
+ * asks; a client-side `validation_error` is the guest's input.
+ */
+export function stripeFailure(error: Partial<StripeError>): PaymentFailure {
+  const known = (code: string | undefined) => (code ? FAILURES_BY_CODE[code] : undefined);
+  return (
+    known(error.decline_code) ??
+    known(error.code) ??
+    (error.type === 'validation_error' ? 'invalid-details' : 'unknown')
+  );
+}
 
 /**
  * Validate the configured Stripe key before it reaches Stripe.js: empty fails loudly, a secret key
@@ -27,36 +67,38 @@ export function assertPublishableKey(key: string): void {
 }
 
 /**
- * Real adapter: loads Stripe.js from js.stripe.com (PCI — never bundled or self-hosted) — through
- * the package's `pure` entry, so the script is fetched only when a Payment Element is mounted and
- * never as a side effect of the app booting (the tourist surfaces make no third-party request,
- * ADR-0022) — mounts a Payment Element bound to the PaymentIntent's client secret, and confirms
- * with `redirect: 'if_required'`, so a card stays on the payment page. Uses the **publishable** key
- * from {@link environment} (a `pk_…`, safe in the client bundle; the secret key never reaches the browser).
+ * Real adapter: loads Stripe.js from js.stripe.com (PCI: never bundled) via the `pure` entry, so the
+ * script is fetched only on mount, never at boot (ADR-0022); mounts a Payment Element in the build's
+ * locale and confirms with `redirect: 'if_required'`, so a card stays on the page. A failure shows
+ * our own {@link PaymentFailure} copy, never Stripe's message. Takes the **publishable** key from
+ * {@link environment}; the secret key never reaches the browser.
  */
 @Injectable()
 export class StripeJsPaymentGateway extends EmbeddedCheckoutGateway {
   override async mount(host: HTMLElement, clientSecret: string): Promise<CheckoutSession> {
-    const key = environment.stripePublishableKey;
-    assertPublishableKey(key);
-    const stripe: Stripe | null = await loadStripe(key);
+    const stripe = await this.load();
     if (!stripe) {
       throw new Error($localize`Stripe.js failed to load.`);
     }
-    const elements: StripeElements = stripe.elements({ clientSecret });
+    const elements: StripeElements = stripe.elements({
+      clientSecret,
+      locale: stripeElementsLocale(buildLocale()),
+    });
     elements.create('payment').mount(host);
 
     return {
       confirm: async () => {
         const { error } = await stripe.confirmPayment({ elements, redirect: 'if_required' });
-        return error
-          ? {
-              error:
-                error.message ?? $localize`Your payment could not be completed. Please try again.`,
-            }
-          : {};
+        return error ? { error: paymentFailureMessage(stripeFailure(error)) } : {};
       },
     };
+  }
+
+  /** The one Stripe.js touchpoint, so a spec can stand in for js.stripe.com. */
+  protected load(): Promise<Stripe | null> {
+    const key = environment.stripePublishableKey;
+    assertPublishableKey(key);
+    return loadStripe(key);
   }
 }
 

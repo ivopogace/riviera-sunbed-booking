@@ -3,8 +3,10 @@ import { HttpTestingController, provideHttpClientTesting } from '@angular/common
 import { TestBed } from '@angular/core/testing';
 
 import { environment } from '../../environments/environment';
+import { freezeClock } from '../../testing/freeze-clock';
 import { challengeRejectionMessage } from '../shared/challenge';
 import {
+  LOCALE_SAVE_TIMEOUT_MS,
   OperatorAuth,
   operatorPasswordChangeMessage,
   operatorRegisterMessage,
@@ -229,6 +231,61 @@ describe('OperatorAuth (session-aware, issue #109)', () => {
     expectSnapshotRefetch(venueMap);
   });
 
+  describe('saveLocale (the operator’s own language, #1785)', () => {
+    /** The save awaits the restore before it puts: one macrotask lets every microtask hop run. */
+    const settled = () => new Promise<void>((resolve) => setTimeout(resolve));
+
+    it('puts the pick for a signed-in operator', async () => {
+      const auth = serviceWithRestore({ username: 'maria' });
+
+      const saved = auth.saveLocale('sq');
+      await settled();
+      const req = httpMock.expectOne(`${AUTH_API}/operator/locale`);
+      expect(req.request.method).toBe('PUT');
+      expect(req.request.body).toEqual({ locale: 'sq' });
+      req.flush(null, { status: 204, statusText: 'No Content' });
+
+      await expect(saved).resolves.toBeUndefined();
+    });
+
+    it('sends nothing when no operator is signed in', async () => {
+      const auth = serviceWithRestore('signed-out');
+
+      await auth.saveLocale('it');
+
+      httpMock.expectNone(`${AUTH_API}/operator/locale`);
+    });
+
+    it('resolves on a failed save, never rejecting the switch it rides on', async () => {
+      const auth = serviceWithRestore({ username: 'maria' });
+
+      const saved = auth.saveLocale('it');
+      await settled();
+      httpMock
+        .expectOne(`${AUTH_API}/operator/locale`)
+        .flush({ code: 'INTERNAL_ERROR' }, { status: 500, statusText: 'x' });
+
+      await expect(saved).resolves.toBeUndefined();
+    });
+
+    it('gives up on a save that does not answer within the bound', async () => {
+      vi.useFakeTimers();
+      try {
+        const auth = serviceWithRestore({ username: 'maria' });
+        const saved = auth.saveLocale('sq');
+        await vi.advanceTimersByTimeAsync(0);
+        const req = httpMock.expectOne(`${AUTH_API}/operator/locale`);
+
+        await vi.advanceTimersByTimeAsync(LOCALE_SAVE_TIMEOUT_MS);
+
+        await expect(saved).resolves.toBeUndefined();
+        req.flush(null, { status: 204, statusText: 'No Content' });
+      } finally {
+        freezeClock();
+      }
+    });
+  });
+
   describe('register (self-registration, S6 #115)', () => {
     it('posts the fields and resolves submitted on 202 — never a session, never a /me', async () => {
       const auth = serviceWithRestore('signed-out');
@@ -240,6 +297,7 @@ describe('OperatorAuth (session-aware, issue #109)', () => {
         username: 'alice',
         password: 'password123',
         contactEmail: 'alice@venue.example',
+        locale: 'en',
       });
       req.flush({ status: 'PENDING' }, { status: 202, statusText: 'Accepted' });
 

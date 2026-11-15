@@ -6078,6 +6078,62 @@
           <context context-type="sourcefile">src/app/booking/my-bookings.ts</context>
         </context-group>
       </trans-unit>
+      <trans-unit id="5626053132436260478" datatype="html">
+        <source>Your card was declined. Please try another card.</source>
+        <target state="translated">Ihre Karte wurde abgelehnt. Bitte versuchen Sie es mit einer anderen Karte.</target>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/booking/payment-failure.ts</context>
+        </context-group>
+      </trans-unit>
+      <trans-unit id="7736799927852050585" datatype="html">
+        <source>There are not enough funds on your card. Please try another card.</source>
+        <target state="translated">Ihre Karte ist nicht ausreichend gedeckt. Bitte versuchen Sie es mit einer anderen Karte.</target>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/booking/payment-failure.ts</context>
+        </context-group>
+      </trans-unit>
+      <trans-unit id="6147400793505661302" datatype="html">
+        <source>Your card has expired. Please try another card.</source>
+        <target state="translated">Ihre Karte ist abgelaufen. Bitte versuchen Sie es mit einer anderen Karte.</target>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/booking/payment-failure.ts</context>
+        </context-group>
+      </trans-unit>
+      <trans-unit id="7902620221243217589" datatype="html">
+        <source>The card’s security code is incorrect. Please check it and try again.</source>
+        <target state="translated">Der Sicherheitscode der Karte ist falsch. Bitte prüfen Sie ihn und versuchen Sie es erneut.</target>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/booking/payment-failure.ts</context>
+        </context-group>
+      </trans-unit>
+      <trans-unit id="7241590192401534181" datatype="html">
+        <source>Your bank needs you to confirm this payment. Please try again and complete the check.</source>
+        <target state="translated">Ihre Bank verlangt eine Bestätigung dieser Zahlung. Bitte versuchen Sie es erneut und schließen Sie die Prüfung ab.</target>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/booking/payment-failure.ts</context>
+        </context-group>
+      </trans-unit>
+      <trans-unit id="7507532497013406198" datatype="html">
+        <source>We could not confirm this payment with your bank. Please try again or use another card.</source>
+        <target state="translated">Wir konnten diese Zahlung bei Ihrer Bank nicht bestätigen. Bitte versuchen Sie es erneut oder verwenden Sie eine andere Karte.</target>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/booking/payment-failure.ts</context>
+        </context-group>
+      </trans-unit>
+      <trans-unit id="8660226831578266013" datatype="html">
+        <source>Please check your card details and try again.</source>
+        <target state="translated">Bitte prüfen Sie Ihre Kartendaten und versuchen Sie es erneut.</target>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/booking/payment-failure.ts</context>
+        </context-group>
+      </trans-unit>
+      <trans-unit id="3469970069432889766" datatype="html">
+        <source>Your payment could not be completed. Please try again.</source>
+        <target state="translated">Ihre Zahlung konnte nicht abgeschlossen werden. Bitte versuchen Sie es erneut.</target>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/booking/payment-failure.ts</context>
+        </context-group>
+      </trans-unit>
       <trans-unit id="6457599036940487318" datatype="html">
         <source>Request sent</source>
         <target state="translated">Anfrage gesendet</target>
@@ -6425,13 +6481,6 @@
         <context-group purpose="location">
           <context context-type="sourcefile">src/app/booking/stripe-payment.gateway.ts</context>
         </context-group>
-        <context-group purpose="location">
-          <context context-type="sourcefile">src/app/booking/stripe-payment.gateway.ts</context>
-        </context-group>
-      </trans-unit>
-      <trans-unit id="3469970069432889766" datatype="html">
-        <source>Your payment could not be completed. Please try again.</source>
-        <target state="translated">Ihre Zahlung konnte nicht abgeschlossen werden. Bitte versuchen Sie es erneut.</target>
         <context-group purpose="location">
           <context context-type="sourcefile">src/app/booking/stripe-payment.gateway.ts</context>
         </context-group>
@@ -6859,6 +6908,9 @@
         <target state="translated">Sprache</target>
         <context-group purpose="location">
           <context context-type="sourcefile">src/app/language-menu-rows.ts</context>
+        </context-group>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/operator/operator-account-chip.ts</context>
         </context-group>
       </trans-unit>
       <trans-unit id="7127721270506525282" datatype="html">

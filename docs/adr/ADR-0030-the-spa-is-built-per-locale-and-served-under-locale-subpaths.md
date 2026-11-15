@@ -32,7 +32,8 @@ compiled per locale), or a runtime translation library with an in-page switch.
    it which shell a path falls back to. A missing asset is still a `404` under every subpath, and
    `/api/**` never falls back. `SpaLocaleTest` pins `SpaLocale` to `angular.json`'s locales.
 4. **The choice lives on the device, in `localStorage` (`riviera-locale`), like the theme.** The
-   language row in the tourist menus stores it and loads the same route under the chosen subpath.
+   language row in the tourist menus stores it and loads the same route under the chosen subpath; the
+   console's account menu does the same, after saving the pick as the operator's own (#1785).
 5. **A first load of `/` goes to the stored choice, then the browser's language list, then English.**
    The root shell's inline script does it before boot, by `location.replace`, and only on `/`: a deep
    link is served in the locale its URL names. `navigator.languages` is the list the browser sends as
@@ -76,8 +77,10 @@ compiled per locale), or a runtime translation library with an in-page switch.
 - Transactional mails follow the guest's language (#1770): the SPA sends its build locale with a booking
   or stay create, which `booking` stores, and with the account requests; the server renders
   `notification`'s per-locale message bundles and links under the locale's subpath. Still no cookie.
+  The operator-approved notice follows the operator's language (#1785), stored by `operator` from the
+  register's build locale and each console language pick; English for an operator with none.
 - Adding a locale is a row in `angular.json`, in `shared.SiteLocale` (which `SpaLocale` keys off), in
   `core/locale.ts`'s options, in `shared/display-locale.ts` and in the inline seed's list, plus its
-  translation file, its mail bundle (`mail/messages_<code>.properties`, its date patterns included) and
-  a migration widening `booking_locale_check`, plus its home title and description in `web`'s
-  `LinkPreviews`. German (`de`) was added that way (#1773).
+  translation file, its mail bundle (`mail/messages_<code>.properties`, its date patterns included), a
+  migration widening `booking_locale_check` and `operator_locale_check`, and its home title and
+  description in `web`'s `LinkPreviews`. German (`de`) was added that way (#1773).

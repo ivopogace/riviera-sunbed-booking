@@ -38,7 +38,7 @@ import ai.riviera.platform.shared.SiteLocale;
 import static org.assertj.core.api.Assertions.assertThat;
 
 /**
- * Every guest mail kind in every translated {@link SiteLocale} (#1770): the subject in that language, a body
+ * Every mail kind in every translated {@link SiteLocale} (#1770, the operator's notice #1785): the subject in that language, a body
  * line only that language's copy has, its month names and amount format, and no English row label, bundle key or
  * unfilled placeholder left behind. English stays pinned by {@code SmtpMailerIT}. GreenMail in the JVM, no Docker.
  */
@@ -51,11 +51,12 @@ class SmtpMailerLocaleIT {
 	private static final LocalDate LAST = LocalDate.of(2026, 8, 17);
 	private static final URI LINK = URI.create("https://app.example/sq/booking/" + CODE);
 	private static final URI TOKEN_LINK = URI.create("https://app.example/sq/account/verify?token=t0ken");
+	private static final URI SIGN_IN_LINK = URI.create("https://app.example/sq/account/sign-in");
 	private static final Instant DEADLINE = Instant.parse("2026-08-14T18:30:00Z");
 
 	/** English text a translated body must not carry: the row labels and fixed sentences. */
 	private static final List<String> ENGLISH = List.of("Booking code:", "Venue:", "Paid:", "Refund:", "position ",
-			"Your booking", "your booking", "nothing was charged", "Need help", " day", "August");
+			"Your booking", "your booking", "nothing was charged", "Need help", " day", "August", "operator console");
 
 	/** Words of {@link #ENGLISH} a language spells the same way, so their presence proves nothing there. */
 	private static final Map<SiteLocale, List<String>> SHARED_WITH_ENGLISH = Map.of(SiteLocale.DE, List.of("August"));
@@ -126,6 +127,12 @@ class SmtpMailerLocaleIT {
 								"Miramar Beach ha rifiutato la tua richiesta di prenotazione",
 								"Miramar Beach hat Ihre Buchungsanfrage abgelehnt"),
 						inEach("nuk është më i lirë për ato ditë", "non è più disponibile per quei giorni", "für diese Tage nicht mehr verfügbar")),
+				kind("operator approved", (m, l) -> m.sendOperatorApproved(TO, l, SIGN_IN_LINK),
+						inEach("Llogaria juaj e operatorit u miratua",
+								"Il tuo account gestore è approvato",
+								"Ihr Betreiberkonto ist freigegeben"),
+						inEach("Menaxhojini kurdo nga paneli i operatorit:", "ora online e prenotabili dai turisti",
+								"jetzt online und für Gäste buchbar")),
 				kind("request expired", (m, l) -> m.sendRequestExpired(TO, l, new RequestExpiredMail(CODE, VENUE, DAY, DAY,
 								LINK)),
 						inEach("Kërkesa juaj për rezervim te Miramar Beach skadoi",

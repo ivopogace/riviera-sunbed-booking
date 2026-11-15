@@ -52,7 +52,7 @@ class RecoveryPropertiesBindingTest {
 
 	@Test
 	void theEnvironmentOverridesTheLinkBaseUrl() {
-		recoveryRunner().withSystemProperties("RIVIERA_RECOVERY_LINK_BASE_URL=https://app.example")
+		recoveryRunner().withSystemProperties("RIVIERA_PUBLIC_ORIGIN=https://app.example")
 				.run(context -> assertThat(context.getBean(RecoveryProperties.class).linkBaseUrl())
 						.isEqualTo("https://app.example"));
 	}
@@ -61,13 +61,13 @@ class RecoveryPropertiesBindingTest {
 	void mailerProfileWithoutTheLinkOriginFailsAtBootNamingTheVariable() {
 		recoveryRunner().withPropertyValues("spring.profiles.active=mailer")
 				.run(context -> assertThat(context).hasFailed().getFailure().rootCause()
-						.hasMessageContaining("RIVIERA_RECOVERY_LINK_BASE_URL"));
+						.hasMessageContaining("RIVIERA_PUBLIC_ORIGIN"));
 	}
 
 	@Test
 	void mailerProfileAcceptsAnExplicitLoopbackLinkOrigin() {
 		recoveryRunner().withPropertyValues("spring.profiles.active=mailer")
-				.withSystemProperties("RIVIERA_RECOVERY_LINK_BASE_URL=http://localhost:8080")
+				.withSystemProperties("RIVIERA_PUBLIC_ORIGIN=http://localhost:8080")
 				.run(context -> assertThat(context.getBean(RecoveryProperties.class).linkBaseUrl())
 						.isEqualTo("http://localhost:8080"));
 	}
@@ -77,36 +77,36 @@ class RecoveryPropertiesBindingTest {
 	void aBlankLinkBaseUrlFailsTheBindNamingTheKeyAndTheVariable(String blank) {
 		recoveryRunner().withInitializer(context -> context.getEnvironment().getPropertySources()
 				.addFirst(new MapPropertySource("blank-link-origin",
-						Map.of("RIVIERA_RECOVERY_LINK_BASE_URL", blank))))
+						Map.of("RIVIERA_PUBLIC_ORIGIN", blank))))
 				.run(context -> assertThat(context).hasFailed().getFailure().rootCause()
 						.isInstanceOf(IllegalArgumentException.class)
 						.hasMessageContaining("riviera.recovery.link-base-url")
-						.hasMessageContaining("RIVIERA_RECOVERY_LINK_BASE_URL"));
+						.hasMessageContaining("RIVIERA_PUBLIC_ORIGIN"));
 	}
 
 	@ParameterizedTest
 	@ValueSource(strings = { "/app", "example.com", "https:///app", "http://bad host", "ftp://app.example",
 			"https://app.example/?a=b", "https://app.example#top", "https://app.example/my%zzapp" })
 	void aNonOriginLinkBaseUrlFailsTheBindNamingTheKeyAndTheVariable(String value) {
-		recoveryRunner().withSystemProperties("RIVIERA_RECOVERY_LINK_BASE_URL=" + value)
+		recoveryRunner().withSystemProperties("RIVIERA_PUBLIC_ORIGIN=" + value)
 				.run(context -> assertThat(context).hasFailed().getFailure().rootCause()
 						.isInstanceOf(IllegalArgumentException.class)
 						.hasMessageContaining("riviera.recovery.link-base-url")
-						.hasMessageContaining("RIVIERA_RECOVERY_LINK_BASE_URL"));
+						.hasMessageContaining("RIVIERA_PUBLIC_ORIGIN"));
 	}
 
 	@Test
 	void surroundingWhitespaceOnTheLinkBaseUrlIsStripped() {
 		recoveryRunner().withInitializer(context -> context.getEnvironment().getPropertySources()
 				.addFirst(new MapPropertySource("padded-link-origin",
-						Map.of("RIVIERA_RECOVERY_LINK_BASE_URL", " https://app.example "))))
+						Map.of("RIVIERA_PUBLIC_ORIGIN", " https://app.example "))))
 				.run(context -> assertThat(context.getBean(RecoveryProperties.class).linkBaseUrl())
 						.isEqualTo("https://app.example"));
 	}
 
 	@Test
 	void aLinkBaseUrlCarryingUserInfoFailsTheBindWithoutEchoingIt() {
-		recoveryRunner().withSystemProperties("RIVIERA_RECOVERY_LINK_BASE_URL=https://admin:hunter2@app.example")
+		recoveryRunner().withSystemProperties("RIVIERA_PUBLIC_ORIGIN=https://admin:hunter2@app.example")
 				.run(context -> {
 					assertThat(context).hasFailed().getFailure().rootCause()
 							.isInstanceOf(IllegalArgumentException.class)
@@ -125,7 +125,7 @@ class RecoveryPropertiesBindingTest {
 
 	@Test
 	void aTrailingSlashedUnderscoredLinkBaseUrlBindsTrimmed() {
-		recoveryRunner().withSystemProperties("RIVIERA_RECOVERY_LINK_BASE_URL=http://riviera_backend:8080/")
+		recoveryRunner().withSystemProperties("RIVIERA_PUBLIC_ORIGIN=http://riviera_backend:8080/")
 				.run(context -> assertThat(context.getBean(RecoveryProperties.class).linkBaseUrl())
 						.isEqualTo("http://riviera_backend:8080"));
 	}

@@ -1,7 +1,11 @@
+import type { Stripe, StripeError } from '@stripe/stripe-js';
+
 import {
   assertPublishableKey,
   FakeStripePaymentGateway,
   StripeJsPaymentGateway,
+  stripeElementsLocale,
+  stripeFailure,
 } from './stripe-payment.gateway';
 
 interface FailFlagWindow {
@@ -10,13 +14,10 @@ interface FailFlagWindow {
 }
 
 /**
- * The real gateway loads Stripe.js from js.stripe.com, which cannot run under jsdom — so the
- * unit-testable behavior is the **config guard**: an unconfigured publishable key fails fast with
- * a clear error, before any network/Stripe.js call. The mount/confirm happy path is exercised
- * through a fake gateway in the component specs and the Playwright e2e (Stripe mocked).
- *
- * `environment.stripePublishableKey` is `''` in the dev/test environment (no fileReplacements in
- * test), so this asserts the empty-key path.
+ * The real gateway loads Stripe.js from js.stripe.com, which cannot run under jsdom. With the
+ * loader untouched, the unit-testable behavior is the **config guard**: `environment.stripePublishableKey`
+ * is `''` in the test environment, so the empty-key path fails fast before any network call. The
+ * Elements options and the error mapping run against a stubbed loader below.
  */
 describe('StripeJsPaymentGateway', () => {
   it('rejects with a clear error when the publishable key is not configured', async () => {
@@ -25,6 +26,117 @@ describe('StripeJsPaymentGateway', () => {
 
     await expect(gateway.mount(host, 'pi_1_secret_x')).rejects.toThrow(/publishable key/i);
   });
+});
+
+/** Stands in for Stripe.js: records the Elements options and answers confirm with a set error. */
+class StubbedStripeGateway extends StripeJsPaymentGateway {
+  elementsOptions: unknown;
+  confirmError: Partial<StripeError> | undefined;
+
+  protected override load(): Promise<Stripe | null> {
+    const stripe = {
+      elements: (options: unknown) => {
+        this.elementsOptions = options;
+        return { create: () => ({ mount: () => undefined }) };
+      },
+      confirmPayment: () => Promise.resolve(this.confirmError ? { error: this.confirmError } : {}),
+    };
+    return Promise.resolve(stripe as unknown as Stripe);
+  }
+}
+
+describe('StripeJsPaymentGateway with Stripe.js stubbed', () => {
+  const localize = (globalThis as unknown as { $localize: { locale?: string } }).$localize;
+  const sourceLocale = localize.locale;
+
+  afterEach(() => {
+    localize.locale = sourceLocale;
+  });
+
+  it("passes the build's Stripe locale to Elements, so its labels follow the chosen language", async () => {
+    localize.locale = 'it';
+    const gateway = new StubbedStripeGateway();
+
+    await gateway.mount(document.createElement('div'), 'pi_1_secret_x');
+
+    expect(gateway.elementsOptions).toEqual({ clientSecret: 'pi_1_secret_x', locale: 'it' });
+  });
+
+  it("shows our own copy for a decline, never Stripe's message", async () => {
+    const gateway = new StubbedStripeGateway();
+    gateway.confirmError = {
+      type: 'card_error',
+      code: 'card_declined',
+      decline_code: 'insufficient_funds',
+      message: 'Your card has insufficient funds.',
+    };
+    const checkout = await gateway.mount(document.createElement('div'), 'pi_1_secret_x');
+
+    const step = await checkout.confirm();
+
+    expect(step.error).toMatch(/not enough funds/);
+    expect(step.error).not.toBe('Your card has insufficient funds.');
+  });
+
+  it('confirms with no error when Stripe reports none', async () => {
+    const checkout = await new StubbedStripeGateway().mount(
+      document.createElement('div'),
+      'pi_1_secret_x',
+    );
+
+    await expect(checkout.confirm()).resolves.toEqual({});
+  });
+});
+
+describe('stripeElementsLocale', () => {
+  it.each([
+    ['en', 'en'],
+    ['it', 'it'],
+    ['de', 'de'],
+    ['sq', 'en'],
+    ['fr', 'en'],
+  ])(
+    'maps the %s build to Stripe locale %s, never auto (the browser language)',
+    (build, stripe) => {
+      expect(stripeElementsLocale(build)).toBe(stripe);
+    },
+  );
+});
+
+describe('stripeFailure', () => {
+  it.each<[Partial<StripeError>, string]>([
+    [{ type: 'card_error', code: 'card_declined', decline_code: 'generic_decline' }, 'declined'],
+    [
+      { type: 'card_error', code: 'card_declined', decline_code: 'insufficient_funds' },
+      'insufficient-funds',
+    ],
+    [{ type: 'card_error', code: 'expired_card' }, 'expired-card'],
+    [{ type: 'card_error', code: 'card_declined', decline_code: 'expired_card' }, 'expired-card'],
+    [{ type: 'card_error', code: 'incorrect_cvc' }, 'incorrect-cvc'],
+    [{ type: 'card_error', code: 'card_declined', decline_code: 'incorrect_cvc' }, 'incorrect-cvc'],
+    [
+      { type: 'card_error', code: 'card_declined', decline_code: 'authentication_required' },
+      'authentication-required',
+    ],
+    [
+      { type: 'invalid_request_error', code: 'payment_intent_authentication_failure' },
+      'authentication-failed',
+    ],
+    [{ type: 'validation_error', code: 'incomplete_number' }, 'invalid-details'],
+    [{ type: 'invalid_request_error', code: 'payment_intent_unexpected_state' }, 'unknown'],
+    [{ type: 'api_error' }, 'unknown'],
+  ])('reads %o as %s', (error, failure) => {
+    expect(stripeFailure(error)).toBe(failure);
+  });
+
+  it.each(['stolen_card', 'lost_card', 'fraudulent', 'merchant_blacklist'])(
+    'reads the fraud-flagged decline %s as a plain decline, so the guest learns nothing more',
+    (declineCode) => {
+      expect(
+        stripeFailure({ type: 'card_error', code: 'card_declined', decline_code: declineCode }),
+      ).toBe('declined');
+    },
+  );
 });
 
 /**

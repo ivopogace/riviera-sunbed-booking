@@ -10,8 +10,8 @@ import ai.riviera.platform.shared.SiteLocale;
  * reset's link deferred to the send task), a link possibly carrying a bearer token (invariant #7). A send
  * never throws, runs off the caller's thread on the bounded in-memory dispatcher (never the registry, which
  * would persist the token), and is skipped for a suppressed address; its outcome must affect neither the
- * triggering response's status nor its latency. A lost send is not retried (ADR-0011 decision 5). A guest's
- * mail is written in the {@code SiteLocale} the triggering request named.
+ * triggering response's status nor its latency. A lost send is not retried (ADR-0011 decision 5). Each mail
+ * is written in the {@code SiteLocale} it is handed: the triggering request's, or the operator's stored one.
  */
 public interface MailSender {
 
@@ -29,5 +29,5 @@ public interface MailSender {
 	 * Tell a self-registered operator its account was approved, linking the sign-in page. A lost notice is
 	 * unrecoverable in-product and counted under {@code kind="operator-approved"} (ADR-0011 decision 5).
 	 */
-	void sendOperatorApproved(String toEmail, URI signInLink);
+	void sendOperatorApproved(String toEmail, SiteLocale locale, URI signInLink);
 }
