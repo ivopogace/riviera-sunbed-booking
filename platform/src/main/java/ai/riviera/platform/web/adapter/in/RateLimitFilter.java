@@ -95,6 +95,10 @@ final class RateLimitFilter extends OncePerRequestFilter {
 	private static final String SSO_PATH_PREFIX = "/api/auth/sso/";
 	private static final String SSO_AUTHORIZE_TEMPLATE = "/api/auth/sso/{provider}/authorize";
 	private static final String SSO_CALLBACK_TEMPLATE = "/api/auth/sso/{provider}/callback";
+	/** Operator SSO (#276): the anonymous sign-in authorize, and the link start, which verifies a password. */
+	private static final String OPERATOR_SSO_PATH_PREFIX = "/api/auth/operator/sso/";
+	private static final String OPERATOR_SSO_AUTHORIZE_TEMPLATE = "/api/auth/operator/sso/{provider}/authorize";
+	private static final String OPERATOR_SSO_LINK_TEMPLATE = "/api/auth/operator/sso/{provider}/link";
 
 	/**
 	 * The proof-of-work challenge GET, on its own budget so a challenge flood never starves a login.
@@ -158,6 +162,8 @@ final class RateLimitFilter extends OncePerRequestFilter {
 	private final Map<String, TokenBucket> operatorResetBuckets = new ConcurrentHashMap<>();
 	private final Map<String, TokenBucket> customerPasswordBuckets = new ConcurrentHashMap<>();
 	private final Map<String, TokenBucket> ssoBuckets = new ConcurrentHashMap<>();
+	private final Map<String, TokenBucket> operatorSsoBuckets = new ConcurrentHashMap<>();
+	private final Map<String, TokenBucket> operatorSsoLinkBuckets = new ConcurrentHashMap<>();
 	private final Map<String, TokenBucket> recoveryBuckets = new ConcurrentHashMap<>();
 	private final Map<String, TokenBucket> challengeBuckets = new ConcurrentHashMap<>();
 
@@ -301,6 +307,9 @@ final class RateLimitFilter extends OncePerRequestFilter {
 				&& (paths.match(SSO_AUTHORIZE_TEMPLATE, path) || paths.match(SSO_CALLBACK_TEMPLATE, path))) {
 			return Optional.of(AuthBudget.spendsEveryRequest(ssoBuckets, props.login()));
 		}
+		if (path.startsWith(OPERATOR_SSO_PATH_PREFIX) && paths.match(OPERATOR_SSO_AUTHORIZE_TEMPLATE, path)) {
+			return Optional.of(AuthBudget.spendsEveryRequest(operatorSsoBuckets, props.login()));
+		}
 		return Optional.empty();
 	}
 
@@ -330,6 +339,9 @@ final class RateLimitFilter extends OncePerRequestFilter {
 		}
 		if (RECOVERY_PATHS.contains(path)) {
 			return Optional.of(AuthBudget.guardsAuthenticatedWork(recoveryBuckets, limit));
+		}
+		if (path.startsWith(OPERATOR_SSO_PATH_PREFIX) && paths.match(OPERATOR_SSO_LINK_TEMPLATE, path)) {
+			return Optional.of(AuthBudget.guardsAuthenticatedWork(operatorSsoLinkBuckets, limit));
 		}
 		return Optional.empty();
 	}

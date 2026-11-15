@@ -117,15 +117,20 @@ D-2/D-3/D-4/D-5/D-8.
 
 ## Execution status
 
-**Stage pointer:** implement (phase 0)
+**Stage pointer:** implement (phase 3)
 
-**Next action:** write `OperatorSsoLinksIT` red.
+**Next action:** frontend: `SsoButtons` operator side, sign-in-methods section, failure notice, e2e.
+
+Decisions taken while implementing: the mock IdP asserts one Google identity for every audience (one account may
+be a tourist and an operator, so the cross-audience ACs run on the same identity); a link callback on a session the
+credential filter just ended answers 400 (the record went with the session), a switched principal the link-failed
+redirect; `SsoFlow`/`OperatorSsoCallback` are built by the controllers, not beans, so `@WebMvcTest` slices need none.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
-| 0 — V87 + operator port | ⏳ | |
-| 1 — state record + nonce + issuer | | |
-| 2 — operator endpoints | | |
+| 0 — V87 + operator port | ✅ | e02d0395 |
+| 1 — state record + nonce + issuer | ✅ | (this push) |
+| 2 — operator endpoints | ✅ | (this push) |
 | 3 — frontend | | |
 | 4 — docs | | |
 

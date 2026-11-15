@@ -39,8 +39,9 @@ class RealSsoGateway implements SsoGateway {
 	}
 
 	@Override
-	public ExternalIdentity exchangeCode(SsoProvider provider, String code, String codeVerifier, URI redirectUri) {
-		return clientFor(provider).exchangeCode(code, codeVerifier, redirectUri);
+	public ExternalIdentity exchangeCode(SsoProvider provider, String code, String codeVerifier, String expectedNonce,
+			URI redirectUri) {
+		return clientFor(provider).exchangeCode(code, codeVerifier, expectedNonce, redirectUri);
 	}
 
 	private SsoProviderClient clientFor(SsoProvider provider) {

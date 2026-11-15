@@ -12,7 +12,6 @@ import org.springframework.http.MediaType;
 import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.MvcResult;
-import org.springframework.web.util.UriComponentsBuilder;
 
 import ai.riviera.platform.customer.api.SsoAccountProvisioning;
 import ai.riviera.platform.customer.vocabulary.SsoProvider;
@@ -181,11 +180,12 @@ class SsoCallbackIT {
 	void mockIdpRedirectsBackToTheOwnCallbackWithACannedCode() throws Exception {
 		mvc.perform(get("/api/auth/sso/mock/{provider}/authorize", "google")
 				.param("state", "state-xyz")
+				.param("nonce", "nonce-xyz")
 				.param("redirect_uri", "http://localhost/api/auth/sso/google/callback")
 				.header("X-Forwarded-For", SessionLoginSupport.uniqueClientIp()))
 				.andExpect(status().isFound())
 				.andExpect(header().string("Location", containsString("/api/auth/sso/google/callback")))
-				.andExpect(header().string("Location", containsString("code=mock-google")))
+				.andExpect(header().string("Location", containsString("code=mock-google.nonce-xyz")))
 				.andExpect(header().string("Location", containsString("state=state-xyz")));
 	}
 
@@ -194,6 +194,7 @@ class SsoCallbackIT {
 		// A redirect_uri on a different host/scheme must not be honoured (no open redirect).
 		mvc.perform(get("/api/auth/sso/mock/{provider}/authorize", "google")
 				.param("state", "s")
+				.param("nonce", "n")
 				.param("redirect_uri", "https://evil.example/api/auth/sso/google/callback")
 				.header("X-Forwarded-For", SessionLoginSupport.uniqueClientIp()))
 				.andExpect(status().isBadRequest());
@@ -206,13 +207,8 @@ class SsoCallbackIT {
 				.header("X-Forwarded-For", ip)).andExpect(status().isFound()).andReturn();
 		Cookie authorizeSession = authorize.getResponse().getCookie(SESSION_COOKIE);
 		assertNotNull(authorizeSession, "authorize must start a session to hold the state");
-		String state = queryParam(authorize.getResponse().getRedirectedUrl(), "state");
 
-		MvcResult callback = mvc.perform(get("/api/auth/sso/{provider}/callback", providerSlug)
-				.param("code", "mock-" + providerSlug)
-				.param("state", state)
-				.cookie(authorizeSession)
-				.header("X-Forwarded-For", ip))
+		MvcResult callback = mvc.perform(MockIdp.callback(mvc, authorize, ip).cookie(authorizeSession))
 				.andExpect(status().isFound())
 				.andExpect(redirectedUrl("/"))
 				.andReturn();
@@ -233,10 +229,6 @@ class SsoCallbackIT {
 								{"email": "%s", "password": "%s"}""".formatted(email, HOLDER_PASSWORD)))
 				.andExpect(status().isCreated())
 				.andReturn().getResponse().getCookie(SESSION_COOKIE), "register set no SESSION cookie");
-	}
-
-	private static String queryParam(String url, String name) {
-		return UriComponentsBuilder.fromUriString(url).build().getQueryParams().getFirst(name);
 	}
 
 	private int accountRows(String email) {

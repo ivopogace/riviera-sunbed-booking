@@ -102,6 +102,7 @@ class EndpointRoleGateCoverageTest {
 			"GET /api/auth/sso/{provider}/authorize",
 			"GET /api/auth/sso/{provider}/callback",
 			"GET /api/auth/sso/mock/{provider}/authorize",
+			"GET /api/auth/operator/sso/{provider}/authorize",
 			// permitAll — the public tourist catalogue + beach map (U1) and the photo serve.
 			"GET /api/venues",
 			"GET /api/venues/{venueId}",

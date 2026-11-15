@@ -15,9 +15,13 @@ import ai.riviera.platform.customer.vocabulary.SsoProvider;
  */
 public interface SsoGateway {
 
-	/** The provider's authorize URL to redirect the browser to, carrying the state + PKCE challenge. */
+	/** The provider's authorize URL to redirect the browser to, carrying the state, PKCE challenge and nonce. */
 	URI authorizationRequest(SsoProvider provider, SsoAuthorizationChallenge challenge, URI redirectUri);
 
-	/** Exchange the authorization code (+ PKCE verifier) for the provider-verified external identity. */
-	ExternalIdentity exchangeCode(SsoProvider provider, String code, String codeVerifier, URI redirectUri);
+	/**
+	 * Exchange the code (+ PKCE verifier) for the verified identity, refusing an ID token whose {@code nonce} is not
+	 * {@code expectedNonce} or whose issuer is not the provider's ({@link SsoProviders#issuer}).
+	 */
+	ExternalIdentity exchangeCode(SsoProvider provider, String code, String codeVerifier, String expectedNonce,
+			URI redirectUri);
 }

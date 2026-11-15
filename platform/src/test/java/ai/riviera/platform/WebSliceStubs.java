@@ -107,6 +107,11 @@ import ai.riviera.platform.operator.api.OperatorAccounts;
 import ai.riviera.platform.operator.api.OperatorDirectory;
 import ai.riviera.platform.operator.api.OperatorLifecycle;
 import ai.riviera.platform.operator.api.OperatorPasswordReset;
+import ai.riviera.platform.operator.api.OperatorSsoLinks;
+import ai.riviera.platform.operator.vocabulary.OperatorCredential;
+import ai.riviera.platform.operator.vocabulary.OperatorSsoLink;
+import ai.riviera.platform.operator.vocabulary.SsoLinkOutcome;
+import ai.riviera.platform.operator.vocabulary.SsoUnlinkOutcome;
 import ai.riviera.platform.operator.api.OperatorLanguage;
 import ai.riviera.platform.operator.api.OperatorProvisioning;
 import ai.riviera.platform.operator.api.OperatorRegistration;
@@ -573,8 +578,10 @@ public class WebSliceStubs {
 			}
 
 			@Override
-			public ExternalIdentity exchangeCode(SsoProvider provider, String code, String codeVerifier, URI redirectUri) {
-				return new ExternalIdentity(provider, "web-slice-subject", "web-slice@example.com");
+			public ExternalIdentity exchangeCode(SsoProvider provider, String code, String codeVerifier,
+					String expectedNonce, URI redirectUri) {
+				return new ExternalIdentity(provider, "https://web-slice.example", "web-slice-subject",
+						"web-slice@example.com");
 			}
 		};
 	}
@@ -799,6 +806,32 @@ public class WebSliceStubs {
 			public ai.riviera.platform.operator.vocabulary.OperatorResetOutcome resetPassword(String tokenHash,
 					String passwordHash) {
 				return new ai.riviera.platform.operator.vocabulary.OperatorResetOutcome.InvalidOrExpired();
+			}
+		};
+	}
+
+	/** Inert: no identity is linked, so no operator SSO sign-in or link lands in a web slice. */
+	@Bean
+	OperatorSsoLinks operatorSsoLinks() {
+		return new OperatorSsoLinks() {
+			@Override
+			public Optional<OperatorCredential> resolve(String issuer, String subject) {
+				return Optional.empty();
+			}
+
+			@Override
+			public SsoLinkOutcome link(OperatorId operatorId, String issuer, String subject) {
+				return new SsoLinkOutcome.NotOperable();
+			}
+
+			@Override
+			public SsoUnlinkOutcome unlink(OperatorId operatorId, String issuer) {
+				return new SsoUnlinkOutcome.NotLinked();
+			}
+
+			@Override
+			public List<OperatorSsoLink> links(OperatorId operatorId) {
+				return List.of();
 			}
 		};
 	}
