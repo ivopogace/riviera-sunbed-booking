@@ -9,15 +9,18 @@ import java.util.regex.Pattern;
  */
 public record VenuePhone(String e164) {
 
-	private static final Pattern E164 = Pattern.compile("\\+[1-9]\\d{7,14}");
+	private static final Pattern E164_SHAPE = Pattern.compile("\\+[1-9]\\d{7,14}");
 
-	/** Spaces, dots, dashes and parentheses a human types inside a number. */
-	private static final Pattern NUMBER_PUNCTUATION = Pattern.compile("[\\s.()\\-]");
+	/**
+	 * Spaces, dots, dashes and parentheses a human types inside a number; the spaces are every one the console's
+	 * JavaScript {@code \s} strips (Java's {@code \s} alone is ASCII), so a field the console accepts saves.
+	 */
+	private static final Pattern NUMBER_PUNCTUATION = Pattern.compile("[\\s\\p{Z}\\uFEFF.()\\-]");
 
 	private static final String INTERNATIONAL_PREFIX = "00";
 
 	public VenuePhone {
-		if (e164 == null || !E164.matcher(e164).matches()) {
+		if (e164 == null || !E164_SHAPE.matcher(e164).matches()) {
 			throw new IllegalArgumentException(
 					"phone must be an international number: + and the country code, e.g. +355 69 123 4567");
 		}

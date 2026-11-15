@@ -27,6 +27,14 @@ class VenuePhoneTest {
 		assertThrows(IllegalArgumentException.class, () -> VenuePhone.parse(typed));
 	}
 
+	/** A number pasted from a web page carries Unicode spaces the console's JavaScript {@code \s} strips. */
+	@ParameterizedTest
+	@ValueSource(strings = { "+355 69 123 4567", "+355 69 123 4567", "+355 69 1234567",
+			"﻿+355691234567", "+355　69　1234567" })
+	void unicodeSpacesAreStrippedAsTheConsoleStripsThem(String typed) {
+		assertEquals("+355691234567", VenuePhone.parse(typed).e164());
+	}
+
 	@Test
 	void theBoundsAreEightToFifteenDigits() {
 		assertEquals("+12345678", VenuePhone.parse("+12345678").e164());
