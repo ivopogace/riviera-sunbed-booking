@@ -1,4 +1,5 @@
-import { readFileSync, readdirSync } from 'node:fs';
+import { readFileSync } from 'node:fs';
+import { recursivePaths } from '../../testing/source-paths';
 import { join } from 'node:path';
 
 import { AA_NORMAL, contrastRatio, rgbToHex } from '../../testing/contrast';
@@ -50,7 +51,7 @@ const FAMILY = {
 const APP = join(process.cwd(), 'src/app');
 
 function componentSources(): readonly string[] {
-  return readdirSync(APP, { recursive: true, encoding: 'utf8' }).filter(
+  return recursivePaths(APP).filter(
     (path) => /\.(ts|html)$/.test(path) && !path.endsWith('.spec.ts'),
   );
 }
@@ -60,9 +61,7 @@ const SELF = 'shared/solid-fill-tokens.contrast.spec.ts';
 
 /** Every source under `src/app`, specs included: a retired name rots in prose as well as in code. */
 function everySource(): readonly string[] {
-  return readdirSync(APP, { recursive: true, encoding: 'utf8' }).filter(
-    (path) => /\.(ts|html)$/.test(path) && path.replaceAll('\\', '/') !== SELF,
-  );
+  return recursivePaths(APP).filter((path) => /\.(ts|html)$/.test(path) && path !== SELF);
 }
 
 function read(path: string): string {
