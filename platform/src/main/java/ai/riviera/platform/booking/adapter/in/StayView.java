@@ -13,7 +13,7 @@ import ai.riviera.platform.venue.vocabulary.MoneyView;
  * {@code 202} of a collecting gateway (confirmation arrives per stretch by the verified webhook, invariant #8).
  */
 record StayView(String code, String status, long venueId, String venueName, String firstDate, String lastDate,
-		MoneyView total, List<StretchView> stretches, boolean emailWithheld) {
+		MoneyView total, List<StretchView> stretches, String confirmationMail) {
 
 	record StretchView(long setId, String rowLabel, int positionNo, String firstDate, String lastDate,
 			MoneyView amount) {
@@ -30,7 +30,7 @@ record StayView(String code, String status, long venueId, String venueName, Stri
 		return new StayView(confirmation.code(), confirmation.status().name(), confirmation.venueId().value(),
 				confirmation.venueName(), confirmation.stay().firstDay().toString(),
 				confirmation.stay().lastDay().toString(), confirmation.total(),
-				confirmation.stretches().stream().map(StayView::stretchOf).toList(), confirmation.emailWithheld());
+				confirmation.stretches().stream().map(StayView::stretchOf).toList(), confirmation.confirmationMail().name());
 	}
 
 	private static StretchView stretchOf(StayConfirmation.Stretch stretch) {

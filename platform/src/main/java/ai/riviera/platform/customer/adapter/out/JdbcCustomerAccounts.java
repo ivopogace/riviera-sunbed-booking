@@ -221,6 +221,14 @@ class JdbcCustomerAccounts implements CustomerAccountStore {
 	}
 
 	@Override
+	public Optional<String> verifiedEmailOf(CustomerAccountId accountId) {
+		return jdbc.sql("SELECT email FROM customer_account WHERE id = :id AND email_verified AND erased_at IS NULL")
+				.param(ID, accountId.value())
+				.query(String.class)
+				.optional();
+	}
+
+	@Override
 	public String emailOf(CustomerAccountId accountId) {
 		return jdbc.sql("SELECT email FROM customer_account WHERE id = :id")
 				.param(ID, accountId.value())

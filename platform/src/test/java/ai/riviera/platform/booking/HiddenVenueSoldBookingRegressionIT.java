@@ -1,5 +1,6 @@
 package ai.riviera.platform.booking;
 
+import java.util.Optional;
 import java.time.LocalDate;
 import java.time.ZoneId;
 
@@ -109,7 +110,7 @@ class HiddenVenueSoldBookingRegressionIT {
 		assertTrue(catalog.findVenueMap(new VenueId(venueId), StaySpan.oneDay(future)).isEmpty(),
 				"sanity: the venue is hidden from tourists now");
 
-		assertTrue(viewBooking.byCode(code).isPresent(), "the code-gated view still resolves");
+		assertTrue(viewBooking.byCode(code, Optional.empty()).isPresent(), "the code-gated view still resolves");
 
 		CancelOutcome cancelled = cancelBooking.cancel(code);
 		assertInstanceOf(CancelOutcome.Cancelled.class, cancelled,

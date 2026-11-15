@@ -64,7 +64,7 @@ const STAY = {
   refundOutstanding: false,
   requestExpiresAt: null,
   payment: null,
-  emailWithheld: false,
+  confirmationMail: 'UNDISCLOSED',
   payWindowClosed: true,
   cancelReason: null,
   cancellationWindowAtBirth: 'CLOSED',

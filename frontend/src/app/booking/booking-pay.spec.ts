@@ -56,7 +56,7 @@ const DETAIL: BookingDetail = {
   refundOutstanding: false,
   requestExpiresAt: null,
   payment: null,
-  emailWithheld: false,
+  confirmationMail: 'UNDISCLOSED',
   payWindowClosed: false,
   cancelReason: null,
   cancellationWindowAtBirth: 'FREE',
@@ -408,7 +408,9 @@ describe('BookingPay', () => {
     try {
       await comp.pay();
       await vi.advanceTimersByTimeAsync(0);
-      httpMock.expectOne(STATUS_URL).flush({ ...DETAIL, status: 'CONFIRMED', emailWithheld: true });
+      httpMock
+        .expectOne(STATUS_URL)
+        .flush({ ...DETAIL, status: 'CONFIRMED', confirmationMail: 'WITHHELD' });
       expect(comp.state()).toBe('confirmed');
       fixture.detectChanges();
 
@@ -475,7 +477,7 @@ describe('BookingPay', () => {
     }
   });
 
-  it('omits the withheld-email notice when the mail was sent, and shows the QR', async () => {
+  it('shows a non-owner the neutral mail line, no withheld notice, and the QR (#1748)', async () => {
     const gateway = new FakeGateway();
     const { comp, fixture, httpMock } = await setup(gateway);
     vi.useFakeTimers();
@@ -487,6 +489,9 @@ describe('BookingPay', () => {
 
       const host = fixture.nativeElement as HTMLElement;
       expect(host.querySelector('[data-testid="email-withheld"]')).toBeNull();
+      expect(host.querySelector('[data-testid="email-pending"]')?.textContent).toContain(
+        'Keep this code in case it doesn’t arrive.',
+      );
       expect(host.querySelector('[data-testid="pay-status"]')?.textContent).toContain(
         'Your booking is confirmed.',
       );

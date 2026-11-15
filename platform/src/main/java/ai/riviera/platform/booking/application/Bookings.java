@@ -152,6 +152,9 @@ public interface Bookings {
 	 */
 	List<AccountBooking> findByAccountId(CustomerAccountId accountId);
 
+	/** The account the booking was made under; empty for a guest booking or an unknown id. */
+	Optional<CustomerAccountId> accountOf(long bookingId);
+
 	/**
 	 * Strict {@code AWAITING_PAYMENT → CONFIRMED} (anything else throws) for the synchronous stub
 	 * path, returning the {@code BookingConfirmed} facts via {@code RETURNING}. The stay's {@code

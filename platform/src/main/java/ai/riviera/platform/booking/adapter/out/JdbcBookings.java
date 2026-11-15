@@ -633,6 +633,15 @@ class JdbcBookings implements Bookings {
 		return groupedByStay(rows);
 	}
 
+	@Override
+	public Optional<CustomerAccountId> accountOf(long bookingId) {
+		return jdbc.sql("SELECT account_id FROM booking WHERE id = :id AND account_id IS NOT NULL")
+				.param("id", bookingId)
+				.query(Long.class)
+				.optional()
+				.map(CustomerAccountId::new);
+	}
+
 	/** A stitched stay lists once (ADR-0024), where its latest stretch fell, its stretches in day order; a lone booking as itself. */
 	private static List<AccountBooking> groupedByStay(List<AccountRow> rows) {
 		List<AccountBooking> listed = new ArrayList<>();

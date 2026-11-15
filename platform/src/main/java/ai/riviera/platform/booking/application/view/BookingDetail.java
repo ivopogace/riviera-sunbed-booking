@@ -3,6 +3,7 @@ package ai.riviera.platform.booking.application.view;
 import java.time.LocalDate;
 import java.util.List;
 
+import ai.riviera.platform.booking.application.MailDisclosure;
 import ai.riviera.platform.booking.domain.BookingStatus;
 import ai.riviera.platform.booking.vocabulary.CancellationWindow;
 import ai.riviera.platform.booking.vocabulary.DeclineReason;
@@ -17,8 +18,8 @@ import ai.riviera.platform.venue.vocabulary.VenuePhone;
  * The booking-view screen: cancellation terms server-computed (invariant #10), money in minor units (#5), pay
  * deadline computed server-side in {@code Europe/Tirane} (#4, #6). {@code cancellable} ({@code CONFIRMED}, window
  * open, something left) and {@code withdrawable} (a {@code PENDING_REQUEST} retraction, no policy) are never both
- * true; {@code payment} is set only while payable. {@code emailWithheld} is asked only once {@code CONFIRMED}, else
- * this code-gated view is a suppression oracle. {@code reviewPanel} is review's answer, never derived from {@code status};
+ * true; {@code payment} is set only while payable. {@code confirmationMail} is {@code ConfirmationMailDisclosure}'s
+ * answer for this reader. {@code reviewPanel} is review's answer, never derived from {@code status};
  * {@code refundedDays} a storm's days given back (#1210); {@code nothingLeft} every day refunded (ADR-0026 §7; a stay's: its {@code LiveRemainder}'s); {@code venuePhone} null if none given.
  */
 public record BookingDetail(String code, BookingStatus status, VenueId venueId, String venueName,
@@ -27,7 +28,7 @@ public record BookingDetail(String code, BookingStatus status, VenueId venueId, 
 		boolean withdrawable, boolean beforeCutoff, MoneyView refundIfCancelledNow,
 		MoneyView refundedAmount, boolean refundOutstanding,
 		java.time.Instant requestExpiresAt,
-		ai.riviera.platform.payment.vocabulary.CheckoutInstruction payment, boolean emailWithheld,
+		ai.riviera.platform.payment.vocabulary.CheckoutInstruction payment, MailDisclosure confirmationMail,
 		boolean payWindowClosed, RefundReason cancelReason, DeclineReason declineReason,
 		CancellationWindow cancellationWindowAtBirth, ReviewPanel reviewPanel,
 		String reviewNameSuggestion, BookingMove move, List<StayStretch> stretches,

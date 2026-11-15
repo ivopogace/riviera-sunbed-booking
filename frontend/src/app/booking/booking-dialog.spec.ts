@@ -39,7 +39,7 @@ const CONFIRMATION: BookingConfirmation = {
   positionNo: 2,
   bookingDate: '2026-12-01',
   amount: { minorUnits: 4500, currency: 'EUR' },
-  emailWithheld: false,
+  confirmationMail: 'UNDISCLOSED',
 };
 
 const AWAITING: AwaitingPayment = {
@@ -510,7 +510,7 @@ describe('BookingDialog (2-step Liquid Glass modal)', () => {
           lastDate: s.lastDate,
           amount: s.amount,
         })),
-        emailWithheld: false,
+        confirmationMail: 'UNDISCLOSED',
       },
       { status: 201, statusText: 'Created' },
     );
@@ -772,7 +772,7 @@ describe('BookingDialog (2-step Liquid Glass modal)', () => {
           lastDate: s.lastDate,
           amount: s.amount,
         })),
-        emailWithheld: false,
+        confirmationMail: 'UNDISCLOSED',
         requestExpiresAt: '2026-11-30T16:00:00Z',
       },
       { status: 202, statusText: 'Accepted' },

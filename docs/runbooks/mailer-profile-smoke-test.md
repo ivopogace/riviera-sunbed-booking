@@ -124,9 +124,9 @@ It suppresses hard bounces and complaints (`docs/runbooks/suppression-list-ops.m
 Scaleway's *Create webhooks*, *Use webhooks with SNS topics*, *Verifying webhook signatures* and *TEM
 webhook event payloads* (TEM + Topics & Events docs; webhooks are a beta needing a quota request).
 
-**Precondition — do not register live before #1748 (the G-3 follow-up) has merged.** The first row this feed
-writes turns `emailWithheld` on the code-gated booking view into a per-address suppression oracle
-under the `stripe` profile (RESPONSIBILITIES.md §notification, *the withheld-flag probe*).
+**Precondition (met by #1748):** the booking reads tell only the address's verified owner whether a
+confirmation was withheld, so the rows this feed writes are no per-address oracle (RESPONSIBILITIES.md
+§notification, *the withheld-flag probe is closed*).
 
 1. **Trust chain.** Download Scaleway's long-term SNS CA for the region (fr-par:
    `https://messaging.s3.fr-par.scw.cloud/fr-par/sns/sns-trust-chain.pem`, valid to 2032). Mount it

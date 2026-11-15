@@ -33,7 +33,7 @@ const MOVED_DETAIL = {
   refundOutstanding: false,
   requestExpiresAt: null,
   payment: null,
-  emailWithheld: false,
+  confirmationMail: 'UNDISCLOSED',
   payWindowClosed: false,
   cancelReason: null,
   cancellationWindowAtBirth: 'FREE',

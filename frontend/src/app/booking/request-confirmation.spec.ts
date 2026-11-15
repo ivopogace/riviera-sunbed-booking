@@ -100,7 +100,7 @@ describe('RequestConfirmation', () => {
             amount: { minorUnits: 9000, currency: 'EUR' },
           },
         ],
-        emailWithheld: false,
+        confirmationMail: 'UNDISCLOSED',
         requestExpiresAt: '2026-11-30T16:00:00Z',
       },
       { status: 202, statusText: 'Accepted' },

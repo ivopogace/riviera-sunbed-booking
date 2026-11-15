@@ -1,5 +1,12 @@
 package ai.riviera.platform.booking.application.reserve;
 
+import java.util.Optional;
+
+import ai.riviera.platform.booking.application.ConfirmationMailDisclosure;
+import ai.riviera.platform.booking.application.MailDisclosure;
+import ai.riviera.platform.booking.domain.BookingStatus;
+import ai.riviera.platform.customer.vocabulary.CustomerAccountId;
+
 import java.time.Clock;
 import java.time.Instant;
 import java.time.LocalDate;
@@ -12,13 +19,11 @@ import org.junit.jupiter.api.Test;
 
 import ai.riviera.platform.booking.application.refund.ReleaseAbandonedBooking;
 import ai.riviera.platform.booking.application.reserve.StayReserveOutcome.ReservedStretch;
-import ai.riviera.platform.booking.spi.ConfirmationMailDelivery;
 import ai.riviera.platform.booking.vocabulary.BookingId;
 import ai.riviera.platform.booking.vocabulary.StayId;
 import ai.riviera.platform.customer.vocabulary.CustomerId;
 import ai.riviera.platform.payment.vocabulary.CheckoutInstruction;
 import ai.riviera.platform.payment.api.CheckoutPort;
-import ai.riviera.platform.payment.api.CollectionGuarantee;
 import ai.riviera.platform.payment.vocabulary.CollectionShare;
 import ai.riviera.platform.payment.vocabulary.PayeeRef;
 import ai.riviera.platform.payment.vocabulary.PaymentOutcome;
@@ -53,6 +58,8 @@ class CreateStayServiceTest {
 
 	private final ReleaseAbandonedBooking release = released::add;
 
+	private final ConfirmationMailDisclosure mailDisclosure = mock(ConfirmationMailDisclosure.class);
+
 	private static SetBookingInfo set(long setId, long venueId) {
 		return new SetBookingInfo(new SetId(setId), new VenueId(venueId), "Miramar", "Front row", 2, Pool.ONLINE,
 				new MoneyView(4500L, "EUR"), LocalTime.of(18, 0), LocalTime.of(16, 0), BookingMode.INSTANT,
@@ -61,7 +68,7 @@ class CreateStayServiceTest {
 
 	private CreateStayService service(CheckoutPort checkout) {
 		return new CreateStayService(reservation, checkout, mock(ConfirmBooking.class), release,
-				mock(ConfirmationMailDelivery.class), mock(CollectionGuarantee.class), CLOCK);
+				mailDisclosure, CLOCK);
 	}
 
 	private void reserved(ReservedStretch... stretches) {
@@ -82,6 +89,33 @@ class CreateStayServiceTest {
 
 		assertEquals(List.of(new PayeeRef(7L), new PayeeRef(8L)), paid.stream().map(CollectionShare::payee).toList(),
 				"each share names the venue of its own stretch's set");
+	}
+
+	@Test
+	void aConfirmedStayCarriesTheDisclosureForItsFirstStretchAndTheCreatingSession() {
+		reserved(new ReservedStretch(41L, set(1L, 7L), DAY, DAY, 4500L),
+				new ReservedStretch(42L, set(2L, 7L), DAY.plusDays(1), DAY.plusDays(1), 3000L));
+		CustomerAccountId account = new CustomerAccountId(3L);
+		when(command.accountId()).thenReturn(account);
+		when(mailDisclosure.disclose(BookingStatus.CONFIRMED, 41L, new CustomerId(99L), Optional.of(account)))
+				.thenReturn(MailDisclosure.EMAILED);
+
+		StayOutcome outcome = service(_ -> new PaymentOutcome.Succeeded("ok")).create(command);
+
+		assertEquals(MailDisclosure.EMAILED,
+				assertInstanceOf(StayOutcome.Confirmed.class, outcome).confirmation().confirmationMail());
+	}
+
+	@Test
+	void aStayAwaitingPaymentDisclosesNothing() {
+		reserved(new ReservedStretch(41L, set(1L, 7L), DAY, DAY, 4500L));
+
+		StayOutcome outcome = service(_ -> new PaymentOutcome.Pending(new CheckoutInstruction.Embedded("cs", "pi")))
+				.create(command);
+
+		assertEquals(MailDisclosure.UNDISCLOSED,
+				assertInstanceOf(StayOutcome.AwaitingPayment.class, outcome).confirmation().confirmationMail());
+		org.mockito.Mockito.verifyNoInteractions(mailDisclosure);
 	}
 
 	@Test

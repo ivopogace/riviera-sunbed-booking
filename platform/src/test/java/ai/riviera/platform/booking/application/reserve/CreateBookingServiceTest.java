@@ -1,5 +1,9 @@
 package ai.riviera.platform.booking.application.reserve;
 
+import ai.riviera.platform.booking.application.ConfirmationMailDisclosure;
+import ai.riviera.platform.booking.application.MailDisclosure;
+import ai.riviera.platform.customer.vocabulary.CustomerAccountId;
+
 import ai.riviera.platform.booking.application.BookingCutoff;
 
 import java.time.*;
@@ -41,6 +45,11 @@ import ai.riviera.platform.payment.vocabulary.PaymentOutcome;
 import ai.riviera.platform.venue.api.SetBookingFacts;
 
 import static org.junit.jupiter.api.Assertions.*;
+import static org.mockito.ArgumentMatchers.anyLong;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoInteractions;
+import static org.mockito.Mockito.when;
 
 /**
  * Branch coverage for the Instant-Book orchestration (now two-phase) with
@@ -61,9 +70,8 @@ class CreateBookingServiceTest {
 			Clock.fixed(Instant.parse("2026-11-01T09:00:00Z"), ZoneId.of("UTC"));
 
 	private final RecordingBookings bookings = new RecordingBookings();
-	private final RecordingMailDelivery confirmationMail = new RecordingMailDelivery();
-	// Default: a gateway that really collects, so the existing cases mean what they always meant.
-	private final RecordingCollection collection = new RecordingCollection();
+	private final ConfirmationMailDisclosure mailDisclosure =
+			org.mockito.Mockito.mock(ConfirmationMailDisclosure.class, invocation -> MailDisclosure.UNDISCLOSED);
 	private final RecordingConfirm confirmer = new RecordingConfirm();
 	private final RecordingRelease release = new RecordingRelease();
 
@@ -105,8 +113,7 @@ class CreateBookingServiceTest {
 		ReserveSetService reservation = new ReserveSetService(catalog, claim, nothingTaken,
 				new ReserveFences(visibility(venueVisible), new BookingCutoff(clock)),
 				customers, bookings, codes, new BookingCutoff(clock), WINDOWS, clock);
-		return new CreateBookingService(reservation, checkout, confirmer, release, confirmationMail,
-				collection, clock);
+		return new CreateBookingService(reservation, checkout, confirmer, release, mailDisclosure, clock);
 	}
 
 	private CreateBookingCommand command() {
@@ -149,24 +156,24 @@ class CreateBookingServiceTest {
 	}
 
 	@Test
-	void flagsWithheldConfirmationMailOnInstantConfirm() {
-		// The instant-confirm response is built before the after-commit mail listener runs, so
-		// the flag can only come from asking whether the mail WOULD be withheld — never from the send.
-		confirmationMail.withheld = true;
+	void anInstantConfirmCarriesTheDisclosureForTheCreatingSession() {
+		// The 201 is built before the after-commit mail listener runs, so it can only carry the rule's answer.
+		CustomerAccountId account = new CustomerAccountId(3L);
+		when(mailDisclosure.disclose(eq(BookingStatus.CONFIRMED), anyLong(), eq(new CustomerId(99)),
+				eq(Optional.of(account)))).thenReturn(MailDisclosure.WITHHELD);
 		CreateBookingService service = service(set(Pool.ONLINE),
 				claiming(ClaimOutcome.CLAIMED),
 				_ -> new PaymentOutcome.Succeeded("ok"),
 				() -> "CODE123456");
 
-		BookingOutcome outcome = service.create(command());
+		BookingOutcome outcome = service.create(new CreateBookingCommand(SET, DATE, DATE, GUEST, account));
 
 		BookingOutcome.Confirmed confirmed = assertInstanceOf(BookingOutcome.Confirmed.class, outcome);
-		assertTrue(confirmed.confirmation().emailWithheld(), "the guest is told no email is coming");
-		assertEquals(List.of(new CustomerId(99)), confirmationMail.asked, "asked about that guest");
+		assertEquals(MailDisclosure.WITHHELD, confirmed.confirmation().confirmationMail());
 	}
 
 	@Test
-	void reportsADeliverableConfirmationMailAsNotWithheld() {
+	void aGuestCheckoutReachesTheDisclosureRuleWithNoAccount() {
 		CreateBookingService service = service(set(Pool.ONLINE),
 				claiming(ClaimOutcome.CLAIMED),
 				_ -> new PaymentOutcome.Succeeded("ok"),
@@ -175,32 +182,14 @@ class CreateBookingServiceTest {
 		BookingOutcome outcome = service.create(command());
 
 		BookingOutcome.Confirmed confirmed = assertInstanceOf(BookingOutcome.Confirmed.class, outcome);
-		assertFalse(confirmed.confirmation().emailWithheld());
-	}
-
-	@Test
-	void neverAsksAboutTheConfirmationMailWhenTheGatewayCollectedNothing() {
-		// The in-process stub answers Succeeded without taking money, so this 201 CONFIRMED is NOT
-		// post-payment and the flag would be a free suppression oracle for any address.
-		collection.proven = false;
-		confirmationMail.withheld = true;
-		CreateBookingService service = service(set(Pool.ONLINE),
-				claiming(ClaimOutcome.CLAIMED),
-				_ -> new PaymentOutcome.Succeeded("ok"),
-				() -> "CODE123456");
-
-		BookingOutcome outcome = service.create(command());
-
-		BookingOutcome.Confirmed confirmed = assertInstanceOf(BookingOutcome.Confirmed.class, outcome);
-		assertFalse(confirmed.confirmation().emailWithheld());
-		assertTrue(confirmationMail.asked.isEmpty(), "no oracle where confirmation isn't payment");
+		assertEquals(MailDisclosure.UNDISCLOSED, confirmed.confirmation().confirmationMail());
+		verify(mailDisclosure).disclose(eq(BookingStatus.CONFIRMED), anyLong(), eq(new CustomerId(99)),
+				eq(Optional.empty()));
 	}
 
 	@Test
 	void neverAsksAboutTheConfirmationMailBeforePayment() {
-		// The 202 hands the code out BEFORE the card is collected, so asking here would leak
-		// suppression status for any address a checkout can be started with (D-8).
-		confirmationMail.withheld = true;
+		// The 202 hands the code out BEFORE the card is collected (D-8).
 		CreateBookingService service = service(set(Pool.ONLINE),
 				claiming(ClaimOutcome.CLAIMED),
 				_ -> new PaymentOutcome.Pending(new CheckoutInstruction.Embedded("cs_test", "pi_test")),
@@ -210,13 +199,12 @@ class CreateBookingServiceTest {
 
 		BookingOutcome.AwaitingPayment awaiting =
 				assertInstanceOf(BookingOutcome.AwaitingPayment.class, outcome);
-		assertFalse(awaiting.confirmation().emailWithheld());
-		assertTrue(confirmationMail.asked.isEmpty(), "no suppression oracle before payment");
+		assertEquals(MailDisclosure.UNDISCLOSED, awaiting.confirmation().confirmationMail());
+		verifyNoInteractions(mailDisclosure);
 	}
 
 	@Test
 	void neverAsksAboutTheConfirmationMailForAPendingRequest() {
-		confirmationMail.withheld = true;
 		CreateBookingService service = service(set(Pool.ONLINE, BookingMode.REQUEST),
 				claiming(ClaimOutcome.CLAIMED),
 				_ -> new PaymentOutcome.Succeeded("ok"),
@@ -225,8 +213,8 @@ class CreateBookingServiceTest {
 		BookingOutcome outcome = service.create(command());
 
 		BookingOutcome.Requested requested = assertInstanceOf(BookingOutcome.Requested.class, outcome);
-		assertFalse(requested.confirmation().emailWithheld());
-		assertTrue(confirmationMail.asked.isEmpty(), "no suppression oracle before payment");
+		assertEquals(MailDisclosure.UNDISCLOSED, requested.confirmation().confirmationMail());
+		verifyNoInteractions(mailDisclosure);
 	}
 
 	@Test
@@ -252,8 +240,7 @@ class CreateBookingServiceTest {
 				new ReserveFences(visibility(true), new BookingCutoff(CLOCK)), customers, collidingOnce,
 				codes::removeFirst, new BookingCutoff(CLOCK), WINDOWS, CLOCK);
 		var service = new CreateBookingService(reservation,
-				_ -> new PaymentOutcome.Succeeded("ok"), confirmer, release, confirmationMail,
-				collection, CLOCK);
+				_ -> new PaymentOutcome.Succeeded("ok"), confirmer, release, mailDisclosure, CLOCK);
 
 		BookingOutcome outcome = service.create(command());
 
@@ -331,7 +318,7 @@ class CreateBookingServiceTest {
 				() -> "CODE12345C", new BookingCutoff(CLOCK), WINDOWS, CLOCK);
 		CreateBookingService service = new CreateBookingService(reservation,
 				_ -> new PaymentOutcome.Succeeded("ok"), failingConfirm, release,
-				confirmationMail, collection, CLOCK);
+				mailDisclosure, CLOCK);
 
 		assertThrows(IllegalStateException.class, () -> service.create(command()));
 		assertEquals(1, release.released.size(),
@@ -359,7 +346,7 @@ class CreateBookingServiceTest {
 				() -> "REQCODE004", new BookingCutoff(CLOCK), WINDOWS, CLOCK);
 		CreateBookingService service = new CreateBookingService(reservation,
 				_ -> { throw new AssertionError("no payment for a request"); }, confirmer, release,
-				confirmationMail, collection, CLOCK);
+				mailDisclosure, CLOCK);
 
 		BookingOutcome outcome = service.create(command());
 
@@ -1003,6 +990,11 @@ class CreateBookingServiceTest {
 		}
 
 		@Override
+		public Optional<CustomerAccountId> accountOf(long bookingId) {
+			throw new UnsupportedOperationException();
+		}
+
+		@Override
 		public List<ai.riviera.platform.booking.vocabulary.BookingId> findOverduePendingRequests(Instant now) {
 			return List.of();
 		}
@@ -1213,35 +1205,6 @@ class CreateBookingServiceTest {
 		public Map<VenueId, ai.riviera.platform.venue.vocabulary.VenueStayFacts> stayFactsOf(
 				Collection<VenueId> venueIds) {
 			return Map.of();
-		}
-	}
-
-	/**
-	 * A {@code ConfirmationMailDelivery} fake that records who was asked — so the confirmed
-	 * branch can be shown to carry the answer, and the pre-payment branches to never ask at all.
-	 */
-	private static final class RecordingMailDelivery
-			implements ai.riviera.platform.booking.spi.ConfirmationMailDelivery {
-
-		private final List<CustomerId> asked = new ArrayList<>();
-		private boolean withheld;
-
-		@Override
-		public boolean isWithheld(CustomerId customerId) {
-			asked.add(customerId);
-			return withheld;
-		}
-	}
-
-	/** A {@code CollectionGuarantee} fake — whether this deployment's gateway really collects. */
-	private static final class RecordingCollection
-			implements ai.riviera.platform.payment.api.CollectionGuarantee {
-
-		private boolean proven = true;
-
-		@Override
-		public boolean provenBeforeConfirmation() {
-			return proven;
 		}
 	}
 }

@@ -1,5 +1,7 @@
 package ai.riviera.platform.booking.adapter.in;
 
+import ai.riviera.platform.booking.application.MailDisclosure;
+
 import java.time.Instant;
 import java.time.LocalDate;
 import java.time.LocalTime;
@@ -29,7 +31,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
  * sets, the nested {@code amount} keys, and the deliberate asymmetries — the requested body has
  * <strong>no</strong> {@code payment} (no payment exists until the
  * venue accepts), the awaiting-payment body no {@code requestExpiresAt}, and only the confirmed
- * body carries {@code emailWithheld} (D-8). Value formats stay pinned by the MockMvc ITs
+ * body carries {@code confirmationMail} (D-8, #1748). Value formats stay pinned by the MockMvc ITs
  * ({@code CreateBookingStripeProfileIT}, {@code RequestToBookFlowIT}); this test guards the key
  * sets a refactor could silently nest.
  */
@@ -47,9 +49,10 @@ class BookingCreationViewsContractTest {
 
 		JsonNode json = MAPPER.valueToTree(view);
 
-		assertEquals(withShared("emailWithheld"), fieldNames(json));
+		assertEquals(withShared("confirmationMail"), fieldNames(json));
 		assertEquals(Set.of("minorUnits", "currency"), fieldNames(json.get("amount")));
 		assertEquals("CONFIRMED", json.get("status").asText());
+		assertEquals("UNDISCLOSED", json.get("confirmationMail").asText());
 	}
 
 	@Test
@@ -92,6 +95,7 @@ class BookingCreationViewsContractTest {
 				new SetBookingInfo(new SetId(11), new VenueId(7), "Vala Beach", "A", 4, Pool.ONLINE,
 						new MoneyView(4500, "EUR"), LocalTime.of(18, 0), LocalTime.of(16, 0),
 						BookingMode.REQUEST, SeasonClosure.open(), null, null),
-				LocalDate.of(2026, 8, 10), LocalDate.of(2026, 8, 12), new MoneyView(13500, "EUR"), false);
+				LocalDate.of(2026, 8, 10), LocalDate.of(2026, 8, 12), new MoneyView(13500, "EUR"),
+				MailDisclosure.UNDISCLOSED);
 	}
 }

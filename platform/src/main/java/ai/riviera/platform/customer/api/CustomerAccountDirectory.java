@@ -3,6 +3,7 @@ package ai.riviera.platform.customer.api;
 import java.util.Optional;
 
 import ai.riviera.platform.customer.vocabulary.CustomerAccountId;
+import ai.riviera.platform.customer.vocabulary.CustomerId;
 import ai.riviera.platform.customer.vocabulary.NotSignedInCustomerException;
 
 /**
@@ -26,4 +27,10 @@ public interface CustomerAccountDirectory {
 
 	/** As {@link #signedInAccount}, or {@link NotSignedInCustomerException} (→ {@code 403}) when it is empty. */
 	CustomerAccountId requireSignedInAccount(String principalName, boolean customerPrincipal);
+
+	/**
+	 * Whether the live account's <strong>verified</strong> email is this guest contact's address, compared in
+	 * {@link ai.riviera.platform.customer.vocabulary.Emails} form: who may hear a per-address fact (#1748). Compares, never links (D-6).
+	 */
+	boolean holdsVerifiedAddress(CustomerAccountId account, CustomerId contact);
 }

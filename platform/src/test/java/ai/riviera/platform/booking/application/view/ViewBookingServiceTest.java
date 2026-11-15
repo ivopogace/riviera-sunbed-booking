@@ -18,16 +18,17 @@ import ai.riviera.platform.booking.application.cancel.CancellationPolicy;
 import ai.riviera.platform.booking.application.cancel.LiveRemainder;
 import ai.riviera.platform.booking.application.remodel.ReceiptMove;
 import ai.riviera.platform.booking.application.request.RequestWindows;
+import ai.riviera.platform.booking.application.ConfirmationMailDisclosure;
+import ai.riviera.platform.booking.application.MailDisclosure;
 import ai.riviera.platform.booking.domain.BookingStatus;
 import ai.riviera.platform.booking.vocabulary.BookingId;
 import ai.riviera.platform.booking.vocabulary.CancellationWindow;
-import ai.riviera.platform.booking.spi.ConfirmationMailDelivery;
 import ai.riviera.platform.booking.vocabulary.RefundReason;
 import ai.riviera.platform.booking.vocabulary.SpotRef;
 import ai.riviera.platform.booking.vocabulary.StayId;
+import ai.riviera.platform.customer.vocabulary.CustomerAccountId;
 import ai.riviera.platform.customer.vocabulary.CustomerId;
 import ai.riviera.platform.customer.vocabulary.GuestContact;
-import ai.riviera.platform.payment.api.CollectionGuarantee;
 import ai.riviera.platform.payment.api.CheckoutInstructionLookup;
 import ai.riviera.platform.payment.api.RefundStatusLookup;
 import ai.riviera.platform.payment.vocabulary.CheckoutInstruction;
@@ -52,20 +53,15 @@ import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
 /**
- * The view use case's <strong>withheld-confirmation-mail</strong> contract: a confirmed
- * booking reports whether its confirmation mail was suppressed, so the post-payment surface can tell
- * the guest to save their code.
- *
- * <p>The negative case is the security-relevant one. Answering "is this address suppressed?" for a
- * booking that is not yet confirmed would turn the code-gated view into an oracle for any address
- * someone can start a checkout with — the `202` create hands out the code <em>before</em> payment.
- * So the port must not merely return {@code false} before confirmation; it must not be
- * <em>consulted</em>, which is what {@link #neverConsultsMailDeliveryBeforeConfirmation} pins.
+ * The view use case: refund terms, review panel, moves, pay window and nothing-left, against mocked ports. The mail
+ * disclosure is {@link ConfirmationMailDisclosure}'s rule (pinned by its own test); here only that the view hands it the
+ * booking, its contact and the reader, and carries its answer.
  */
 class ViewBookingServiceTest {
 
 	private static final String CODE = "ABCD2345";
 	private static final CustomerId GUEST = new CustomerId(7);
+	private static final CustomerAccountId READER = new CustomerAccountId(3);
 	private static final SetId SET = new SetId(2);
 	private static final VenueId VENUE = new VenueId(1);
 	private static final VenuePhone VENUE_PHONE = new VenuePhone("+355691234567");
@@ -80,8 +76,8 @@ class ViewBookingServiceTest {
 	private final CancellationPolicy cancellationPolicy = mock(CancellationPolicy.class);
 	private final BookingCutoff cutoff = new BookingCutoff(NOW);
 	private final CheckoutInstructionLookup checkout = mock(CheckoutInstructionLookup.class);
-	private final ConfirmationMailDelivery mailDelivery = mock(ConfirmationMailDelivery.class);
-	private final CollectionGuarantee collection = mock(CollectionGuarantee.class);
+	private final ConfirmationMailDisclosure mailDisclosure =
+			mock(ConfirmationMailDisclosure.class, invocation -> MailDisclosure.UNDISCLOSED);
 	private final RefundStatusLookup refundStatus = mock(RefundStatusLookup.class);
 
 	private final ai.riviera.platform.review.api.ReviewEligibility reviewEligibility =
@@ -92,7 +88,7 @@ class ViewBookingServiceTest {
 	private final ai.riviera.platform.booking.application.remodel.RemodelReceipts receipts =
 			mock(ai.riviera.platform.booking.application.remodel.RemodelReceipts.class);
 	private final ViewBookingService service = new ViewBookingService(bookings, cancellationPolicy,
-			cutoff, checkout, mailDelivery, collection, refundStatus, reviewEligibility, customers,
+			cutoff, checkout, mailDisclosure, refundStatus, reviewEligibility, customers,
 			WINDOWS, receipts, new LiveRemainder(receipts), NOW);
 
 	@org.junit.jupiter.params.ParameterizedTest
@@ -102,7 +98,7 @@ class ViewBookingServiceTest {
 		givenBooking(BookingStatus.COMPLETED);
 		when(reviewEligibility.panelFor(CODE)).thenReturn(panel);
 
-		assertThat(service.byCode(CODE).orElseThrow().reviewPanel()).isEqualTo(panel);
+		assertThat(service.byCode(CODE, Optional.empty()).orElseThrow().reviewPanel()).isEqualTo(panel);
 	}
 
 	static java.util.stream.Stream<ReviewPanel> everyPanel() {
@@ -120,7 +116,7 @@ class ViewBookingServiceTest {
 		when(customers.findById(GUEST))
 				.thenReturn(Optional.of(new GuestContact("ana@example.test", "Ana Kelmendi", "+355690000000")));
 
-		assertThat(service.byCode(CODE).orElseThrow().reviewNameSuggestion()).isEqualTo("Ana");
+		assertThat(service.byCode(CODE, Optional.empty()).orElseThrow().reviewNameSuggestion()).isEqualTo("Ana");
 	}
 
 	@Test
@@ -129,7 +125,7 @@ class ViewBookingServiceTest {
 		givenReviewable();
 		when(customers.findById(GUEST)).thenReturn(Optional.empty());
 
-		assertThat(service.byCode(CODE).orElseThrow().reviewNameSuggestion()).isNull();
+		assertThat(service.byCode(CODE, Optional.empty()).orElseThrow().reviewNameSuggestion()).isNull();
 	}
 
 	@Test
@@ -137,7 +133,7 @@ class ViewBookingServiceTest {
 		givenBooking(BookingStatus.COMPLETED);
 		when(reviewEligibility.panelFor(CODE)).thenReturn(new ReviewPanel.WindowClosed());
 
-		assertThat(service.byCode(CODE).orElseThrow().reviewNameSuggestion()).isNull();
+		assertThat(service.byCode(CODE, Optional.empty()).orElseThrow().reviewNameSuggestion()).isNull();
 		verify(customers, never()).findById(any());
 	}
 
@@ -147,64 +143,48 @@ class ViewBookingServiceTest {
 	}
 
 	@Test
-	void flagsWithheldConfirmationMailForSuppressedGuest() {
+	void carriesTheDisclosureTheRuleGivesThisReader() {
 		givenBooking(BookingStatus.CONFIRMED);
-		when(mailDelivery.isWithheld(GUEST)).thenReturn(true);
+		when(mailDisclosure.disclose(BookingStatus.CONFIRMED, 1L, GUEST, Optional.of(READER)))
+				.thenReturn(MailDisclosure.WITHHELD);
 
-		BookingDetail detail = service.byCode(CODE).orElseThrow();
-
-		assertThat(detail.emailWithheld()).isTrue();
+		assertThat(service.byCode(CODE, Optional.of(READER)).orElseThrow().confirmationMail())
+				.isEqualTo(MailDisclosure.WITHHELD);
 	}
 
 	@Test
 	void carriesTheVenuePhoneForTheHelpBlock() {
 		givenBooking(BookingStatus.CONFIRMED);
 
-		assertThat(service.byCode(CODE).orElseThrow().venuePhone()).isEqualTo(VENUE_PHONE);
+		assertThat(service.byCode(CODE, Optional.empty()).orElseThrow().venuePhone()).isEqualTo(VENUE_PHONE);
 	}
 
 	@Test
-	void doesNotFlagWithheldMailForDeliverableGuest() {
+	void aGuestReaderReachesTheRuleAsNoAccount() {
 		givenBooking(BookingStatus.CONFIRMED);
-		when(mailDelivery.isWithheld(GUEST)).thenReturn(false);
 
-		BookingDetail detail = service.byCode(CODE).orElseThrow();
+		BookingDetail detail = service.byCode(CODE, Optional.empty()).orElseThrow();
 
-		assertThat(detail.emailWithheld()).isFalse();
+		assertThat(detail.confirmationMail()).isEqualTo(MailDisclosure.UNDISCLOSED);
+		verify(mailDisclosure).disclose(BookingStatus.CONFIRMED, 1L, GUEST, Optional.empty());
 	}
 
 	@Test
-	void neverConsultsMailDeliveryBeforeConfirmation() {
-		givenBooking(BookingStatus.AWAITING_PAYMENT);
-		when(checkout.openInstruction(any())).thenReturn(Optional.empty());
+	void aStayAsksTheRuleForItsFirstStretchUnderTheStaysStatus() {
+		BookingRecord first = new BookingRecord(1L, CODE, BookingStatus.CONFIRMED, VENUE, SET, GUEST, DATE,
+				DATE.plusDays(2), 13500L, "EUR", null, null, null, null, Instant.EPOCH, null, null);
+		BookingRecord second = new BookingRecord(2L, CODE, BookingStatus.CONFIRMED, VENUE, SET, GUEST, DATE.plusDays(3),
+				DATE.plusDays(5), 13500L, "EUR", null, null, null, null, Instant.EPOCH, null, null);
+		when(bookings.findByCode(CODE)).thenReturn(Optional.empty());
+		when(bookings.findStayByCode(CODE)).thenReturn(Optional.of(
+				new StayRecord(new StayId(4L), CODE, VENUE, DATE, DATE.plusDays(5), List.of(first, second))));
+		when(cancellationPolicy.quote(any(), any())).thenReturn(new CancellationPolicy.RefundQuote(setInfo(),
+				CancellationWindow.FREE, 13500L, RefundReason.POLICY, null));
+		when(mailDisclosure.disclose(BookingStatus.CONFIRMED, 1L, GUEST, Optional.of(READER)))
+				.thenReturn(MailDisclosure.EMAILED);
 
-		BookingDetail detail = service.byCode(CODE).orElseThrow();
-
-		assertThat(detail.emailWithheld()).isFalse();
-		verifyNoInteractions(mailDelivery);
-	}
-
-	@Test
-	void neverConsultsMailDeliveryForAPendingRequest() {
-		givenBooking(BookingStatus.PENDING_REQUEST);
-
-		BookingDetail detail = service.byCode(CODE).orElseThrow();
-
-		assertThat(detail.emailWithheld()).isFalse();
-		verifyNoInteractions(mailDelivery);
-	}
-
-	@Test
-	void neverConsultsMailDeliveryWhenConfirmationDoesNotProveCollection() {
-		// The stub gateway reaches CONFIRMED having taken no money, so "post-payment" is not true
-		// there and the flag would be a free suppression oracle for any address.
-		givenBooking(BookingStatus.CONFIRMED);
-		when(collection.provenBeforeConfirmation()).thenReturn(false);
-
-		BookingDetail detail = service.byCode(CODE).orElseThrow();
-
-		assertThat(detail.emailWithheld()).isFalse();
-		verifyNoInteractions(mailDelivery);
+		assertThat(service.byCode(CODE, Optional.of(READER)).orElseThrow().confirmationMail())
+				.isEqualTo(MailDisclosure.EMAILED);
 	}
 
 	/**
@@ -217,7 +197,6 @@ class ViewBookingServiceTest {
 	void aMovedBookingCarriesItsLatestMoveAndTheOpenExitDeadline() {
 		Instant movedAt = Instant.parse("2026-07-19T13:00:00Z");
 		Instant deadline = Instant.parse("2026-07-20T13:00:00Z");
-		when(collection.provenBeforeConfirmation()).thenReturn(true);
 		BookingRecord record = new BookingRecord(1L, CODE, BookingStatus.CONFIRMED, VENUE, SET, GUEST, DATE,
 				4500L, "EUR", null, null, null, null, Instant.EPOCH, null, movedAt);
 		when(bookings.findByCode(CODE)).thenReturn(Optional.of(record));
@@ -229,7 +208,7 @@ class ViewBookingServiceTest {
 						new ai.riviera.platform.booking.vocabulary.SpotRef(new SetId(9L), "A", 3),
 						new ai.riviera.platform.booking.vocabulary.SpotRef(SET, "Front row", 2), 0, 1)));
 
-		BookingDetail detail = service.byCode(CODE).orElseThrow();
+		BookingDetail detail = service.byCode(CODE, Optional.empty()).orElseThrow();
 
 		assertThat(detail.move()).isEqualTo(new BookingMove("A", 3, 0, 1, movedAt, deadline));
 		assertThat(detail.refundIfCancelledNow().minorUnits()).isEqualTo(4500L);
@@ -240,7 +219,7 @@ class ViewBookingServiceTest {
 	void anUnmovedBookingCarriesNoMove() {
 		givenBooking(BookingStatus.CONFIRMED, CancellationWindow.FREE, 4500L);
 
-		assertThat(service.byCode(CODE).orElseThrow().move()).isNull();
+		assertThat(service.byCode(CODE, Optional.empty()).orElseThrow().move()).isNull();
 		org.mockito.Mockito.verifyNoInteractions(receipts);
 	}
 
@@ -260,7 +239,7 @@ class ViewBookingServiceTest {
 		when(receipts.latestMoveOf(new BookingId(2L))).thenReturn(Optional.of(new ReceiptMove(new BookingId(2L),
 				DATE.plusDays(3), new SpotRef(new SetId(9L), "Back row", 4), new SpotRef(SET, "Front row", 2), 1, 2)));
 
-		BookingDetail detail = service.byCode(CODE).orElseThrow();
+		BookingDetail detail = service.byCode(CODE, Optional.empty()).orElseThrow();
 
 		assertThat(detail.venuePhone()).isEqualTo(VENUE_PHONE);
 		assertThat(detail.move()).isNull();
@@ -287,7 +266,7 @@ class ViewBookingServiceTest {
 		when(cancellationPolicy.quote(live, DATE.plusDays(3))).thenReturn(new CancellationPolicy.RefundQuote(setInfo(),
 				CancellationWindow.FREE, 13500L, RefundReason.POLICY, null));
 
-		BookingDetail detail = service.byCode(CODE).orElseThrow();
+		BookingDetail detail = service.byCode(CODE, Optional.empty()).orElseThrow();
 
 		assertThat(detail.cancellable()).isTrue();
 		assertThat(detail.refundIfCancelledNow().minorUnits()).isEqualTo(13500L);
@@ -298,14 +277,13 @@ class ViewBookingServiceTest {
 	/** ADR-0026 §7 (#1381): a confirmed booking with every day refunded offers no cancel and says it has nothing left. */
 	@Test
 	void aConfirmedBookingWithEveryDayRefundedIsNotCancellableAndSaysNothingLeft() {
-		when(collection.provenBeforeConfirmation()).thenReturn(true);
 		BookingRecord record = new BookingRecord(1L, CODE, BookingStatus.CONFIRMED, VENUE, SET, GUEST, DATE, DATE, 4500L,
 				"EUR", null, null, null, null, Instant.EPOCH, null, null, null, 4500L, true);
 		when(bookings.findByCode(CODE)).thenReturn(Optional.of(record));
 		when(cancellationPolicy.quote(record)).thenReturn(new CancellationPolicy.RefundQuote(setInfo(),
 				CancellationWindow.FREE, 0L, RefundReason.POLICY, null));
 
-		BookingDetail detail = service.byCode(CODE).orElseThrow();
+		BookingDetail detail = service.byCode(CODE, Optional.empty()).orElseThrow();
 
 		assertThat(detail.cancellable()).isFalse();
 		assertThat(detail.nothingLeft()).isTrue();
@@ -326,7 +304,7 @@ class ViewBookingServiceTest {
 		when(cancellationPolicy.quote(live, DATE.plusDays(3))).thenReturn(new CancellationPolicy.RefundQuote(setInfo(),
 				CancellationWindow.FREE, 13500L, RefundReason.POLICY, null));
 
-		BookingDetail detail = service.byCode(CODE).orElseThrow();
+		BookingDetail detail = service.byCode(CODE, Optional.empty()).orElseThrow();
 
 		assertThat(detail.cancellable()).isTrue();
 		assertThat(detail.nothingLeft()).isFalse();
@@ -351,7 +329,7 @@ class ViewBookingServiceTest {
 		when(cancellationPolicy.quote(any(), any())).thenReturn(new CancellationPolicy.RefundQuote(setInfo(),
 				CancellationWindow.FREE, 0L, RefundReason.POLICY, null));
 
-		BookingDetail detail = service.byCode(CODE).orElseThrow();
+		BookingDetail detail = service.byCode(CODE, Optional.empty()).orElseThrow();
 
 		assertThat(detail.cancellable()).isFalse();
 		assertThat(detail.nothingLeft()).isTrue();
@@ -370,7 +348,7 @@ class ViewBookingServiceTest {
 		when(cancellationPolicy.quote(any(), any())).thenReturn(new CancellationPolicy.RefundQuote(setInfo(),
 				CancellationWindow.CLOSED, 0L, RefundReason.POLICY, null));
 
-		BookingDetail detail = service.byCode(CODE).orElseThrow();
+		BookingDetail detail = service.byCode(CODE, Optional.empty()).orElseThrow();
 
 		assertThat(detail.status()).isEqualTo(BookingStatus.NO_SHOW);
 		assertThat(detail.cancellable()).isFalse();
@@ -390,7 +368,7 @@ class ViewBookingServiceTest {
 		when(cancellationPolicy.quote(any(), any())).thenReturn(new CancellationPolicy.RefundQuote(setInfo(),
 				CancellationWindow.CLOSED, 0L, RefundReason.POLICY, null));
 
-		BookingDetail detail = service.byCode(CODE).orElseThrow();
+		BookingDetail detail = service.byCode(CODE, Optional.empty()).orElseThrow();
 
 		assertThat(detail.nothingLeft()).isFalse();
 		assertThat(detail.stretches()).extracting(BookingDetail.StayStretch::nothingLeft).containsExactly(true, false);
@@ -408,7 +386,7 @@ class ViewBookingServiceTest {
 		when(cancellationPolicy.quote(any(), any())).thenReturn(new CancellationPolicy.RefundQuote(setInfo(),
 				CancellationWindow.FREE, 13500L, RefundReason.POLICY, null));
 
-		BookingDetail detail = service.byCode(CODE).orElseThrow();
+		BookingDetail detail = service.byCode(CODE, Optional.empty()).orElseThrow();
 
 		assertThat(detail.cancellable()).isFalse();
 	}
@@ -422,7 +400,7 @@ class ViewBookingServiceTest {
 	void pendingRequestIsWithdrawableButNotCancellable() {
 		givenBooking(BookingStatus.PENDING_REQUEST);
 
-		BookingDetail detail = service.byCode(CODE).orElseThrow();
+		BookingDetail detail = service.byCode(CODE, Optional.empty()).orElseThrow();
 
 		assertThat(detail.withdrawable()).isTrue();
 		assertThat(detail.cancellable()).isFalse();
@@ -432,7 +410,7 @@ class ViewBookingServiceTest {
 	void confirmedIsCancellableButNotWithdrawable() {
 		givenBooking(BookingStatus.CONFIRMED);
 
-		BookingDetail detail = service.byCode(CODE).orElseThrow();
+		BookingDetail detail = service.byCode(CODE, Optional.empty()).orElseThrow();
 
 		assertThat(detail.withdrawable()).isFalse();
 		assertThat(detail.cancellable()).isTrue();
@@ -448,7 +426,7 @@ class ViewBookingServiceTest {
 	void onlyAConfirmedBookingIsCancellableWhileTheWindowIsOpen(BookingStatus status) {
 		givenBooking(status);
 
-		BookingDetail detail = service.byCode(CODE).orElseThrow();
+		BookingDetail detail = service.byCode(CODE, Optional.empty()).orElseThrow();
 
 		assertThat(detail.cancellable()).isEqualTo(status == BookingStatus.CONFIRMED);
 	}
@@ -457,7 +435,7 @@ class ViewBookingServiceTest {
 	void anAlreadyWithdrawnRequestIsNoLongerWithdrawable() {
 		givenBooking(BookingStatus.WITHDRAWN);
 
-		BookingDetail detail = service.byCode(CODE).orElseThrow();
+		BookingDetail detail = service.byCode(CODE, Optional.empty()).orElseThrow();
 
 		assertThat(detail.withdrawable()).isFalse();
 		assertThat(detail.cancellable()).isFalse();
@@ -472,7 +450,7 @@ class ViewBookingServiceTest {
 	void pastBookingIsNotCancellableEvenThoughItIsConfirmed() {
 		givenBooking(BookingStatus.CONFIRMED, CancellationWindow.CLOSED, 0L);
 
-		BookingDetail detail = service.byCode(CODE).orElseThrow();
+		BookingDetail detail = service.byCode(CODE, Optional.empty()).orElseThrow();
 
 		assertThat(detail.cancellable()).isFalse();
 		assertThat(detail.beforeCutoff()).isFalse();
@@ -489,7 +467,7 @@ class ViewBookingServiceTest {
 		// Never accepted, so the deadline is its day's end — two days gone by now.
 		givenAwaitingPayment(LocalDate.of(2026, 7, 30), Instant.EPOCH, null);
 
-		BookingDetail detail = service.byCode(CODE).orElseThrow();
+		BookingDetail detail = service.byCode(CODE, Optional.empty()).orElseThrow();
 
 		assertThat(detail.payment()).isNull();
 		assertThat(detail.payWindowClosed()).isTrue();
@@ -503,7 +481,7 @@ class ViewBookingServiceTest {
 		when(checkout.openInstruction(any()))
 				.thenReturn(Optional.of(new CheckoutInstruction.Embedded("cs_x", "pi_x")));
 
-		BookingDetail detail = service.byCode(CODE).orElseThrow();
+		BookingDetail detail = service.byCode(CODE, Optional.empty()).orElseThrow();
 
 		assertThat(detail.payment()).isNotNull();
 		assertThat(detail.payWindowClosed()).isFalse();
@@ -514,7 +492,7 @@ class ViewBookingServiceTest {
 		// Accepted 20:00 Tirane the evening before: the 12h window ran out at 08:00, an hour ago.
 		givenAwaitingPayment(DATE, Instant.EPOCH, Instant.parse("2026-07-31T18:00:00Z"));
 
-		BookingDetail detail = service.byCode(CODE).orElseThrow();
+		BookingDetail detail = service.byCode(CODE, Optional.empty()).orElseThrow();
 
 		assertThat(detail.payment()).isNull();
 		assertThat(detail.payWindowClosed()).isTrue();
@@ -528,7 +506,7 @@ class ViewBookingServiceTest {
 		when(checkout.openInstruction(any()))
 				.thenReturn(Optional.of(new CheckoutInstruction.Embedded("cs_x", "pi_x")));
 
-		BookingDetail detail = service.byCode(CODE).orElseThrow();
+		BookingDetail detail = service.byCode(CODE, Optional.empty()).orElseThrow();
 
 		assertThat(detail.payment()).isNotNull();
 		assertThat(detail.payWindowClosed()).isFalse();
@@ -541,7 +519,7 @@ class ViewBookingServiceTest {
 		when(checkout.openInstruction(any()))
 				.thenReturn(Optional.of(new CheckoutInstruction.Embedded("cs_x", "pi_x")));
 
-		BookingDetail detail = service.byCode(CODE).orElseThrow();
+		BookingDetail detail = service.byCode(CODE, Optional.empty()).orElseThrow();
 
 		assertThat(detail.payment()).isNotNull();
 		assertThat(detail.payWindowClosed()).isFalse();
@@ -554,7 +532,7 @@ class ViewBookingServiceTest {
 		when(checkout.openInstruction(any()))
 				.thenReturn(Optional.of(new CheckoutInstruction.Embedded("cs_x", "pi_x")));
 
-		BookingDetail detail = service.byCode(CODE).orElseThrow();
+		BookingDetail detail = service.byCode(CODE, Optional.empty()).orElseThrow();
 
 		assertThat(detail.payment()).isNotNull();
 		assertThat(detail.payWindowClosed()).isFalse();
@@ -566,7 +544,7 @@ class ViewBookingServiceTest {
 		givenAwaitingPayment(DATE, Instant.EPOCH, null);
 		ViewBookingService atDayEnd = serviceAt(Instant.parse("2026-08-01T22:00:00Z"));
 
-		BookingDetail detail = atDayEnd.byCode(CODE).orElseThrow();
+		BookingDetail detail = atDayEnd.byCode(CODE, Optional.empty()).orElseThrow();
 
 		assertThat(detail.payment()).isNull();
 		assertThat(detail.payWindowClosed()).isTrue();
@@ -579,7 +557,7 @@ class ViewBookingServiceTest {
 		givenAwaitingPayment(DATE, Instant.EPOCH, Instant.parse("2026-08-01T12:00:00Z"));
 		ViewBookingService atDayEnd = serviceAt(Instant.parse("2026-08-01T22:00:00Z"));
 
-		BookingDetail detail = atDayEnd.byCode(CODE).orElseThrow();
+		BookingDetail detail = atDayEnd.byCode(CODE, Optional.empty()).orElseThrow();
 
 		assertThat(detail.payment()).isNull();
 		assertThat(detail.payWindowClosed()).isTrue();
@@ -594,7 +572,7 @@ class ViewBookingServiceTest {
 		when(checkout.openInstruction(any()))
 				.thenReturn(Optional.of(new CheckoutInstruction.Embedded("cs_x", "pi_x")));
 
-		BookingDetail detail = service.byCode(CODE).orElseThrow();
+		BookingDetail detail = service.byCode(CODE, Optional.empty()).orElseThrow();
 
 		assertThat(detail.payment()).isNotNull();
 		assertThat(detail.payWindowClosed()).isFalse();
@@ -611,7 +589,7 @@ class ViewBookingServiceTest {
 		when(checkout.openInstruction(any()))
 				.thenReturn(Optional.of(new CheckoutInstruction.Embedded("cs_x", "pi_x")));
 
-		BookingDetail detail = service.byCode(CODE).orElseThrow();
+		BookingDetail detail = service.byCode(CODE, Optional.empty()).orElseThrow();
 
 		assertThat(detail.payment()).isNotNull();
 		assertThat(detail.payWindowClosed()).isFalse();
@@ -625,7 +603,7 @@ class ViewBookingServiceTest {
 	void neverReportsAClosedPayWindowForABookingThatIsNotAwaitingPayment() {
 		givenBooking(BookingStatus.CONFIRMED, CancellationWindow.CLOSED, 0L);
 
-		assertThat(service.byCode(CODE).orElseThrow().payWindowClosed()).isFalse();
+		assertThat(service.byCode(CODE, Optional.empty()).orElseThrow().payWindowClosed()).isFalse();
 	}
 
 	/**
@@ -637,7 +615,7 @@ class ViewBookingServiceTest {
 	void carriesTheCancellationReason() {
 		givenCancelledBooking(RefundReason.WEATHER, 4500L);
 
-		BookingDetail detail = service.byCode(CODE).orElseThrow();
+		BookingDetail detail = service.byCode(CODE, Optional.empty()).orElseThrow();
 
 		assertThat(detail.cancelReason()).isEqualTo(RefundReason.WEATHER);
 		assertThat(detail.refundedAmount()).isEqualTo(new MoneyView(4500L, "EUR"));
@@ -652,7 +630,7 @@ class ViewBookingServiceTest {
 	void reportsNoReasonForANeverChargedCancellation() {
 		givenCancelledBooking(null, null);
 
-		BookingDetail detail = service.byCode(CODE).orElseThrow();
+		BookingDetail detail = service.byCode(CODE, Optional.empty()).orElseThrow();
 
 		assertThat(detail.cancelReason()).isNull();
 		assertThat(detail.refundedAmount()).isNull();
@@ -668,7 +646,7 @@ class ViewBookingServiceTest {
 		givenCancelledBooking(RefundReason.POLICY, 4500L);
 		when(refundStatus.progressOf(any())).thenReturn(RefundProgress.OUTSTANDING);
 
-		assertThat(service.byCode(CODE).orElseThrow().refundOutstanding()).isTrue();
+		assertThat(service.byCode(CODE, Optional.empty()).orElseThrow().refundOutstanding()).isTrue();
 	}
 
 	@Test
@@ -676,7 +654,7 @@ class ViewBookingServiceTest {
 		givenCancelledBooking(RefundReason.POLICY, 4500L);
 		when(refundStatus.progressOf(any())).thenReturn(RefundProgress.ACCEPTED);
 
-		assertThat(service.byCode(CODE).orElseThrow().refundOutstanding()).isFalse();
+		assertThat(service.byCode(CODE, Optional.empty()).orElseThrow().refundOutstanding()).isFalse();
 	}
 
 	/**
@@ -688,7 +666,7 @@ class ViewBookingServiceTest {
 		givenCancelledBooking(RefundReason.POLICY, 4500L);
 		when(refundStatus.progressOf(any())).thenReturn(RefundProgress.NO_COLLECTION);
 
-		assertThat(service.byCode(CODE).orElseThrow().refundOutstanding()).isFalse();
+		assertThat(service.byCode(CODE, Optional.empty()).orElseThrow().refundOutstanding()).isFalse();
 	}
 
 	/**
@@ -698,13 +676,13 @@ class ViewBookingServiceTest {
 	@Test
 	void neverConsultsRefundStatusWithoutARefundDecision() {
 		givenCancelledBooking(null, null);
-		assertThat(service.byCode(CODE).orElseThrow().refundOutstanding()).isFalse();
+		assertThat(service.byCode(CODE, Optional.empty()).orElseThrow().refundOutstanding()).isFalse();
 
 		givenCancelledBooking(RefundReason.POLICY, 0L);
-		assertThat(service.byCode(CODE).orElseThrow().refundOutstanding()).isFalse();
+		assertThat(service.byCode(CODE, Optional.empty()).orElseThrow().refundOutstanding()).isFalse();
 
 		givenBooking(BookingStatus.CONFIRMED);
-		assertThat(service.byCode(CODE).orElseThrow().refundOutstanding()).isFalse();
+		assertThat(service.byCode(CODE, Optional.empty()).orElseThrow().refundOutstanding()).isFalse();
 
 		verifyNoInteractions(refundStatus);
 	}
@@ -715,7 +693,7 @@ class ViewBookingServiceTest {
 		Instant sameDayBirth = Instant.parse("2026-08-01T05:00:00Z");
 		givenBooking(BookingStatus.CONFIRMED, CancellationWindow.CLOSED, 0L, sameDayBirth);
 
-		BookingDetail detail = service.byCode(CODE).orElseThrow();
+		BookingDetail detail = service.byCode(CODE, Optional.empty()).orElseThrow();
 
 		assertThat(detail.cancellable()).isFalse();
 		assertThat(detail.cancellationWindowAtBirth()).isEqualTo(CancellationWindow.CLOSED);
@@ -726,7 +704,7 @@ class ViewBookingServiceTest {
 	void advanceBookingReportsFreeBirthWindow() {
 		givenBooking(BookingStatus.CONFIRMED, CancellationWindow.FREE, 4500L);
 
-		BookingDetail detail = service.byCode(CODE).orElseThrow();
+		BookingDetail detail = service.byCode(CODE, Optional.empty()).orElseThrow();
 
 		assertThat(detail.cancellationWindowAtBirth()).isEqualTo(CancellationWindow.FREE);
 		assertThat(detail.beforeCutoff()).isTrue();
@@ -743,12 +721,11 @@ class ViewBookingServiceTest {
 	private ViewBookingService serviceAt(Instant now) {
 		Clock at = Clock.fixed(now, ZoneId.of("UTC"));
 		return new ViewBookingService(bookings, cancellationPolicy, new BookingCutoff(at), checkout,
-				mailDelivery, collection, refundStatus, reviewEligibility, customers, WINDOWS, receipts,
+				mailDisclosure, refundStatus, reviewEligibility, customers, WINDOWS, receipts,
 				new LiveRemainder(receipts), at);
 	}
 
 	private void givenAwaitingPayment(LocalDate date, Instant createdAt, Instant acceptedAt) {
-		when(collection.provenBeforeConfirmation()).thenReturn(true);
 		BookingRecord record = new BookingRecord(1L, CODE, BookingStatus.AWAITING_PAYMENT, VENUE, SET,
 				GUEST, date, 4500L, "EUR", null, null, null, null, createdAt, acceptedAt, null);
 		when(bookings.findByCode(CODE)).thenReturn(Optional.of(record));
@@ -772,7 +749,6 @@ class ViewBookingServiceTest {
 
 	@Test
 	void aDeclinedRequestNamesItsReason() {
-		when(collection.provenBeforeConfirmation()).thenReturn(true);
 		BookingRecord record = new BookingRecord(1L, CODE, BookingStatus.DECLINED, VENUE, SET, GUEST, DATE, DATE,
 				4500L, "EUR", null, null, null, null, Instant.EPOCH, null, null,
 				ai.riviera.platform.booking.vocabulary.DeclineReason.ANOTHER_GUEST);
@@ -780,7 +756,7 @@ class ViewBookingServiceTest {
 		when(cancellationPolicy.quote(record))
 				.thenReturn(new CancellationPolicy.RefundQuote(setInfo(), CancellationWindow.LATE, 0L, RefundReason.POLICY, null));
 
-		BookingDetail detail = service.byCode(CODE).orElseThrow();
+		BookingDetail detail = service.byCode(CODE, Optional.empty()).orElseThrow();
 
 		assertThat(detail.declineReason()).isEqualTo(ai.riviera.platform.booking.vocabulary.DeclineReason.ANOTHER_GUEST);
 		assertThat(detail.withdrawable()).isFalse();
@@ -789,7 +765,6 @@ class ViewBookingServiceTest {
 	/** {@code createdAt} is advance-born ({@code Instant.EPOCH}) by default; AC-7 tests override it. */
 	private void givenBooking(BookingStatus status, CancellationWindow window, long refundMinor,
 			Instant createdAt) {
-		when(collection.provenBeforeConfirmation()).thenReturn(true);
 		BookingRecord record = new BookingRecord(1L, CODE, status, VENUE, SET, GUEST, DATE,
 				4500L, "EUR", null, null, null, null, createdAt, null, null);
 		when(bookings.findByCode(CODE)).thenReturn(Optional.of(record));

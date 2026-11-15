@@ -10,10 +10,13 @@ import ai.riviera.platform.customer.api.CustomerAccountDirectory;
 import ai.riviera.platform.customer.api.CustomerAccountProvisioning;
 import ai.riviera.platform.customer.api.CustomerAccountRecovery;
 import ai.riviera.platform.customer.api.CustomerAccounts;
+import ai.riviera.platform.customer.api.CustomerLookup;
 import ai.riviera.platform.customer.api.SsoAccountProvisioning;
 import ai.riviera.platform.customer.vocabulary.CustomerAccountCredential;
 import ai.riviera.platform.customer.vocabulary.CustomerAccountId;
+import ai.riviera.platform.customer.vocabulary.CustomerId;
 import ai.riviera.platform.customer.vocabulary.Emails;
+import ai.riviera.platform.customer.vocabulary.GuestContact;
 import ai.riviera.platform.customer.vocabulary.LiveAccountCredential;
 import ai.riviera.platform.customer.vocabulary.NotSignedInCustomerException;
 import ai.riviera.platform.customer.vocabulary.RegistrationOutcome;
@@ -38,10 +41,12 @@ class CustomerAccountService implements CustomerAccounts, CustomerAccountProvisi
 
 	private final CustomerAccountStore store;
 	private final CustomerAccountTokens tokens;
+	private final CustomerLookup guests;
 
-	CustomerAccountService(CustomerAccountStore store, CustomerAccountTokens tokens) {
+	CustomerAccountService(CustomerAccountStore store, CustomerAccountTokens tokens, CustomerLookup guests) {
 		this.store = store;
 		this.tokens = tokens;
+		this.guests = guests;
 	}
 
 	@Override
@@ -70,6 +75,13 @@ class CustomerAccountService implements CustomerAccounts, CustomerAccountProvisi
 			return Optional.empty();
 		}
 		return accountFor(principalName);
+	}
+
+	@Override
+	public boolean holdsVerifiedAddress(CustomerAccountId account, CustomerId contact) {
+		Optional<String> verified = store.verifiedEmailOf(account).map(Emails::normalize);
+		return verified.isPresent()
+				&& verified.equals(guests.findById(contact).map(GuestContact::email).map(Emails::normalize));
 	}
 
 	@Override

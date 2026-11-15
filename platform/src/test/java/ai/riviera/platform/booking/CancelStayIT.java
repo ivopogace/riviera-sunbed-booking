@@ -1,5 +1,6 @@
 package ai.riviera.platform.booking;
 
+import java.util.Optional;
 import java.time.Duration;
 import java.time.LocalDate;
 import java.util.ArrayList;
@@ -143,7 +144,7 @@ class CancelStayIT {
 		Awaitility.await().atMost(Duration.ofSeconds(10)).until(() -> reversals(venue.id()) == 2L);
 		assertEquals(2L, reversals(venue.id()), "payout reverses each stretch's accrual exactly once (#9)");
 
-		BookingDetail view = viewBooking.byCode(code).orElseThrow();
+		BookingDetail view = viewBooking.byCode(code, Optional.empty()).orElseThrow();
 		assertEquals(BookingStatus.CANCELLED, view.status());
 		assertEquals(7 * PRICE, view.refundedAmount().minorUnits());
 		assertEquals(2, view.stretches().size());
@@ -182,7 +183,7 @@ class CancelStayIT {
 
 		assertInstanceOf(CancelOutcome.NotFound.class, cancelBooking.cancel(code + "-2"),
 				"a stretch's derived row code cancels nothing, least of all one stretch on its own day's window");
-		assertTrue(viewBooking.byCode(code + "-1").isEmpty(), "nor does it read a stretch");
+		assertTrue(viewBooking.byCode(code + "-1", Optional.empty()).isEmpty(), "nor does it read a stretch");
 		assertEquals(List.of("CONFIRMED", "CONFIRMED"), statuses(venue.id()));
 	}
 
@@ -278,7 +279,7 @@ class CancelStayIT {
 				events.stream(StayCancelled.class).toList(), "one StayCancelled carries the remainder's refund");
 		Awaitility.await().atMost(Duration.ofSeconds(10)).until(() -> reversals(venue.id()) == 2L);
 		assertEquals(2L, reversals(venue.id()), "each stretch's accrual is reversed exactly once (#9)");
-		BookingDetail view = viewBooking.byCode(code).orElseThrow();
+		BookingDetail view = viewBooking.byCode(code, Optional.empty()).orElseThrow();
 		assertEquals(BookingStatus.CANCELLED, view.status());
 		assertEquals(7 * PRICE, view.refundedAmount().minorUnits(), "the remodel's refund and the guest's add up");
 	}
@@ -304,7 +305,7 @@ class CancelStayIT {
 				.param("v", venue.id()).query(Long.class).single();
 		endAsARemodelRefund(venue, firstStretch, a, tomorrow);
 
-		BookingDetail before = viewBooking.byCode(code).orElseThrow();
+		BookingDetail before = viewBooking.byCode(code, Optional.empty()).orElseThrow();
 		CancelOutcome outcome = cancelBooking.cancel(code);
 
 		assertTrue(before.cancellable(), "the view offers the cancel of the live remainder");
@@ -313,7 +314,7 @@ class CancelStayIT {
 				"judged on the first live day, three days out: free, not the 25% the stay's first day would give");
 		assertEquals(List.of("CANCELLED", "CANCELLED"), statuses(venue.id()));
 		assertEquals(0L, heldDays(jdbc, b, tomorrow.plusDays(2), tomorrow.plusDays(3)));
-		assertFalse(viewBooking.byCode(code).orElseThrow().cancellable());
+		assertFalse(viewBooking.byCode(code, Optional.empty()).orElseThrow().cancellable());
 		Awaitility.await().atMost(Duration.ofSeconds(10)).until(() -> reversals(venue.id()) == 1L);
 		assertEquals(1L, reversals(venue.id()), "only the live stretch is reversed by the guest's cancel");
 	}
@@ -338,7 +339,7 @@ class CancelStayIT {
 				"", List.of()));
 
 		assertEquals(new CancelOutcome.NotCancellable(BookingStatus.CANCELLED), cancelBooking.cancel(code));
-		assertFalse(viewBooking.byCode(code).orElseThrow().cancellable());
+		assertFalse(viewBooking.byCode(code, Optional.empty()).orElseThrow().cancellable());
 		assertEquals(0, events.stream(BookingCancelled.class).count(), "nothing live, nothing written or announced");
 	}
 
@@ -401,7 +402,7 @@ class CancelStayIT {
 		long spent = seeded.stretches().get(0);
 		refundEveryDay(spent, PRICE / 2);
 
-		BookingDetail before = viewBooking.byCode(code).orElseThrow();
+		BookingDetail before = viewBooking.byCode(code, Optional.empty()).orElseThrow();
 		CancelOutcome outcome = cancelBooking.cancel(code);
 
 		assertTrue(before.cancellable(), "the live stretch is still the guest's to cancel");
@@ -433,7 +434,7 @@ class CancelStayIT {
 		first.datesUntil(first.plusDays(4)).forEach(day -> StayFixtures.take(jdbc, day.isBefore(first.plusDays(2)) ? a : b, day));
 		seeded.stretches().forEach(stretch -> refundEveryDay(stretch, PRICE / 2));
 
-		BookingDetail before = viewBooking.byCode(code).orElseThrow();
+		BookingDetail before = viewBooking.byCode(code, Optional.empty()).orElseThrow();
 		CancelOutcome outcome = cancelBooking.cancel(code);
 
 		assertFalse(before.cancellable());

@@ -6,8 +6,9 @@ import { completeDialog, settle } from './support/booking-dialog';
 import type { MockVenueMapView } from './support/venue-views';
 
 /**
- * The withheld-confirmation-email notice, on both post-payment surfaces — real browser, API
- * mocked, so the suite stays CI-safe and hermetic.
+ * The confirmation-mail copy on both post-payment surfaces — real browser, API mocked, so the
+ * suite stays CI-safe and hermetic. Only the address's verified owner hears whether the mail went
+ * out or was withheld; every other reader gets a neutral line (#1748, WSTG-IDNT-04).
  *
  * <p>The suppression list's invariant is *no send to a suppressed address*, so a guest whose address
  * hard-bounced books and pays normally while the confirmation mail is silently dropped. For a guest
@@ -51,10 +52,10 @@ const CONFIRMATION = {
   positionNo: 2,
   bookingDate: '2026-12-01',
   amount: { minorUnits: 4500, currency: 'EUR' },
-  emailWithheld: false,
+  confirmationMail: 'UNDISCLOSED',
 };
 
-// Mirrors the real `AwaitingPaymentView` EXACTLY — in particular it has no `emailWithheld`, because
+// Mirrors the real `AwaitingPaymentView` EXACTLY — in particular it has no `confirmationMail`, because
 // the backend deliberately does not answer that question before payment (D-8). Spreading CONFIRMED
 // here would make the mock a superset of the contract and hide a regression that read the flag off
 // the pre-payment hand-off.
@@ -91,7 +92,7 @@ const AWAITING_DETAIL = {
   payment: { kind: 'EMBEDDED', clientToken: 'pi_123_secret_abc', reference: 'pi_123' },
   // Present but false before payment: BookingDetailView always carries the field, and the backend
   // never even consults the port unless the booking is CONFIRMED.
-  emailWithheld: false,
+  confirmationMail: 'UNDISCLOSED',
   // The wire always carries a panel; a stay nobody checked in is the reason there is no form.
   reviewPanel: { kind: 'NOT_COMPLETED' },
 };
@@ -115,7 +116,7 @@ test('a suppressed guest is told no email is coming and to save the code (instan
   page,
 }) => {
   await page.route('**/api/bookings', (route) =>
-    route.fulfill({ status: 201, json: { ...CONFIRMATION, emailWithheld: true } }),
+    route.fulfill({ status: 201, json: { ...CONFIRMATION, confirmationMail: 'WITHHELD' } }),
   );
 
   await bookThroughDialog(page);
@@ -133,7 +134,9 @@ test('a suppressed guest is told no email is coming and to save the code (instan
   await expectNoSeriousAxeViolations(page, 'confirmation with the withheld-email notice');
 });
 
-test('a deliverable guest keeps the emailed-it copy and sees no notice', async ({ page }) => {
+test('a guest is told only that a mail is on its way, never whether it went out', async ({
+  page,
+}) => {
   await page.route('**/api/bookings', (route) =>
     route.fulfill({ status: 201, json: CONFIRMATION }),
   );
@@ -141,8 +144,56 @@ test('a deliverable guest keeps the emailed-it copy and sees no notice', async (
   await bookThroughDialog(page);
 
   await expect(page).toHaveURL(/\/booking\/confirmation/);
-  await expect(page.getByTestId('booking-code')).toContainText('We’ve also emailed it to you.');
+  await expect(page.getByTestId('email-pending')).toContainText(
+    'We’re emailing it to you. Keep this code in case it doesn’t arrive.',
+  );
+  await expect(page.getByTestId('booking-code')).not.toContainText('emailed it to you');
   await expect(page.getByTestId('email-withheld')).toHaveCount(0);
+
+  await settle(page);
+  await expectNoSeriousAxeViolations(page, 'confirmation with the neutral mail line');
+});
+
+test('the verified owner of a deliverable address keeps the emailed-it copy', async ({ page }) => {
+  await page.route('**/api/bookings', (route) =>
+    route.fulfill({ status: 201, json: { ...CONFIRMATION, confirmationMail: 'EMAILED' } }),
+  );
+
+  await bookThroughDialog(page);
+
+  await expect(page).toHaveURL(/\/booking\/confirmation/);
+  await expect(page.getByTestId('email-sent')).toContainText('We’ve also emailed it to you.');
+  await expect(page.getByTestId('email-withheld')).toHaveCount(0);
+});
+
+test('a guest paying on the stripe-profile surface gets the neutral line once confirmed', async ({
+  page,
+}) => {
+  await page.addInitScript(() => {
+    (window as unknown as { __RIVIERA_FAKE_STRIPE__?: boolean }).__RIVIERA_FAKE_STRIPE__ = true;
+  });
+  await page.route('**/api/bookings', (route) => route.fulfill({ status: 202, json: AWAITING }));
+  let polls = 0;
+  await page.route(/\/api\/bookings\/WXYZ345678(\?.*)?$/, (route) =>
+    route.fulfill({
+      json:
+        polls++ === 0
+          ? AWAITING_DETAIL
+          : { ...AWAITING_DETAIL, status: 'CONFIRMED', cancellable: true, payment: null },
+    }),
+  );
+
+  await bookThroughDialog(page);
+
+  await expect(page).toHaveURL(/\/booking\/pay/);
+  await page.getByTestId('pay-button').click();
+
+  await expect(page.getByRole('heading', { name: 'You’re booked.' })).toBeVisible();
+  await expect(page.getByTestId('email-pending')).toContainText(
+    'Keep this code in case it doesn’t arrive.',
+  );
+  await expect(page.getByTestId('email-withheld')).toHaveCount(0);
+  await expect(page.getByTestId('pay-status')).not.toContainText('save your booking code');
 });
 
 test('the notice reaches the stripe-profile payment surface once the booking confirms', async ({
@@ -164,7 +215,7 @@ test('the notice reaches the stripe-profile payment surface once the booking con
               status: 'CONFIRMED',
               cancellable: true,
               payment: null,
-              emailWithheld: true,
+              confirmationMail: 'WITHHELD',
             },
     }),
   );

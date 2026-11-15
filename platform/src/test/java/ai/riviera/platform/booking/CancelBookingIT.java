@@ -1,5 +1,6 @@
 package ai.riviera.platform.booking;
 
+import java.util.Optional;
 import java.time.LocalDate;
 import java.util.List;
 
@@ -127,7 +128,7 @@ class CancelBookingIT {
 		StayFixtures.awaitAccrual(jdbc, booking.id());
 		cancelBooking.cancel(booking.code());
 
-		BookingDetail detail = viewBooking.byCode(booking.code()).orElseThrow();
+		BookingDetail detail = viewBooking.byCode(booking.code(), Optional.empty()).orElseThrow();
 
 		assertEquals(RefundReason.POLICY, detail.cancelReason());
 		assertEquals(booking.amountMinor(), detail.refundedAmount().minorUnits());
@@ -144,7 +145,7 @@ class CancelBookingIT {
 	void aBookingWithNoRefundDecisionHasNoCancellationReason() {
 		Created booking = confirmBookingOn(LocalDate.of(2035, 5, 15));
 
-		BookingDetail detail = viewBooking.byCode(booking.code()).orElseThrow();
+		BookingDetail detail = viewBooking.byCode(booking.code(), Optional.empty()).orElseThrow();
 
 		assertNull(detail.cancelReason(), "no refund decision was taken, so no reason is stamped");
 		assertNull(detail.refundedAmount(), "and nothing was refunded");
@@ -244,7 +245,7 @@ class CancelBookingIT {
 						+ "WHERE booking_id = :id AND service_date = :d")
 				.param("id", id).param("d", first.plusDays(1)).update();
 
-		BookingDetail before = viewBooking.byCode("CANCELWX01").orElseThrow();
+		BookingDetail before = viewBooking.byCode("CANCELWX01", Optional.empty()).orElseThrow();
 		assertEquals(6000L, before.refundIfCancelledNow().minorUnits(), "quoted over the remainder");
 		assertEquals(1, before.refundedDays().size());
 		assertEquals(first.plusDays(1), before.refundedDays().getFirst().day());
@@ -332,7 +333,7 @@ class CancelBookingIT {
 			refundDay(booking.id(), first.plusDays(day), 3000L);
 		}
 
-		BookingDetail before = viewBooking.byCode(booking.code()).orElseThrow();
+		BookingDetail before = viewBooking.byCode(booking.code(), Optional.empty()).orElseThrow();
 		CancelOutcome outcome = cancelBooking.cancel(booking.code());
 
 		assertFalse(before.cancellable(), "the view offers no cancel");

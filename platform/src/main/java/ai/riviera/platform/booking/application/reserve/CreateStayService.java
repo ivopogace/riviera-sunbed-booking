@@ -7,13 +7,16 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 
+import java.util.Optional;
+
+import ai.riviera.platform.booking.application.ConfirmationMailDisclosure;
+import ai.riviera.platform.booking.application.MailDisclosure;
 import ai.riviera.platform.booking.application.refund.ReleaseAbandonedBooking;
 import ai.riviera.platform.booking.application.reserve.StayReserveOutcome.ReservedStretch;
 import ai.riviera.platform.booking.domain.BookingStatus;
-import ai.riviera.platform.booking.spi.ConfirmationMailDelivery;
 import ai.riviera.platform.booking.vocabulary.BookingId;
+import ai.riviera.platform.customer.vocabulary.CustomerAccountId;
 import ai.riviera.platform.payment.api.CheckoutPort;
-import ai.riviera.platform.payment.api.CollectionGuarantee;
 import ai.riviera.platform.payment.vocabulary.BookingRef;
 import ai.riviera.platform.payment.vocabulary.CollectionShare;
 import ai.riviera.platform.payment.vocabulary.Money;
@@ -38,19 +41,16 @@ class CreateStayService implements CreateStay {
 	private final CheckoutPort checkout;
 	private final ConfirmBooking confirmBooking;
 	private final ReleaseAbandonedBooking releaseAbandoned;
-	private final ConfirmationMailDelivery confirmationMail;
-	private final CollectionGuarantee collection;
+	private final ConfirmationMailDisclosure mailDisclosure;
 	private final Clock clock;
 
 	CreateStayService(ReserveStayService reservation, CheckoutPort checkout, ConfirmBooking confirmBooking,
-			ReleaseAbandonedBooking releaseAbandoned, ConfirmationMailDelivery confirmationMail,
-			CollectionGuarantee collection, Clock clock) {
+			ReleaseAbandonedBooking releaseAbandoned, ConfirmationMailDisclosure mailDisclosure, Clock clock) {
 		this.reservation = reservation;
 		this.checkout = checkout;
 		this.confirmBooking = confirmBooking;
 		this.releaseAbandoned = releaseAbandoned;
-		this.confirmationMail = confirmationMail;
-		this.collection = collection;
+		this.mailDisclosure = mailDisclosure;
 		this.clock = clock;
 	}
 
@@ -58,16 +58,16 @@ class CreateStayService implements CreateStay {
 	public StayOutcome create(CreateStayCommand command) {
 		return switch (reservation.reserve(command)) {
 			case StayReserveOutcome.Rejected rejected -> new StayOutcome.Rejected(rejected.reason());
-			case StayReserveOutcome.Reserved reserved -> collect(reserved);
+			case StayReserveOutcome.Reserved reserved -> collect(reserved, Optional.ofNullable(command.accountId()));
 			case StayReserveOutcome.Requested requested -> {
 				log.info("stay request {} of {} stretches sent", requested.stayId().value(), requested.stretches().size());
 				yield new StayOutcome.Requested(confirmation(requested.code(), requested.venue(), requested.stretches(),
-						BookingStatus.PENDING_REQUEST, false), requested.requestExpiresAt());
+						BookingStatus.PENDING_REQUEST, MailDisclosure.UNDISCLOSED), requested.requestExpiresAt());
 			}
 		};
 	}
 
-	private StayOutcome collect(StayReserveOutcome.Reserved reserved) {
+	private StayOutcome collect(StayReserveOutcome.Reserved reserved, Optional<CustomerAccountId> reader) {
 		String currency = reserved.venue().price().currency();
 		PaymentOutcome payment;
 		try {
@@ -91,14 +91,14 @@ class CreateStayService implements CreateStay {
 					throw confirmFailed;
 				}
 				log.info("confirmed stay {} of {} stretches", reserved.stayId().value(), reserved.stretches().size());
-				boolean emailWithheld = collection.provenBeforeConfirmation()
-						&& confirmationMail.isWithheld(reserved.customerId());
-				yield new StayOutcome.Confirmed(confirmation(reserved, BookingStatus.CONFIRMED, emailWithheld));
+				MailDisclosure mail = mailDisclosure.disclose(BookingStatus.CONFIRMED,
+						reserved.stretches().getFirst().bookingId(), reserved.customerId(), reader);
+				yield new StayOutcome.Confirmed(confirmation(reserved, BookingStatus.CONFIRMED, mail));
 			}
 			case PaymentOutcome.Pending pending -> {
 				log.info("awaiting payment for stay {} of {} stretches", reserved.stayId().value(),
 						reserved.stretches().size());
-				yield new StayOutcome.AwaitingPayment(confirmation(reserved, BookingStatus.AWAITING_PAYMENT, false),
+				yield new StayOutcome.AwaitingPayment(confirmation(reserved, BookingStatus.AWAITING_PAYMENT, MailDisclosure.UNDISCLOSED),
 						pending.instruction());
 			}
 			case PaymentOutcome.Failed failed -> {
@@ -121,12 +121,12 @@ class CreateStayService implements CreateStay {
 	}
 
 	private static StayConfirmation confirmation(StayReserveOutcome.Reserved reserved, BookingStatus status,
-			boolean emailWithheld) {
-		return confirmation(reserved.code(), reserved.venue(), reserved.stretches(), status, emailWithheld);
+			MailDisclosure mail) {
+		return confirmation(reserved.code(), reserved.venue(), reserved.stretches(), status, mail);
 	}
 
 	private static StayConfirmation confirmation(String code, SetBookingInfo venue, List<ReservedStretch> reserved,
-			BookingStatus status, boolean emailWithheld) {
+			BookingStatus status, MailDisclosure mail) {
 		String currency = venue.price().currency();
 		List<StayConfirmation.Stretch> stretches = reserved.stream()
 				.map(stretch -> new StayConfirmation.Stretch(stretch.set().setId(), stretch.set().rowLabel(),
@@ -137,6 +137,6 @@ class CreateStayService implements CreateStay {
 		return new StayConfirmation(code, status, venue.venueId(), venue.venueName(),
 				new ai.riviera.platform.venue.vocabulary.StaySpan(stretches.getFirst().firstDay(),
 						stretches.getLast().lastDay()),
-				new MoneyView(totalMinor, currency), stretches, emailWithheld);
+				new MoneyView(totalMinor, currency), stretches, mail);
 	}
 }
