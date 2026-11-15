@@ -61,20 +61,22 @@ final class RateLimitFilter extends OncePerRequestFilter {
 	// The auth POSTs, each on its own budget below; mirrors SecurityConfig's paths.
 	private static final String LOGIN_PATH = "/api/auth/operator/login";
 	private static final String OPERATOR_REGISTER_PATH = "/api/auth/operator/register";
-	private static final String OPERATOR_PASSWORD_PATH = "/api/auth/operator/password";
+	/** Also {@link PrincipalRateLimitFilter}'s, as are the customer twin and the resend below. */
+	static final String OPERATOR_PASSWORD_PATH = "/api/auth/operator/password";
 	private static final String OPERATOR_RESET_PASSWORD_PATH = "/api/auth/operator/reset-password";
-	private static final String CUSTOMER_PASSWORD_PATH = "/api/me/password";
+	static final String CUSTOMER_PASSWORD_PATH = "/api/me/password";
 	private static final String CUSTOMER_LOGIN_PATH = "/api/auth/customer/login";
 	private static final String CUSTOMER_REGISTER_PATH = "/api/auth/customer/register";
+	static final String VERIFICATION_RESEND_PATH = "/api/me/verify-email/request";
 
 	/**
-	 * The account-recovery POSTs; {@code /api/me/verify-email/request} is CUSTOMER-only, hence a refunding
+	 * The account-recovery POSTs; {@link #VERIFICATION_RESEND_PATH} is CUSTOMER-only, hence a refunding
 	 * budget. Safe for the three public paths: their only refunded pre-controller denial is a CSRF
 	 * {@code 403}, which sends no mail and redeems no token.
 	 */
 	private static final Set<String> RECOVERY_PATHS = Set.of(
 			"/api/auth/customer/forgot-password", "/api/auth/customer/reset-password",
-			"/api/auth/customer/verify-email", "/api/me/verify-email/request");
+			"/api/auth/customer/verify-email", VERIFICATION_RESEND_PATH);
 
 	// Templates (one {provider} segment), so the deeper mock-authorize path never matches.
 	private static final String SSO_PATH_PREFIX = "/api/auth/sso/";

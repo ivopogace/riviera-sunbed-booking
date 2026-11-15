@@ -29,10 +29,10 @@ final class PrincipalRateLimitFilter extends OncePerRequestFilter {
 
 	private static final Logger log = LoggerFactory.getLogger(PrincipalRateLimitFilter.class);
 
-	// Mirror SecurityConfig's route policy: the operator path is OPERATOR-only, the /api/me ones CUSTOMER-only.
-	private static final String OPERATOR_PASSWORD_PATH = "/api/auth/operator/password";
-	private static final String CUSTOMER_PASSWORD_PATH = "/api/me/password";
-	private static final String VERIFICATION_RESEND_PATH = "/api/me/verify-email/request";
+	// SecurityConfig gates the operator path OPERATOR-only and the /api/me ones CUSTOMER-only.
+	private static final String OPERATOR_PASSWORD_PATH = RateLimitFilter.OPERATOR_PASSWORD_PATH;
+	private static final String CUSTOMER_PASSWORD_PATH = RateLimitFilter.CUSTOMER_PASSWORD_PATH;
+	private static final String VERIFICATION_RESEND_PATH = RateLimitFilter.VERIFICATION_RESEND_PATH;
 
 	private final RateLimitProperties props;
 	private final Clock clock;
