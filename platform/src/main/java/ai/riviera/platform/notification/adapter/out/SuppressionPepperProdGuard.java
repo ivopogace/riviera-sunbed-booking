@@ -1,30 +1,34 @@
 package ai.riviera.platform.notification.adapter.out;
 
-import org.springframework.beans.factory.annotation.Value;
+import java.util.Optional;
+
 import org.springframework.context.annotation.Profile;
+import org.springframework.core.env.Environment;
 import org.springframework.stereotype.Component;
 
+import ai.riviera.platform.shared.BootPostureGuard;
+
 /**
- * Fail-fast guard (ADR-0012), the pepper sibling of {@code MockMailerProdGuard}: the
- * email-suppression key HMAC must never run on the committed dev pepper in production. Exists under
- * {@code prod}; its constructor throws only when the pepper is blank or still the committed dev
- * default. The pepper ({@code RIVIERA_SUPPRESSION_PEPPER}) is long-lived: rotating it orphans every
- * stored suppression row (ADR-0012). Package-private (invariant #11); pinned by
- * {@code SuppressionPepperProdGuardTest}.
+ * Fences the suppression-key HMAC's pepper (ADR-0012, ADR-0031): outside {@code local}, a blank pepper or the
+ * committed dev one refuses the boot, since either makes every stored key dictionary-reversible. The pepper
+ * ({@code RIVIERA_SUPPRESSION_PEPPER}) is long-lived: rotating it orphans every stored suppression row.
+ * Package-private (invariant #11).
  */
 @Component
-@Profile("prod")
-class SuppressionPepperProdGuard {
+@Profile("!local")
+class SuppressionPepperProdGuard implements BootPostureGuard {
 
-	/** Must stay in lockstep with the committed default in application.properties (§6a). */
+	/** Must stay in lockstep with the committed pepper in application-local.properties (§6a). */
 	static final String DEV_DEFAULT_PEPPER = "dev-only-suppression-pepper";
 
-	SuppressionPepperProdGuard(
-			@Value("${riviera.notification.suppression-pepper:}") String pepper) {
-		if (pepper.isBlank() || DEV_DEFAULT_PEPPER.equals(pepper)) {
-			throw new IllegalStateException(
-					"riviera.notification.suppression-pepper must be a real secret under the 'prod' profile — "
-							+ "set RIVIERA_SUPPRESSION_PEPPER (ADR-0012; rotating it orphans all stored keys)");
-		}
+	private static final String PEPPER_KEY = "riviera.notification.suppression-pepper";
+
+	private static final String GAP = "Suppression pepper: set RIVIERA_SUPPRESSION_PEPPER to a long-lived random "
+			+ "secret (ADR-0012; rotating it orphans every stored key). The committed dev pepper serves 'local' only.";
+
+	@Override
+	public Optional<String> gap(Environment environment) {
+		String pepper = environment.getProperty(PEPPER_KEY, "");
+		return pepper.isBlank() || DEV_DEFAULT_PEPPER.equals(pepper) ? Optional.of(GAP) : Optional.empty();
 	}
 }

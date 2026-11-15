@@ -33,7 +33,7 @@ daemon). In a cloud session load `riviera-local-debug` before the first `./gradl
   --tests "*PublishedSurfacePlacementArchitectureTests*" \
   --tests "*RetiredSetExclusionArchitectureTests*" --tests "*UnusedAllowedDependencyTests*"
                                        # the structural net — run after any backend structure change
-./gradlew bootRun                      # API on :8080
+./gradlew bootRun                      # API on :8080; includes `local` (mocks + dev secrets, zero env)
 ```
 
 Structural-net membership rule: `riviera-modulith` § *The structural net*.
@@ -130,8 +130,8 @@ day-refund listener; `ReviewsChanged` → `venue`.
 
 **Platform edge** (`RESPONSIBILITIES.md` § *Platform edge*; the fence is `web`'s): server-side sessions carrying an
 operator or a customer principal; login and session machinery in `auth`, never in a domain module;
-customer account and guest row never linked; auth endpoints non-enumerating and constant-time; mocks
-profile-guarded out of prod; revocation orchestrated by `auth`, synchronous; account creation, password recovery
+customer account and guest row never linked; auth endpoints non-enumerating and constant-time; secure by
+default (ADR-0031): mocks fenced out of every boot without `demo`, dev secrets out of every boot without `local`; revocation orchestrated by `auth`, synchronous; account creation, password recovery
 and booking/stay create fenced by `challenge`'s proof-of-work against a single-use registry; every
 mutating `/api/admin/**` action audited by `web`'s fence; the anonymous actuator surface is `health`
 and `GET /actuator/info`'s commit id alone, and the metrics scrape takes its own bearer token on a stateless

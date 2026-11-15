@@ -3,13 +3,13 @@ package ai.riviera.platform.auth.adapter.out;
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.test.context.runner.ApplicationContextRunner;
 
+import ai.riviera.platform.shared.BootPostureGuard;
+
 import static org.assertj.core.api.Assertions.assertThat;
 
 /**
- * Verifies the fail-fast prod guard (AC-6): the mock SSO must never run in production. Under the
- * {@code prod} profile without {@code sso} the guard bean is created and aborts startup; under
- * {@code prod,sso} (the intended production activation) and under the default profile the guard is absent
- * and startup succeeds. Uses {@link ApplicationContextRunner} — no Spring Boot context, fast, no Docker.
+ * The mock IdP's fence (ADR-0031): with neither {@code demo} nor {@code sso} the guard reports the mock; either
+ * marker removes it. {@link ApplicationContextRunner}, no Boot context.
  */
 class MockSsoProdGuardTest {
 
@@ -17,22 +17,20 @@ class MockSsoProdGuardTest {
 			.withUserConfiguration(MockSsoProdGuard.class);
 
 	@Test
-	void prodWithoutSsoAbortsStartup() {
-		runner.withInitializer(context -> context.getEnvironment().setActiveProfiles("prod"))
-				.run(context -> {
-					assertThat(context).hasFailed();
-					assertThat(context).getFailure().rootCause().isInstanceOf(IllegalStateException.class);
-				});
+	void anUnmarkedBootReportsTheMockIdentityProvider() {
+		runner.run(context -> assertThat(context.getBean(BootPostureGuard.class).gap(context.getEnvironment()))
+				.hasValueSatisfying(gap -> assertThat(gap).contains("SSO").contains("'sso'").contains("'demo'")));
 	}
 
 	@Test
-	void prodWithSsoBootsWithoutTheGuard() {
-		runner.withInitializer(context -> context.getEnvironment().setActiveProfiles("prod", "sso"))
-				.run(context -> assertThat(context).hasNotFailed());
+	void demoRunsTheMockOnPurpose() {
+		runner.withInitializer(context -> context.getEnvironment().setActiveProfiles("demo"))
+				.run(context -> assertThat(context).doesNotHaveBean(BootPostureGuard.class));
 	}
 
 	@Test
-	void defaultProfileBootsWithoutTheGuard() {
-		runner.run(context -> assertThat(context).hasNotFailed());
+	void ssoReplacesTheMock() {
+		runner.withInitializer(context -> context.getEnvironment().setActiveProfiles("sso"))
+				.run(context -> assertThat(context).doesNotHaveBean(BootPostureGuard.class));
 	}
 }

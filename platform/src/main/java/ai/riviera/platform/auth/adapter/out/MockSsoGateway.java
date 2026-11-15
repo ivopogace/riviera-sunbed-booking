@@ -15,7 +15,7 @@ import ai.riviera.platform.shared.InvalidApiRequestException;
 
 /**
  * Mock {@link SsoGateway} under {@code @Profile("!sso")} ({@code RealSsoGateway} under {@code sso};
- * {@code MockSsoProdGuard} bars it from {@code prod}): a cooperative IdP with one canned, verified identity per
+ * {@code MockSsoProdGuard} refuses it without {@code demo}): a cooperative IdP with one canned, verified identity per
  * provider (design D-4), the same whichever audience asks, as one Google account may be a tourist and an operator.
  * {@code MockSsoIdpController} echoes the nonce inside its code ({@link #mockCode}), the stand-in for the ID token's
  * {@code nonce} claim, which {@link #exchangeCode} checks. Package-private (#11).

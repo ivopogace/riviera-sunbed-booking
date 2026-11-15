@@ -1,67 +1,72 @@
 package ai.riviera.platform.notification.adapter.out;
 
+import java.util.Optional;
+
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.test.context.ConfigDataApplicationContextInitializer;
+import org.springframework.boot.test.context.assertj.AssertableApplicationContext;
 import org.springframework.boot.test.context.runner.ApplicationContextRunner;
+import org.springframework.core.env.StandardEnvironment;
+
+import ai.riviera.platform.shared.BootPostureGuard;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
 /**
- * Verifies the suppression-pepper fail-fast guard (AC-3): under the {@code prod} profile the
- * pepper must be a real secret — an unset property (blank) and the committed dev default both abort
- * startup; a real value boots, and outside {@code prod} the guard is absent entirely (dev/tests run
- * on the committed default). Uses {@link ApplicationContextRunner} — no Spring Boot context, fast,
- * no Docker (sibling to {@code MockMailerProdGuardTest}).
+ * The pepper's fence (ADR-0012, ADR-0031): outside {@code local}, a blank or committed-dev pepper is a gap and a
+ * real one is not; under {@code local} the guard is absent. Also pins where the committed pepper lives.
  */
 class SuppressionPepperProdGuardTest {
+
+	private static final String PEPPER_KEY = "riviera.notification.suppression-pepper";
 
 	private final ApplicationContextRunner runner = new ApplicationContextRunner()
 			.withUserConfiguration(SuppressionPepperProdGuard.class);
 
+	private final ApplicationContextRunner shippedFiles = new ApplicationContextRunner()
+			.withInitializer(context -> context.getEnvironment().getPropertySources()
+					.remove(StandardEnvironment.SYSTEM_ENVIRONMENT_PROPERTY_SOURCE_NAME))
+			.withPropertyValues("spring.config.location=classpath:/application.properties")
+			.withInitializer(new ConfigDataApplicationContextInitializer());
+
 	@Test
-	void prodWithoutAPepperAbortsStartup() {
-		runner.withInitializer(context -> context.getEnvironment().setActiveProfiles("prod"))
-				.run(context -> {
-					assertThat(context).hasFailed();
-					assertThat(context).getFailure().rootCause().isInstanceOf(IllegalStateException.class);
-				});
+	void anUnsetPepperIsAGap() {
+		runner.run(context -> assertThat(gapOf(context))
+				.hasValueSatisfying(gap -> assertThat(gap).contains("RIVIERA_SUPPRESSION_PEPPER")));
 	}
 
 	@Test
-	void prodWithTheDevDefaultPepperAbortsStartup() {
-		runner.withPropertyValues(
-						"riviera.notification.suppression-pepper=" + SuppressionPepperProdGuard.DEV_DEFAULT_PEPPER)
-				.withInitializer(context -> context.getEnvironment().setActiveProfiles("prod"))
-				.run(context -> {
-					assertThat(context).hasFailed();
-					assertThat(context).getFailure().rootCause().isInstanceOf(IllegalStateException.class);
-				});
+	void theCommittedDevPepperIsAGap() {
+		runner.withPropertyValues(PEPPER_KEY + "=" + SuppressionPepperProdGuard.DEV_DEFAULT_PEPPER)
+				.run(context -> assertThat(gapOf(context)).isPresent());
 	}
 
 	@Test
-	void prodWithARealPepperBoots() {
-		runner.withPropertyValues("riviera.notification.suppression-pepper=a-real-prod-secret")
-				.withInitializer(context -> context.getEnvironment().setActiveProfiles("prod"))
-				.run(context -> assertThat(context).hasNotFailed());
+	void aRealPepperIsNoGap() {
+		runner.withPropertyValues(PEPPER_KEY + "=a-real-deployment-secret")
+				.run(context -> assertThat(gapOf(context)).isEmpty());
 	}
 
 	@Test
-	void defaultProfileBootsWithoutTheGuard() {
-		runner.run(context -> assertThat(context).hasNotFailed());
+	void localRunsOnTheCommittedPepperWithoutTheGuard() {
+		runner.withInitializer(context -> context.getEnvironment().setActiveProfiles("local"))
+				.run(context -> assertThat(context).doesNotHaveBean(BootPostureGuard.class));
 	}
 
-	/**
-	 * Pins the lockstep between {@link SuppressionPepperProdGuard#DEV_DEFAULT_PEPPER} and the committed
-	 * default in {@code application.properties}: if the two drift, an unset prod env would resolve to a
-	 * committed value the guard no longer recognizes — boot would succeed on a public, repo-committed
-	 * pepper. Loads the real properties file (env var unset in CI/dev) so the drift fails here first.
-	 */
+	/** Drift here lets a deployment set to the committed pepper pass the guard. */
 	@Test
-	void theCommittedDefaultMatchesTheGuardConstant() {
-		new ApplicationContextRunner()
-				.withInitializer(new ConfigDataApplicationContextInitializer())
-				.run(context -> assertThat(
-						context.getEnvironment().getProperty("riviera.notification.suppression-pepper"))
+	void theLocalProfileCommitsTheGuardsDevPepper() {
+		shippedFiles.withPropertyValues("spring.profiles.active=local")
+				.run(context -> assertThat(context.getEnvironment().getProperty(PEPPER_KEY))
 						.isEqualTo(SuppressionPepperProdGuard.DEV_DEFAULT_PEPPER));
+	}
+
+	@Test
+	void theShippedDefaultCommitsNoPepper() {
+		shippedFiles.run(context -> assertThat(context.getEnvironment().getProperty(PEPPER_KEY)).isEmpty());
+	}
+
+	private static Optional<String> gapOf(AssertableApplicationContext context) {
+		return context.getBean(BootPostureGuard.class).gap(context.getEnvironment());
 	}
 }

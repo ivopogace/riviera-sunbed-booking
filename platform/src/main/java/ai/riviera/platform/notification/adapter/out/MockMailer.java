@@ -25,7 +25,7 @@ import ai.riviera.platform.shared.SiteLocale;
 /**
  * Recording {@link Mailer}: keeps each {@link SentEmail} in memory instead of sending, so every kind
  * is demoable without credentials. The profile keeps exactly one {@code Mailer} bean ({@link SmtpMailer}
- * under {@code mailer}/{@code smtp4dev}); {@link MockMailerProdGuard} bars this one from {@code prod}:
+ * under {@code mailer}/{@code smtp4dev}); {@link MockMailerProdGuard} refuses this one without {@code demo}:
  * it logs recovery links, whose token is a bearer credential (invariant #7), as a dev-only affordance.
  * Booking kinds log no code or link. Public only for ITs ({@link #sent()}, {@link #lastTo},
  * {@link #clear()}): Modulith walls it off, and callers reach only {@code notification::api}/{@code ::vocabulary}.

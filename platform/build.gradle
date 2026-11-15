@@ -120,6 +120,12 @@ tasks.named('test') {
 	}
 }
 
+// Local runs include `local` (ADR-0031): mocks allowed and the committed dev secrets, with zero env.
+// SPRING_PROFILES_ACTIVE still adds stripe, mailer or smtp4dev on top.
+tasks.named('bootRun') {
+	systemProperty 'spring.profiles.include', 'local'
+}
+
 def structuredLoggingTest = tasks.register('structuredLoggingTest', Test) {
 	description = 'Runs StructuredLoggingIT alone in a fresh JVM, so its context is the one that configures logging.'
 	group = 'verification'

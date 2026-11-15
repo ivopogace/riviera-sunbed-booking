@@ -4,8 +4,8 @@ import java.net.URI;
 import ai.riviera.platform.shared.SiteLocale;
 
 /**
- * The transport seam, one implementation per profile: the recording {@code MockMailer} (default;
- * {@code MockMailerProdGuard} keeps it out of prod) and {@code SmtpMailer} under {@code mailer}. Only
+ * The transport seam, one implementation per profile: the recording {@code MockMailer} (a {@code demo}
+ * boot only, {@code MockMailerProdGuard}) and {@code SmtpMailer} under {@code mailer}. Only
  * {@link TransactionalMailService} calls it, so the suppression chokepoint cannot be bypassed. Each guest send
  * names the {@code SiteLocale} its copy is in. Codes, tokens and links built from them are bearer credentials
  * (invariant #7): no prod-reachable implementation may log them; the mock's dev-only recovery-link echo never
