@@ -20,12 +20,18 @@ const PINNED: VenueProfileView = {
   photos: { cover: { previewUrl: null }, sunbeds: { previewUrl: null }, bar: { previewUrl: null } },
   location: { latitude: 40.1468, longitude: 19.6482 },
   maxStayDays: 5,
+  phone: '+355691234567',
 };
 
 describe('toProfileUpdate', () => {
   it('carries the maximum stay through the full-replace body, null when unset', () => {
     expect(toProfileUpdate(PINNED).maxStayDays).toBe(5);
     expect(toProfileUpdate({ ...PINNED, maxStayDays: undefined }).maxStayDays).toBeNull();
+  });
+
+  it('carries the venue phone through the full-replace body, null when unset', () => {
+    expect(toProfileUpdate(PINNED).phone).toBe('+355691234567');
+    expect(toProfileUpdate({ ...PINNED, phone: undefined }).phone).toBeNull();
   });
 
   it('carries the venue location through the full-replace body', () => {

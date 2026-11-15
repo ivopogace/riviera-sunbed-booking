@@ -119,6 +119,32 @@
             >
           </label>
 
+          <label class="flex flex-col gap-1">
+            <span class="text-[12.5px] font-semibold text-riv-card-ink" i18n>Venue phone</span>
+            <input
+              type="tel"
+              autocomplete="off"
+              [formField]="detailsForm.phone"
+              data-testid="venue-phone"
+              appTouchTarget
+              class="w-[220px] max-w-full rounded-[11px] border border-riv-card-border bg-riv-console-inset/60 px-3 py-2 text-[16px] text-riv-card-ink"
+              #phoneControl
+            />
+            @if (detailsForm.phone().touched() && detailsForm.phone().errors().length) {
+              <span
+                [appFieldErrorFor]="phoneControl"
+                class="text-[11.5px] font-semibold text-riv-error-ink"
+                role="alert"
+                data-testid="venue-phone-error"
+                >{{ detailsForm.phone().errors()[0].message }}</span
+              >
+            }
+            <span class="text-[11px] text-riv-card-ink-soft" i18n
+              >Guests see it only after booking, on their booking page and in their emails. Leave
+              blank to show none.</span
+            >
+          </label>
+
           <!-- Read-only display fields: commission (the platform's cut) + payout currency. -->
           <div class="grid grid-cols-2 gap-3">
             <div class="flex flex-col gap-1">

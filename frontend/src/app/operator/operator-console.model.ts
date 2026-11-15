@@ -681,6 +681,11 @@ export interface VenueProfileView {
    * payloads may omit it.
    */
   readonly maxStayDays?: number | null;
+  /**
+   * The venue's own phone in E.164 (`+355691234567`), or `null`/absent when it gave none; guests see it
+   * only after booking. Optional because test doubles and older payloads may omit it.
+   */
+  readonly phone?: string | null;
 }
 
 /**
@@ -748,6 +753,8 @@ export interface VenueProfileUpdate {
   readonly location: VenueLocation | null;
   /** The maximum stay in days; `null` lifts it, as a full replace does with any cleared field. */
   readonly maxStayDays: number | null;
+  /** The venue phone as typed (international, `+` or `00` first); `null` clears it. */
+  readonly phone: string | null;
   readonly expectedVersion: number;
 }
 
@@ -768,6 +775,7 @@ export function toProfileUpdate(view: VenueProfileView): VenueProfileUpdate {
     distanceToWaterM: view.distanceToWaterM,
     location: view.location ?? null,
     maxStayDays: view.maxStayDays ?? null,
+    phone: view.phone ?? null,
     expectedVersion: view.version,
   };
 }

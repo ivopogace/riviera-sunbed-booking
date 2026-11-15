@@ -89,6 +89,27 @@ test('finds a booking by code and opens its detail view (+ axe, riviera)', async
   expect(getCount).toBe(1);
 });
 
+test('the help block names the venue phone as a tel: link (#1746)', async ({ page }) => {
+  await page.route(/\/api\/support-contact$/, (route) =>
+    route.fulfill({ json: { email: 'help@example.com', whatsapp: null, sameDayReply: false } }),
+  );
+  await page.route(new RegExp(`/api/bookings/${CODE}(\\?.*)?$`), (route) =>
+    route.fulfill({ json: { ...DETAIL, venuePhone: '+355692223333' } }),
+  );
+
+  await page.goto('/');
+  await openFindBooking(page);
+  await page.getByTestId('find-code').fill(CODE);
+  await page.getByTestId('find-submit').click();
+
+  const phone = page.getByTestId('bv-venue-phone');
+  await expect(phone).toHaveAttribute('href', 'tel:+355692223333');
+  await expect(phone).toContainText('Call Miramar Beach Club');
+  await expect(page.getByTestId('support-email')).toBeVisible();
+  await settle(page);
+  await expectNoSeriousAxeViolations(page, 'booking view with the venue phone');
+});
+
 test('a CLOSED-born booking shows the last-minute state and no cancel section (#795)', async ({
   page,
 }) => {
