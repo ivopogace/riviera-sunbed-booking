@@ -61,15 +61,15 @@ export interface StayStretchView {
 }
 
 /**
- * The `POST /api/stays` body as the backend answers it (`StayView`): the group's one code and status,
- * its venue, span, total and stretches; `payment` rides the `202` of a collecting gateway.
- */
-/**
  * What a confirmed booking's reader may be told about its confirmation mail (`MailDisclosure`):
  * `UNDISCLOSED` for every reader but the address's verified owner, whatever the suppression list holds.
  */
 export type ConfirmationMail = 'UNDISCLOSED' | 'EMAILED' | 'WITHHELD';
 
+/**
+ * The `POST /api/stays` body as the backend answers it (`StayView`): the group's one code and status,
+ * its venue, span, total and stretches; `payment` rides the `202` of a collecting gateway.
+ */
 export interface StayView {
   readonly code: string;
   readonly status: string;
