@@ -1,0 +1,813 @@
+<!doctype html>
+<!--
+  PROTOTYPE — throwaway, never merged (#1762). Question: on a 390px phone, how should the tourist
+  beach map show the WHOLE beach and still let them pick a set on a ≥44px target?
+  Three structurally different variants on one page, switchable with ?variant=A|B|C and
+  ?theme=porcelain|riviera|dark (floating bar, or ←/→). Open the file directly in a browser.
+  Fixture: Miramar (frontend/e2e/support/miramar-map.ts): row A 13 wide, B–I 7, five price zones,
+  taken where (position + row) % 5 === 0. Colours are copied from src/tailwind.css's theme tokens.
+    A — Overview → zoom: whole beach small; tap a zone to zoom to 44px tiles, mini-map while zoomed.
+    B — Mini-map: today's 44px grid unchanged, plus a draggable whole-beach navigator above it.
+    C — Row lens: every row is a ≥44px-tall button at overview scale; the tapped row opens to 44px tiles.
+-->
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>PROTOTYPE #1762 phone map</title>
+    <style>
+      :root,
+      [data-theme='porcelain'] {
+        --bg:
+          radial-gradient(110% 70% at 8% 2%, #ffffff 0%, rgba(255, 255, 255, 0) 54%),
+          radial-gradient(130% 120% at 80% 106%, #cfeaf2 0%, rgba(207, 234, 242, 0) 60%),
+          linear-gradient(165deg, #fbfdfe 0%, #eef5f7 50%, #dfeef2 100%);
+        --ink: #0a2a33;
+        --ink-soft: rgba(12, 42, 51, 0.7);
+        --card-glass: rgba(255, 255, 255, 0.55);
+        --card-ink: #0a2a33;
+        --card-ink-soft: rgba(12, 42, 51, 0.78);
+        --accent-ink: #085a6e;
+        --head-fill: #0a4f5e;
+        --head-ink: #ffffff;
+        --sea: #cfeef6;
+        --mid: #e7f5f1;
+        --sand: #f6eedb;
+        --chip-fill: rgba(255, 255, 255, 0.8);
+        --chip-border: #cfe3df;
+        --rail-ink: #0a4f5e;
+        --frame: rgba(12, 42, 51, 0.25);
+        --av-fill: rgba(255, 255, 255, 0.75);
+        --av-border: #bfe3df;
+        --av-ink: #0f7d8c;
+        --pr-fill: rgba(251, 241, 217, 0.85);
+        --pr-border: #e6c483;
+        --pr-ink: #875911;
+        --tk-fill: rgba(255, 255, 255, 0.2);
+        --tk-border: #6b7d77;
+        --tk-ink: #566560;
+        --focus: #0f7d8c;
+        --sel-fill: #0f7d8c;
+        --sel-ink: #ffffff;
+        --bar-fill: #ffffff;
+      }
+      [data-theme='riviera'] {
+        --bg:
+          radial-gradient(110% 70% at 8% 2%, #93e6f2 0%, rgba(147, 230, 242, 0) 52%),
+          radial-gradient(100% 80% at 94% 0%, #ffe2b0 0%, rgba(255, 226, 176, 0) 44%),
+          radial-gradient(130% 120% at 80% 106%, #0a5e93 0%, rgba(10, 94, 147, 0) 58%),
+          linear-gradient(165deg, #38b6d2 0%, #0f7f94 46%, #0a4f6e 100%);
+        --ink: #ffffff;
+        --ink-soft: rgba(255, 255, 255, 0.86);
+        --card-glass: rgba(255, 255, 255, 0.78);
+      }
+      [data-theme='dark'] {
+        --bg:
+          radial-gradient(110% 70% at 8% 2%, #3b4a5f 0%, rgba(59, 74, 95, 0) 52%),
+          radial-gradient(130% 120% at 80% 106%, #0b1120 0%, rgba(11, 17, 32, 0) 58%),
+          linear-gradient(165deg, #33415a 0%, #1e293b 46%, #0f172a 100%);
+        --ink: #ffffff;
+        --ink-soft: rgba(255, 255, 255, 0.86);
+        --card-glass: rgba(16, 26, 46, 0.86);
+        --card-ink: #f2f7fa;
+        --card-ink-soft: rgba(242, 247, 250, 0.78);
+        --accent-ink: #7cd7e8;
+        --head-fill: #12384a;
+        --head-ink: #e6f4f8;
+        --sea: #14303c;
+        --mid: #1c2f33;
+        --sand: #2b2a22;
+        --chip-fill: rgba(255, 255, 255, 0.12);
+        --chip-border: rgba(255, 255, 255, 0.25);
+        --rail-ink: #9adde8;
+        --frame: rgba(255, 255, 255, 0.22);
+        --av-fill: rgba(255, 255, 255, 0.1);
+        --av-border: rgba(143, 214, 226, 0.45);
+        --av-ink: #8fd6e2;
+        --pr-fill: rgba(230, 196, 131, 0.18);
+        --pr-border: #c8ab62;
+        --pr-ink: #ecd09a;
+        --tk-fill: rgba(255, 255, 255, 0.05);
+        --tk-border: #7d8f89;
+        --tk-ink: #a7b5b0;
+        --focus: #8fd6e2;
+        --sel-fill: #8fd6e2;
+        --sel-ink: #0b1418;
+        --bar-fill: #1c2740;
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+      [hidden] {
+        display: none !important;
+      }
+      html,
+      body {
+        margin: 0;
+      }
+      body {
+        font-family: -apple-system, 'SF Pro Text', 'Helvetica Neue', system-ui, sans-serif;
+        background: var(--bg);
+        color: var(--ink);
+        min-height: 100vh;
+      }
+      .phone {
+        width: 390px;
+        margin: 0 auto;
+        padding: 12px 12px 120px;
+      }
+      .venue-head {
+        padding: 4px 4px 10px;
+      }
+      .venue-head h1 {
+        font-size: 20px;
+        margin: 0;
+      }
+      .venue-head p {
+        margin: 2px 0 0;
+        font-size: 13px;
+        color: var(--ink-soft);
+      }
+      .card {
+        border-radius: 22px;
+        background: var(--card-glass);
+        color: var(--card-ink);
+        overflow: hidden;
+        box-shadow: 0 10px 30px rgba(7, 42, 58, 0.18);
+      }
+      .sea-head {
+        background: var(--head-fill);
+        color: var(--head-ink);
+        text-align: center;
+        font-size: 12px;
+        font-weight: 700;
+        letter-spacing: 0.12em;
+        padding: 10px;
+      }
+      .wash {
+        background: linear-gradient(180deg, var(--sea) 0%, var(--mid) 55%, var(--sand) 100%);
+        padding: 10px 12px 14px;
+      }
+      .legend {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 6px 14px;
+        font-size: 12px;
+        color: var(--card-ink-soft);
+        margin-bottom: 10px;
+      }
+      .legend span {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+      }
+      .sw {
+        width: 14px;
+        height: 14px;
+        border-radius: 4px;
+        display: inline-block;
+      }
+      .hint {
+        font-size: 12px;
+        color: var(--card-ink-soft);
+        text-align: center;
+        margin: 10px 0 0;
+      }
+      .band {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        font-size: 11px;
+        font-weight: 700;
+        color: var(--rail-ink);
+        background: var(--chip-fill);
+        border: 1px solid var(--chip-border);
+        border-radius: 999px;
+        padding: 1px 8px;
+        margin: 8px 0 4px;
+      }
+      .band em {
+        font-style: normal;
+        font-weight: 600;
+        color: var(--card-ink-soft);
+      }
+      .chip {
+        width: 24px;
+        height: 24px;
+        flex: none;
+        border-radius: 8px;
+        display: grid;
+        place-items: center;
+        font-size: 12px;
+        font-weight: 700;
+        color: var(--rail-ink);
+        background: var(--chip-fill);
+        border: 1px solid var(--chip-border);
+      }
+
+      /* 44px pick tiles, as today */
+      .tile {
+        width: 44px;
+        height: 44px;
+        flex: none;
+        border-radius: 10px;
+        display: grid;
+        place-items: center;
+        font-size: 14px;
+        font-weight: 700;
+        border: 1.5px solid var(--av-border);
+        background: var(--av-fill);
+        color: var(--av-ink);
+        cursor: pointer;
+        padding: 0;
+        font-family: inherit;
+      }
+      .tile.pr {
+        border-color: var(--pr-border);
+        background: var(--pr-fill);
+        color: var(--pr-ink);
+      }
+      .tile.tk {
+        border: 1.5px dashed var(--tk-border);
+        background: var(--tk-fill);
+        color: var(--tk-ink);
+        cursor: default;
+      }
+      .tile.sel {
+        background: var(--sel-fill);
+        border-color: var(--sel-fill);
+        color: var(--sel-ink);
+      }
+      .tile:focus-visible,
+      .lens:focus-visible,
+      .zonebtn:focus-visible {
+        outline: 3px solid var(--focus);
+        outline-offset: 2px;
+      }
+      .track {
+        display: flex;
+        gap: 3px;
+      }
+      .pan {
+        overflow-x: auto;
+        scrollbar-width: none;
+        -webkit-mask: linear-gradient(
+          90deg,
+          transparent 0,
+          #000 16px,
+          #000 calc(100% - 16px),
+          transparent 100%
+        );
+        padding: 0 16px;
+        margin: 0 -16px;
+      }
+      .pan::-webkit-scrollbar {
+        display: none;
+      }
+      .row {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        margin: 3px 0;
+      }
+
+      /* overview cells: not pressable, state by fill vs ring (3:1 non-text contrast) */
+      .ov {
+        display: grid;
+        grid-template-columns: repeat(13, 1fr);
+        gap: 3px;
+        flex: 1;
+      }
+      .cell {
+        aspect-ratio: 1;
+        border-radius: 4px;
+        background: var(--av-ink);
+      }
+      .cell.pr {
+        background: var(--pr-ink);
+      }
+      .cell.tk {
+        background: transparent;
+        box-shadow: inset 0 0 0 1.5px var(--tk-border);
+      }
+      .cell.sel {
+        background: var(--sel-fill);
+        box-shadow:
+          0 0 0 2px var(--card-glass),
+          0 0 0 4px var(--sel-fill);
+      }
+      .cell.hole {
+        visibility: hidden;
+      }
+
+      /* C: row lens */
+      .lens {
+        width: 100%;
+        min-height: 44px;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        background: transparent;
+        border: 0;
+        border-radius: 12px;
+        padding: 0;
+        margin: 2px 0;
+        cursor: pointer;
+        font-family: inherit;
+        color: inherit;
+        text-align: left;
+      }
+      .lens:hover {
+        background: rgba(127, 127, 127, 0.08);
+      }
+      .open {
+        background: var(--chip-fill);
+        border: 1px solid var(--chip-border);
+        border-radius: 14px;
+        padding: 8px 8px 8px;
+        margin: 4px -4px;
+      }
+      .open-head {
+        display: flex;
+        justify-content: space-between;
+        font-size: 12px;
+        color: var(--card-ink-soft);
+        margin: 0 0 6px 32px;
+      }
+
+      /* A + B: mini-map */
+      .mini {
+        position: relative;
+        display: inline-grid;
+        grid-template-columns: repeat(13, 8px);
+        gap: 2px;
+        padding: 6px;
+        border-radius: 10px;
+        background: var(--chip-fill);
+        border: 1px solid var(--chip-border);
+        touch-action: none;
+        cursor: grab;
+      }
+      .mini i {
+        width: 8px;
+        height: 8px;
+        border-radius: 2px;
+        background: var(--av-ink);
+        display: block;
+      }
+      .mini i.pr {
+        background: var(--pr-ink);
+      }
+      .mini i.tk {
+        background: transparent;
+        box-shadow: inset 0 0 0 1px var(--tk-border);
+      }
+      .mini i.hole {
+        visibility: hidden;
+      }
+      .mini .vp {
+        position: absolute;
+        border: 2px solid var(--accent-ink);
+        border-radius: 4px;
+        background: rgba(15, 125, 140, 0.12);
+        pointer-events: none;
+      }
+      .mini-row {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 10px;
+        margin-bottom: 8px;
+      }
+      .mini-row small {
+        font-size: 12px;
+        color: var(--card-ink-soft);
+        max-width: 170px;
+      }
+      .gridbox {
+        max-height: 420px;
+        overflow: auto;
+        scrollbar-width: none;
+      }
+      .gridbox::-webkit-scrollbar {
+        display: none;
+      }
+      .zonebtn {
+        min-height: 44px;
+        border-radius: 12px;
+        border: 1px solid var(--chip-border);
+        background: var(--chip-fill);
+        color: var(--accent-ink);
+        font: 600 13px inherit;
+        font-family: inherit;
+        padding: 0 12px;
+        cursor: pointer;
+      }
+      .zonetap {
+        display: block;
+        width: 100%;
+        background: transparent;
+        border: 0;
+        padding: 0;
+        cursor: pointer;
+        font-family: inherit;
+        color: inherit;
+        text-align: left;
+        border-radius: 12px;
+      }
+      .zonetap:hover {
+        background: rgba(127, 127, 127, 0.08);
+      }
+      .zonetap .ovrow {
+        min-height: 22px;
+      }
+      .zonenav {
+        display: flex;
+        gap: 8px;
+        align-items: center;
+        margin-bottom: 8px;
+      }
+      .zonenav .grow {
+        flex: 1;
+        font-size: 13px;
+        font-weight: 700;
+        text-align: center;
+      }
+
+      .bookbar {
+        position: fixed;
+        left: 50%;
+        transform: translateX(-50%);
+        bottom: 64px;
+        width: 366px;
+        background: var(--bar-fill);
+        color: var(--card-ink);
+        border-radius: 18px;
+        padding: 10px 12px;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 10px;
+        box-shadow: 0 12px 30px rgba(7, 42, 58, 0.3);
+        font-size: 14px;
+      }
+      .bookbar button {
+        min-height: 44px;
+        border-radius: 12px;
+        border: 0;
+        background: var(--sel-fill);
+        color: var(--sel-ink);
+        font: 700 14px inherit;
+        font-family: inherit;
+        padding: 0 16px;
+      }
+
+      .switcher {
+        position: fixed;
+        left: 50%;
+        transform: translateX(-50%);
+        bottom: 10px;
+        z-index: 9;
+        display: flex;
+        gap: 6px;
+        align-items: center;
+        padding: 6px;
+        border-radius: 999px;
+        background: #111;
+        color: #fff;
+        font: 600 12px system-ui;
+        box-shadow: 0 6px 20px rgba(0, 0, 0, 0.4);
+      }
+      .switcher button {
+        background: #333;
+        color: #fff;
+        border: 0;
+        border-radius: 999px;
+        padding: 6px 10px;
+        cursor: pointer;
+        font: inherit;
+      }
+      .switcher button.on {
+        background: #f5c542;
+        color: #111;
+      }
+      body.shot .switcher {
+        display: none;
+      }
+      body.shot .bookbar {
+        bottom: 12px;
+      }
+      .sr {
+        position: absolute;
+        width: 1px;
+        height: 1px;
+        overflow: hidden;
+        clip: rect(0 0 0 0);
+      }
+    </style>
+  </head>
+  <body>
+    <div class="phone">
+      <div class="venue-head">
+        <h1>Miramar Beach Club</h1>
+        <p>Ksamil · Sat 20 Jun · <span id="freeTotal"></span></p>
+      </div>
+      <div class="card">
+        <div class="sea-head">▲ FACING THE SEA</div>
+        <div class="wash" id="wash"></div>
+      </div>
+    </div>
+    <div class="bookbar" id="bookbar" hidden></div>
+    <div class="switcher" id="switcher"></div>
+
+    <script>
+      // ---- fixture: Miramar, as frontend/e2e/support/miramar-map.ts ----
+      const ROWS = {
+        A: [4500, 4500, 4500, 4500, 4500, 4500, 3500, 3500, 3500, 3500, 3500, 3500, 3500],
+        B: [3500, 3500, 3500, 3500, 3500, 3500, 2500],
+        C: [3000, 3000, 3000, 3000, 3000, 3000, 2000],
+        D: [2500, 2500, 2500, 2000, 2500, 2500, 2000],
+        E: [2000, 2000, 2000, 2000, 2000, 2000, 2000],
+        F: [2000, 2000, 2000, 2000, 2000, 2000, 2000],
+        G: [2000, 2000, 2000, 2000, 2000, 2000, 2000],
+        H: [2000, 2000, 2000, 2000, 2000, 2000, 2000],
+        I: [2000, 2000, 2000, 2000, 2000, 2000, 2000],
+      };
+      const COLS = 13;
+      const rows = Object.entries(ROWS).map(([label, prices], r) => ({
+        label,
+        sets: prices.map((minor, p) => ({
+          code: label + (p + 1),
+          pos: p + 1,
+          minor,
+          premium: label === 'A',
+          taken: (p + r) % 5 === 0,
+        })),
+      }));
+      const ZONES = [
+        { name: 'Front row', rows: ['A'] },
+        { name: 'Second row', rows: ['B'] },
+        { name: 'Third row', rows: ['C'] },
+        { name: 'Fourth row', rows: ['D'] },
+        { name: 'Back rows', rows: ['E', 'F', 'G', 'H', 'I'] },
+      ];
+      const eur = (m) => '€' + m / 100;
+      const span = (sets) => {
+        const ps = sets.map((s) => s.minor);
+        const lo = Math.min(...ps),
+          hi = Math.max(...ps);
+        return lo === hi ? eur(lo) : eur(lo) + '–' + eur(hi);
+      };
+      const rowsOf = (z) => rows.filter((r) => z.rows.includes(r.label));
+      const freeIn = (rs) => rs.flatMap((r) => r.sets).filter((s) => !s.taken).length;
+      const totalIn = (rs) => rs.flatMap((r) => r.sets).length;
+      document.getElementById('freeTotal').textContent =
+        freeIn(rows) + ' of ' + totalIn(rows) + ' sets free';
+
+      // ---- state ----
+      const qs = new URLSearchParams(location.search);
+      const state = {
+        variant: qs.get('variant') || 'A',
+        theme: qs.get('theme') || 'porcelain',
+        zone: qs.has('zone') ? Number(qs.get('zone')) : null, // A: zoomed zone index
+        lens: qs.get('lens') || null, // C: open row label
+        sel: qs.get('sel') || null,
+      };
+      if (qs.has('shot')) document.body.classList.add('shot');
+      if (state.variant === 'C' && state.lens === null) {
+        state.lens = rows.find((r) => r.sets.some((s) => !s.taken)).label; // default: first row with a free set
+      }
+
+      // ---- pieces ----
+      const zoneBand = (z) => {
+        const rs = rowsOf(z);
+        const sets = rs.flatMap((r) => r.sets);
+        return `<div class="band">${span(sets)} <em>· ${freeIn(rs)} of ${totalIn(rs)} free</em></div>`;
+      };
+      const tile = (s) =>
+        s.taken
+          ? `<button class="tile tk" aria-label="${s.code}, taken" aria-disabled="true">${s.pos}</button>`
+          : `<button class="tile ${s.premium ? 'pr' : ''} ${state.sel === s.code ? 'sel' : ''}" data-sel="${s.code}" aria-label="${s.code}, ${eur(s.minor)}, free" aria-pressed="${state.sel === s.code}">${s.pos}</button>`;
+      const cells = (r) => {
+        let h = '';
+        for (let c = 1; c <= COLS; c++) {
+          const s = r.sets[c - 1];
+          if (!s) {
+            h += '<i class="cell hole"></i>';
+            continue;
+          }
+          h += `<i class="cell ${s.taken ? 'tk' : s.premium ? 'pr' : ''} ${state.sel === s.code ? 'sel' : ''}"></i>`;
+        }
+        return `<div class="ov" aria-hidden="true">${h}</div>`;
+      };
+      const miniMap = () => {
+        let h = '';
+        for (const r of rows)
+          for (let c = 1; c <= COLS; c++) {
+            const s = r.sets[c - 1];
+            h += `<i class="${!s ? 'hole' : s.taken ? 'tk' : s.premium ? 'pr' : ''}"></i>`;
+          }
+        return `<div class="mini" id="mini" aria-hidden="true">${h}<div class="vp" id="vp"></div></div>`;
+      };
+      const legend = (small) =>
+        small
+          ? `<div class="legend">
+              <span><i class="sw" style="background:var(--av-ink)"></i>Free</span>
+              <span><i class="sw" style="background:var(--pr-ink)"></i>Free, front row</span>
+              <span><i class="sw" style="box-shadow:inset 0 0 0 1.5px var(--tk-border)"></i>Taken</span>
+            </div>`
+          : `<div class="legend">
+              <span><i class="sw" style="background:var(--av-fill);border:1.5px solid var(--av-border)"></i>Available</span>
+              <span><i class="sw" style="background:var(--pr-fill);border:1.5px solid var(--pr-border)"></i>Front row</span>
+              <span><i class="sw" style="border:1.5px dashed var(--tk-border)"></i>Taken</span>
+            </div>`;
+
+      // ---- A: overview → zoom ----
+      function variantA() {
+        if (state.zone === null) {
+          let h = legend(true);
+          ZONES.forEach((z, i) => {
+            h += `<button class="zonetap" data-zone="${i}" aria-label="${z.name}, ${span(rowsOf(z).flatMap((r) => r.sets))}, ${freeIn(rowsOf(z))} free. Zoom in">`;
+            h += zoneBand(z);
+            for (const r of rowsOf(z))
+              h += `<div class="row ovrow"><span class="chip">${r.label}</span>${cells(r)}</div>`;
+            h += `</button>`;
+          });
+          h += `<p class="hint">Tap a price band to zoom in and pick a set.</p>`;
+          return h;
+        }
+        const z = ZONES[state.zone];
+        let h = `<div class="zonenav">
+            <button class="zonebtn" data-zone="out">← Whole beach</button>
+            <span class="grow">${z.name}</span>
+            <button class="zonebtn" data-zone="${Math.min(ZONES.length - 1, state.zone + 1)}" ${state.zone === ZONES.length - 1 ? 'disabled' : ''} aria-label="Next row back">↓</button>
+          </div>
+          <div class="mini-row">${miniMap()}<small>You're looking at the highlighted part of the beach.</small></div>`;
+        h += zoneBand(z);
+        h += `<div class="gridbox" id="gridbox"><div class="pan" id="pan">`;
+        for (const r of rowsOf(z))
+          h += `<div class="row"><span class="chip">${r.label}</span><div class="track">${r.sets.map(tile).join('')}</div></div>`;
+        h += `</div></div><p class="hint">Swipe sideways for the rest of the row.</p>`;
+        return h;
+      }
+
+      // ---- B: today's grid + mini-map navigator ----
+      function variantB() {
+        let h = legend(false);
+        h += `<div class="mini-row">${miniMap()}<small>Whole beach. Drag the box to move around.</small></div>`;
+        h += `<div class="gridbox" id="gridbox"><div class="pan" id="pan" style="overflow:visible;-webkit-mask:none;margin:0;padding:0">`;
+        for (const z of ZONES) {
+          h += zoneBand(z);
+          for (const r of rowsOf(z))
+            h += `<div class="row"><span class="chip">${r.label}</span><div class="track">${r.sets.map(tile).join('')}</div></div>`;
+        }
+        h += `</div></div><p class="hint">Drag or swipe to see the whole beach.</p>`;
+        return h;
+      }
+
+      // ---- C: row lens ----
+      function variantC() {
+        let h = legend(true);
+        for (const z of ZONES) {
+          h += zoneBand(z);
+          for (const r of rowsOf(z)) {
+            const free = r.sets.filter((s) => !s.taken).length;
+            if (r.label === state.lens) {
+              h += `<div class="open" id="open">
+                  <div class="open-head"><span>Row ${r.label} · ${span(r.sets)}</span><span>${free} of ${r.sets.length} free</span></div>
+                  <div class="row"><span class="chip">${r.label}</span><div class="pan" id="pan"><div class="track">${r.sets.map(tile).join('')}</div></div></div>
+                </div>`;
+            } else {
+              h += `<button class="lens" data-lens="${r.label}" aria-label="Row ${r.label}, ${span(r.sets)}, ${free} of ${r.sets.length} free. Open">
+                  <span class="chip">${r.label}</span>${cells(r)}
+                </button>`;
+            }
+          }
+        }
+        h += `<p class="hint">Tap a row to open it. The open row is where you pick.</p>`;
+        return h;
+      }
+
+      // ---- render + wiring ----
+      function render() {
+        document.documentElement.dataset.theme = state.theme;
+        const wash = document.getElementById('wash');
+        wash.innerHTML = { A: variantA, B: variantB, C: variantC }[state.variant]();
+        const s = rows.flatMap((r) => r.sets).find((x) => x.code === state.sel);
+        const bar = document.getElementById('bookbar');
+        bar.hidden = !s;
+        if (s)
+          bar.innerHTML = `<span><b>Set ${s.code}</b> · ${eur(s.minor)} · full day</span><button>Book this set</button>`;
+        wireMini();
+        renderSwitcher();
+        syncUrl();
+      }
+      function syncUrl() {
+        const p = new URLSearchParams();
+        p.set('variant', state.variant);
+        p.set('theme', state.theme);
+        if (state.variant === 'A' && state.zone !== null) p.set('zone', state.zone);
+        if (state.variant === 'C' && state.lens) p.set('lens', state.lens);
+        if (state.sel) p.set('sel', state.sel);
+        if (document.body.classList.contains('shot')) p.set('shot', '1');
+        history.replaceState(null, '', '?' + p);
+      }
+      function renderSwitcher() {
+        const names = { A: 'A Overview→zoom', B: 'B Mini-map', C: 'C Row lens' };
+        document.getElementById('switcher').innerHTML =
+          Object.keys(names)
+            .map(
+              (k) =>
+                `<button data-v="${k}" class="${k === state.variant ? 'on' : ''}">${names[k]}</button>`,
+            )
+            .join('') +
+          ' | ' +
+          ['porcelain', 'riviera', 'dark']
+            .map(
+              (t) => `<button data-t="${t}" class="${t === state.theme ? 'on' : ''}">${t}</button>`,
+            )
+            .join('');
+      }
+
+      // mini-map: viewport box tracks the grid; dragging the box pans it
+      function wireMini() {
+        const mini = document.getElementById('mini');
+        const box = document.getElementById('gridbox');
+        if (!mini || !box) return;
+        const pitch = 10; // 8px dot + 2px gap
+        const tilePitch = 47;
+        const railPx = 32;
+        const rowPitch = 50; // approx row + gaps incl. bands
+        const visibleRows =
+          state.variant === 'A'
+            ? rowsOf(ZONES[state.zone]).map((r) => r.label)
+            : rows.map((r) => r.label);
+        const firstRow = rows.findIndex((r) => r.label === visibleRows[0]);
+        const vp = document.getElementById('vp');
+        const scroller = state.variant === 'A' ? document.getElementById('pan') : box;
+        const update = () => {
+          const left = scroller.scrollLeft,
+            width = scroller.clientWidth - railPx;
+          const c0 = Math.max(0, left / tilePitch);
+          const cN = Math.min(COLS, (left + width) / tilePitch);
+          let r0 = firstRow,
+            rN = firstRow + visibleRows.length;
+          if (state.variant === 'B') {
+            r0 = box.scrollTop / rowPitch;
+            rN = Math.min(rows.length, (box.scrollTop + box.clientHeight) / rowPitch);
+          }
+          vp.style.left = 6 + c0 * pitch - 2 + 'px';
+          vp.style.width = (cN - c0) * pitch + 2 + 'px';
+          vp.style.top = 6 + r0 * pitch - 2 + 'px';
+          vp.style.height = (rN - r0) * pitch + 2 + 'px';
+        };
+        scroller.addEventListener('scroll', update, { passive: true });
+        box.addEventListener('scroll', update, { passive: true });
+        let drag = false;
+        const move = (e) => {
+          const r = mini.getBoundingClientRect();
+          const c = (e.clientX - r.left - 6) / pitch;
+          const ro = (e.clientY - r.top - 6) / pitch;
+          scroller.scrollLeft = c * tilePitch - (scroller.clientWidth - railPx) / 2;
+          if (state.variant === 'B') box.scrollTop = ro * rowPitch - box.clientHeight / 2;
+        };
+        mini.addEventListener('pointerdown', (e) => {
+          drag = true;
+          mini.setPointerCapture(e.pointerId);
+          move(e);
+        });
+        mini.addEventListener('pointermove', (e) => drag && move(e));
+        mini.addEventListener('pointerup', () => (drag = false));
+        update();
+      }
+
+      document.addEventListener('click', (e) => {
+        const t = e.target.closest('button');
+        if (!t) return;
+        if (t.dataset.v) {
+          state.variant = t.dataset.v;
+          state.zone = null;
+          state.lens = t.dataset.v === 'C' ? rows[0].label : null;
+        } else if (t.dataset.t) state.theme = t.dataset.t;
+        else if (t.dataset.zone)
+          state.zone = t.dataset.zone === 'out' ? null : Number(t.dataset.zone);
+        else if (t.dataset.lens) state.lens = t.dataset.lens;
+        else if (t.dataset.sel) state.sel = state.sel === t.dataset.sel ? null : t.dataset.sel;
+        else return;
+        render();
+      });
+      document.addEventListener('keydown', (e) => {
+        if (e.target.matches('input,textarea,[contenteditable]')) return;
+        const order = ['A', 'B', 'C'];
+        if (e.key !== 'ArrowLeft' && e.key !== 'ArrowRight') return;
+        const i = order.indexOf(state.variant) + (e.key === 'ArrowRight' ? 1 : -1);
+        state.variant = order[(i + 3) % 3];
+        state.zone = null;
+        state.lens = state.variant === 'C' ? rows[0].label : null;
+        render();
+      });
+      render();
+    </script>
+  </body>
+</html>
