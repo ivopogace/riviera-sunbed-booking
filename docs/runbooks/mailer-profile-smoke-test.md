@@ -29,17 +29,17 @@ RIVIERA_SMTP_HOST=smtp.tem.scw.cloud \
 RIVIERA_SMTP_USERNAME=<tem-smtp-username> \
 RIVIERA_SMTP_PASSWORD=<tem-smtp-password> \
 RIVIERA_MAIL_FROM=noreply@<platform-domain> \
-RIVIERA_RECOVERY_LINK_BASE_URL=http://localhost:8080 \
+RIVIERA_PUBLIC_ORIGIN=http://localhost:8080 \
 SPRING_PROFILES_ACTIVE=mailer \
 ./gradlew bootRun
 # Port defaults to 587 (RIVIERA_SMTP_PORT to override). STARTTLS is required, timeouts finite.
 ```
 
 **Negative check first (fail-at-boot, AC):** run once with the env vars **unset** — boot must
-abort on an unresolved `RIVIERA_SMTP_*`/`RIVIERA_MAIL_FROM`/`RIVIERA_RECOVERY_LINK_BASE_URL` placeholder, not start and fail on
+abort on an unresolved `RIVIERA_SMTP_*`/`RIVIERA_MAIL_FROM`/`RIVIERA_PUBLIC_ORIGIN` placeholder, not start and fail on
 first send.
 
-> `RIVIERA_RECOVERY_LINK_BASE_URL` points the emailed links at the origin serving the SPA —
+> `RIVIERA_PUBLIC_ORIGIN` points the emailed links at the origin serving the SPA —
 > same-origin `:8080` when running the bundled build; `http://localhost:4200` when
 > the dev SPA server is up (set explicitly: `mailer` has no default). Deployed: the backend's own origin (`docs/deploy/cd-pipeline.md`).
 
@@ -60,7 +60,7 @@ interceptor handles the cookie-to-header dance that a bare `curl` would have to 
 - Both emails arrive (check spam too — first sends from a fresh domain may land there until
   reputation builds); `From:` is the configured address.
 - **Plain text**, no pixels/rewritten links; the link points at
-  `RIVIERA_RECOVERY_LINK_BASE_URL` + `/account/verify?token=…` / `/account/reset?token=…`.
+  `RIVIERA_PUBLIC_ORIGIN` + `/account/verify?token=…` / `/account/reset?token=…`.
 - Opening the reset link renders the SPA page and the reset completes (the GET never consumes
   the single-use token — the SPA issues the POST).
 - The backend log contains **no token or link** (invariant #7) — a failed send logs only the
@@ -102,7 +102,7 @@ SPRING_PROFILES_ACTIVE=mailer ./gradlew bootRun
 
 ## Production activation (when #370 closes)
 
-1. Set `RIVIERA_SMTP_*`, `RIVIERA_MAIL_FROM`, `RIVIERA_RECOVERY_LINK_BASE_URL`, and
+1. Set `RIVIERA_SMTP_*`, `RIVIERA_MAIL_FROM`, `RIVIERA_PUBLIC_ORIGIN`, and
    `RIVIERA_SUPPRESSION_PEPPER` (#388 — the `prod` profile aborts at boot without a real pepper)
    on the Render service (env section: `docs/deploy/cd-pipeline.md`).
 2. Change `SPRING_PROFILES_ACTIVE` to `prod,mailer`.

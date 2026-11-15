@@ -12,7 +12,7 @@ import ai.riviera.platform.notification.vocabulary.EmailedLinkOrigin;
 /**
  * Binds the origin every booking mail's link is built on and hands it to the application layer as
  * the plain {@link BookingLinks} value (the {@code RequestProperties → RequestWindows} pattern).
- * Deployed from {@code RIVIERA_RECOVERY_LINK_BASE_URL} under this module's own key, never the
+ * Deployed from {@code RIVIERA_PUBLIC_ORIGIN} under this module's own key, never the
  * edge's {@code riviera.recovery.*}. <strong>Unconditional</strong>, not {@code mailer}-gated: its
  * listener runs under every profile ({@link MailTransportConfig}'s reason). Rationale:
  * RESPONSIBILITIES.md §notification.
@@ -37,7 +37,7 @@ class BookingLinkConfig {
 		static final String PREFIX = "riviera.notification.booking-link";
 
 		BookingLinkProperties {
-			baseUrl = EmailedLinkOrigin.require(PREFIX + ".base-url", "RIVIERA_RECOVERY_LINK_BASE_URL", baseUrl);
+			baseUrl = EmailedLinkOrigin.require(PREFIX + ".base-url", "RIVIERA_PUBLIC_ORIGIN", baseUrl);
 		}
 	}
 }

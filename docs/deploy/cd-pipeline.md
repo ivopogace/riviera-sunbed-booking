@@ -136,32 +136,37 @@ must include `frontend/`, so:
     (the Stripe-key posture) and **long-lived**: rotating it orphans every stored suppression
     row (accepted ADR-0012 consequence), so treat it like a KMS root key. Generate once, e.g.
     `openssl rand -base64 48`. Ops recipes: [`docs/runbooks/suppression-list-ops.md`](../runbooks/suppression-list-ops.md).
-  - `RIVIERA_RECOVERY_LINK_BASE_URL` (#368) — the absolute origin every emailed verify/reset
-    link is built on. **Deployed value: the backend's own origin** (the app serves the SPA
-    same-origin since #110), i.e. `https://<name>.onrender.com` today. **Required under the
-    `mailer` profile; boot aborts without it** (#1581). Without `mailer` an unset variable falls
-    back to `http://localhost:4200`, which is only right for local dev. In every profile the value
-    must be an `http`/`https` URL (scheme in any case) with a host (loopback included, and hosts
-    with underscores between letters or digits, such as `riviera_backend`; no trailing dot), a
-    port in 1..65535 if one is given (a bare `:` aborts), an optional path (a well-formed
-    percent-escape there is kept as is), and no user info, query, fragment or percent-escape in
-    the host or port. Otherwise boot aborts naming the key
-    (`riviera.recovery.link-base-url` or `riviera.notification.booking-link.base-url`) and this
-    variable, never the value. Surrounding whitespace is stripped and a trailing slash trimmed (#1592).
+  - `RIVIERA_PUBLIC_ORIGIN` (#1784, #1761, #1760, #368) — **the deployment's one public origin**: every
+    emailed link (verify, reset, booking, operator sign-in) and every absolute URL crawlers and link
+    previews see is built on it, never the request's `Host`. **Deployed value: the backend's own origin**
+    (the app serves the SPA same-origin), i.e. `https://<name>.onrender.com` on the demo and
+    `https://<domain>` in production, so a bare `https` origin (rules below). **Set but blank aborts the
+    boot in every profile**, naming the emailed-link key and this variable: an emailed link needs an origin, so
+    delete the variable rather than blank it (#1784).
+    - **Emailed links** (`riviera.recovery.link-base-url`, `riviera.notification.booking-link.base-url`):
+      **required under the `mailer` profile; boot aborts without it** (#1581). Without `mailer` an unset
+      variable falls back to `http://localhost:4200`, which is only right for local dev. In every profile the value
+      must be an `http`/`https` URL (scheme in any case) with a host (loopback included, and hosts
+      with underscores between letters or digits, such as `riviera_backend`; no trailing dot), a
+      port in 1..65535 if one is given (a bare `:` aborts), an optional path (a well-formed
+      percent-escape there is kept as is), and no user info, query, fragment or percent-escape in
+      the host or port. Otherwise boot aborts naming the key
+      (`riviera.recovery.link-base-url` or `riviera.notification.booking-link.base-url`) and this
+      variable, never the value. Surrounding whitespace is stripped and a trailing slash trimmed (#1592).
+    - **Crawlers and link previews** (`riviera.web.public-origin`): `/robots.txt` names `<origin>/sitemap.xml`,
+      every `/sitemap.xml` URL is built on it, and so are the served shell's canonical, `og:url`, `og:image` and
+      `hreflang` links. **Unset: `/sitemap.xml` answers `404` (the `NOT_FOUND` problem body), robots.txt
+      names no sitemap, and link previews carry text only (no image, canonical or alternates)**; the private
+      surfaces stay disallowed either way. A set value must be a bare `https` origin (a host and an optional
+      port; no path, query, fragment or user info; one trailing slash is trimmed), or a bare `http` one on
+      `localhost`, `127.0.0.1` or `[::1]` for a local run, else boot aborts naming `riviera.web.public-origin`,
+      never the value. This stricter rule is the one a deployed value must meet.
   - `RIVIERA_SUPPORT_EMAIL` / `RIVIERA_SUPPORT_WHATSAPP` (#1735) — the support channels the help
     page, the booking view, the console account menu and both confirmation mails name. **Unset or
     blank shows that channel nowhere**, never a placeholder, so leave each unset until its value
     exists (the mailbox waits on the platform domain, #370). The WhatsApp value is the
     international number with its country code (`+355…`; spaces, dashes and dots are dropped),
     linked as `https://wa.me/<digits>`. A malformed value aborts boot naming the key, never the value.
-  - `RIVIERA_PUBLIC_ORIGIN` (#1761, #1760) — the public origin crawlers and link previews are pointed at:
-    `/robots.txt` names `<origin>/sitemap.xml`, every `/sitemap.xml` URL is built on it, and so are the
-    served shell's canonical, `og:url`, `og:image` and `hreflang` links, never the request's `Host`.
-    Set it to the origin tourists use (`https://<domain>`). **Unset or blank: `/sitemap.xml` answers
-    `404` (the `NOT_FOUND` problem body), robots.txt names no sitemap, and link previews carry text
-    only (no image, canonical or alternates)**; the private surfaces stay disallowed either way. A set value must be a bare `https`
-    origin (a host and an optional port; no path, query, fragment or user info; one trailing slash
-    is trimmed), else boot aborts naming `riviera.web.public-origin`, never the value.
   - `RIVIERA_ROBOTS_DISALLOW_ALL` (#1761) — default `false`. **Set `true` on every non-production
     deployment** (a demo or staging host): robots.txt then answers `Disallow: /` to every agent and
     names no sitemap, so a crawler indexes nothing there. Leave it unset in production.

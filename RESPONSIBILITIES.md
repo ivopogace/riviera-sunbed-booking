@@ -973,9 +973,12 @@ tag names the person, invariant #7):
   `MailCopyBundleTest` holds the files to one key set), and every link sits under the locale's subpath
   (`EmailedLink.under`). The operator-approved notice stays English: operators carry no locale. The
   support block names channels only, never the same-day promise: its season is answered live.
-- **The link origin is `auth`'s variable under my own key**: `RIVIERA_RECOVERY_LINK_BASE_URL`
-  binds `riviera.notification.booking-link.base-url` (one deployed origin; a second variable could
-  only drift), never a `riviera.recovery.*` key, which is `auth`'s namespace.
+- **The link origin is the deployment's one origin variable under my own key** (#1784): `RIVIERA_PUBLIC_ORIGIN`
+  binds `riviera.notification.booking-link.base-url`, as it binds `auth`'s `riviera.recovery.link-base-url` and
+  `web`'s `riviera.web.public-origin` (a second variable could only drift; bound per key because neither
+  `auth` nor I may depend on `web`), never a `riviera.recovery.*` key, which is `auth`'s namespace. Unset, the
+  mail keys fall back to the local `:4200` SPA (none under `mailer`) while `web`'s means no origin; set but blank,
+  the mail keys abort the boot under every profile (a placeholder default covers only an unset variable).
 - **I own the emailed-link origin rule and builder, `vocabulary.EmailedLinkOrigin` and `EmailedLink`**, which
   `auth` takes for its recovery links, so the two keys cannot drift: http(s), a host (inner underscores allowed,
   no trailing dot), a port in 1..65535 if given, an optional path (escapes allowed), no user info, query,
@@ -1419,8 +1422,9 @@ mutating `/api/admin/**` action, §`audit`) live in `web`; `challenge` and `audi
   makes no `/map/**` request. Size budgets: `MapArchiveBudgetTest`, `map-poster-set.spec.ts`.
 - **Absolute URLs a crawler or link preview sees come from `riviera.web.public-origin` alone, never the
   request's `Host`** (#1761, #1760): a client sets `Host`, and a cached preview or sitemap would carry its
-  origin. Unset, no absolute URL is written; not a bare `https` origin, boot aborts (`PublicWebProperties`).
-  One origin per deployment, so a host move is a config change (`docs/deploy/cd-pipeline.md`).
+  origin. Unset, no absolute URL is written; not a bare `https` origin (`http` only on a loopback host, the local
+  `mailer` run's), boot aborts (`PublicWebProperties`). One origin per deployment, `RIVIERA_PUBLIC_ORIGIN`, which
+  the emailed-link keys bind too (§ `notification`), so a host move is a config change (`docs/deploy/cd-pipeline.md`).
 ## Frontend (the SPA, not a module)
 
 The SPA rules whose TSDoc points here; structure is `riviera-frontend`'s, styling `riviera-tailwind`'s.
