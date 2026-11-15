@@ -5,11 +5,15 @@ import java.util.Set;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.actuate.endpoint.web.PathMappedEndpoints;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.boot.test.system.CapturedOutput;
+import org.springframework.boot.test.system.OutputCaptureExtension;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.context.annotation.Import;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -20,22 +24,27 @@ import ai.riviera.platform.customer.api.CustomerAccountProvisioning;
 
 import jakarta.servlet.http.Cookie;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.hamcrest.Matchers.aMapWithSize;
 import static org.hamcrest.Matchers.containsString;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.head;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.header;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 /**
- * The actuator posture ({@code docs/deploy/production-hardening.md}): the exposure allowlist is {@code health},
- * {@code info} and {@code prometheus}; anonymously only health's status and info's commit id answer; prometheus
- * and health's details are ADMIN-only, since a plain operator may be a PENDING self-registrant (#1652); every
- * other actuator path is denied to every session, so a newly exposed endpoint fails closed.
+ * The actuator posture ({@code docs/deploy/production-hardening.md}, ADR-0032): the exposure allowlist is
+ * {@code health}, {@code info} and {@code prometheus}; anonymously only health's status and info's commit id answer;
+ * prometheus and health's details take the scraper's bearer token alone, which reaches nothing else; the actuator
+ * chain reads no session, so every session is anonymous there; every other actuator path is denied.
  */
+@ExtendWith(OutputCaptureExtension.class)
 @EnabledIfDockerAvailable
 @Import(TestcontainersConfiguration.class)
 @SpringBootTest
@@ -50,6 +59,8 @@ class ActuatorHardeningIT {
 	private static final String CUSTOMER_PASSWORD = "amber-pebble-tideline-4";
 	private static final String PROMETHEUS = "/actuator/prometheus";
 	private static final String HEALTH = "/actuator/health";
+	private static final String INFO = "/actuator/info";
+	private static final String SCRAPER = "Bearer " + SharedTestProperties.SCRAPE_TOKEN;
 
 	/** Actuator endpoints that expose internals; none may be reachable in production. */
 	private static final List<String> SENSITIVE_ENDPOINTS = List.of(
@@ -77,7 +88,7 @@ class ActuatorHardeningIT {
 
 	@Test
 	void theExposureAllowlistIsHealthInfoAndPrometheus() {
-		// The primary control, proven apart from the route policy, which now denies the rest to every session.
+		// The primary control, proven apart from the route policy, which denies the rest to every caller.
 		assertEquals(Set.of("health", "info", "prometheus"), Set.copyOf(exposedEndpoints.getAllRootPaths()));
 	}
 
@@ -89,11 +100,19 @@ class ActuatorHardeningIT {
 	}
 
 	@Test
-	void sensitiveEndpointsAreForbiddenToEverySession() throws Exception {
+	void everySessionIsAnonymousToTheActuator() throws Exception {
 		for (Cookie session : List.of(adminSession, plainOperatorSession(), customerSession())) {
 			for (String path : SENSITIVE_ENDPOINTS) {
-				mvc.perform(get(path).cookie(session)).andExpect(status().isForbidden());
+				mvc.perform(get(path).cookie(session)).andExpect(status().isUnauthorized());
 			}
+			mvc.perform(get(PROMETHEUS).cookie(session)).andExpect(status().isUnauthorized());
+		}
+	}
+
+	@Test
+	void sensitiveEndpointsAreForbiddenToTheScrapeToken() throws Exception {
+		for (String path : SENSITIVE_ENDPOINTS) {
+			mvc.perform(get(path).header(HttpHeaders.AUTHORIZATION, SCRAPER)).andExpect(status().isForbidden());
 		}
 	}
 
@@ -106,16 +125,21 @@ class ActuatorHardeningIT {
 	}
 
 	@Test
-	void healthHidesDetailsFromAPlainOperator() throws Exception {
-		mvc.perform(get(HEALTH).cookie(plainOperatorSession()))
+	void healthAnswersAnAnonymousHeadProbe() throws Exception {
+		mvc.perform(head(HEALTH)).andExpect(status().isOk());
+	}
+
+	@Test
+	void healthHidesDetailsFromAnAdminSession() throws Exception {
+		mvc.perform(get(HEALTH).cookie(adminSession))
 				.andExpect(status().isOk())
 				.andExpect(jsonPath("$.status").value("UP"))
 				.andExpect(jsonPath("$.components").doesNotExist());
 	}
 
 	@Test
-	void healthShowsDetailsToAnAdmin() throws Exception {
-		mvc.perform(get(HEALTH).cookie(adminSession))
+	void aValidScrapeTokenSeesHealthDetails() throws Exception {
+		mvc.perform(get(HEALTH).header(HttpHeaders.AUTHORIZATION, SCRAPER))
 				.andExpect(status().isOk())
 				.andExpect(jsonPath("$.status").value("UP"))
 				.andExpect(jsonPath("$.components.db.status").value("UP"));
@@ -123,15 +147,15 @@ class ActuatorHardeningIT {
 
 	@Test
 	void infoIsPublicAndCarriesTheCommitIdAlone() throws Exception {
-		mvc.perform(get("/actuator/info"))
+		mvc.perform(get(INFO))
 				.andExpect(status().isOk())
 				.andExpect(jsonPath("$", aMapWithSize(1)))
 				.andExpect(jsonPath("$.commit").value(SharedTestProperties.BUILD_COMMIT));
 	}
 
 	@Test
-	void infoShowsAnAdminNothingMore() throws Exception {
-		mvc.perform(get("/actuator/info").cookie(adminSession))
+	void infoShowsTheScraperNothingMore() throws Exception {
+		mvc.perform(get(INFO).header(HttpHeaders.AUTHORIZATION, SCRAPER))
 				.andExpect(status().isOk())
 				.andExpect(jsonPath("$", aMapWithSize(1)))
 				.andExpect(jsonPath("$.commit").value(SharedTestProperties.BUILD_COMMIT));
@@ -139,10 +163,11 @@ class ActuatorHardeningIT {
 
 	@Test
 	void infoOpensOnlyItsGet() throws Exception {
-		// With a valid CSRF token, an all-methods permitAll would reach the read-only endpoint (405), not the gate.
-		mvc.perform(post("/actuator/info").with(csrf())).andExpect(status().isUnauthorized());
-		mvc.perform(get("/actuator/info/anything")).andExpect(status().isUnauthorized());
-		mvc.perform(post("/actuator/info").cookie(adminSession).with(csrf())).andExpect(status().isForbidden());
+		// An all-methods permitAll would reach the read-only endpoint (405), not the gate.
+		mvc.perform(post(INFO).with(csrf())).andExpect(status().isUnauthorized());
+		mvc.perform(get(INFO + "/anything")).andExpect(status().isUnauthorized());
+		mvc.perform(post(INFO).cookie(adminSession).with(csrf())).andExpect(status().isUnauthorized());
+		mvc.perform(post(INFO).header(HttpHeaders.AUTHORIZATION, SCRAPER)).andExpect(status().isForbidden());
 	}
 
 	@Test
@@ -151,20 +176,74 @@ class ActuatorHardeningIT {
 	}
 
 	@Test
-	void prometheusIsForbiddenToACustomer() throws Exception {
-		mvc.perform(get(PROMETHEUS).cookie(customerSession())).andExpect(status().isForbidden());
+	void anAdminSessionNoLongerScrapes() throws Exception {
+		mvc.perform(get(PROMETHEUS).cookie(adminSession)).andExpect(status().isUnauthorized());
 	}
 
 	@Test
-	void prometheusIsForbiddenToAPlainOperator() throws Exception {
-		mvc.perform(get(PROMETHEUS).cookie(plainOperatorSession())).andExpect(status().isForbidden());
-	}
-
-	@Test
-	void prometheusIsReadableByAnAdmin() throws Exception {
-		mvc.perform(get(PROMETHEUS).cookie(adminSession))
+	void aValidScrapeTokenReadsPrometheus() throws Exception {
+		mvc.perform(get(PROMETHEUS).header(HttpHeaders.AUTHORIZATION, SCRAPER))
 				.andExpect(status().isOk())
 				.andExpect(content().string(containsString("# HELP")));
+	}
+
+	@Test
+	void bothRotationTokensAreAccepted() throws Exception {
+		for (String token : List.of(SharedTestProperties.SCRAPE_TOKEN, SharedTestProperties.SCRAPE_TOKEN_NEXT)) {
+			mvc.perform(get(PROMETHEUS).header(HttpHeaders.AUTHORIZATION, "Bearer " + token))
+					.andExpect(status().isOk());
+		}
+	}
+
+	@Test
+	void aWrongOrMalformedCredentialIsUnauthorizedEverywhereOnTheActuator() throws Exception {
+		List<String> refused = List.of(SCRAPER + "x", "Bearer ", "Bearer", "bearer",
+				"Basic b3BlcmF0b3I6dGVzdC1vcGVyYXRvci1wdw==", SharedTestProperties.SCRAPE_TOKEN);
+		for (String credential : refused) {
+			for (String path : List.of(PROMETHEUS, HEALTH, INFO)) {
+				mvc.perform(get(path).header(HttpHeaders.AUTHORIZATION, credential))
+						.andExpect(status().isUnauthorized())
+						.andExpect(header().string(HttpHeaders.WWW_AUTHENTICATE, "Bearer"))
+						.andExpect(jsonPath("$.code").value("UNAUTHENTICATED"));
+			}
+		}
+	}
+
+	@Test
+	void theBearerSchemeIsCaseInsensitive() throws Exception {
+		mvc.perform(get(PROMETHEUS).header(HttpHeaders.AUTHORIZATION, "bearer " + SharedTestProperties.SCRAPE_TOKEN))
+				.andExpect(status().isOk());
+	}
+
+	@Test
+	void theScrapeTokenReachesNothingElse() throws Exception {
+		for (String path : List.of("/api/admin/payout-batches", "/api/admin/audit", "/api/venues/mine")) {
+			mvc.perform(get(path).header(HttpHeaders.AUTHORIZATION, SCRAPER)).andExpect(status().isUnauthorized());
+		}
+		mvc.perform(post(PROMETHEUS).header(HttpHeaders.AUTHORIZATION, SCRAPER)).andExpect(status().isForbidden());
+		mvc.perform(put(HEALTH).header(HttpHeaders.AUTHORIZATION, SCRAPER)).andExpect(status().isForbidden());
+	}
+
+	@Test
+	void actuatorResponsesSetNoCookie() throws Exception {
+		mvc.perform(get(HEALTH)).andExpect(header().doesNotExist(HttpHeaders.SET_COOKIE));
+		mvc.perform(get(PROMETHEUS)).andExpect(header().doesNotExist(HttpHeaders.SET_COOKIE));
+		mvc.perform(post(PROMETHEUS)).andExpect(header().doesNotExist(HttpHeaders.SET_COOKIE));
+		mvc.perform(get(PROMETHEUS).header(HttpHeaders.AUTHORIZATION, SCRAPER))
+				.andExpect(header().doesNotExist(HttpHeaders.SET_COOKIE));
+	}
+
+	@Test
+	void theScrapeTokenNeverReachesTheLog(CapturedOutput output) throws Exception {
+		mvc.perform(get(PROMETHEUS).header(HttpHeaders.AUTHORIZATION, SCRAPER)).andExpect(status().isOk());
+		mvc.perform(get(PROMETHEUS).header(HttpHeaders.AUTHORIZATION,
+						"Bearer " + SharedTestProperties.SCRAPE_TOKEN_NEXT + "-wrong"))
+				.andExpect(status().isUnauthorized());
+
+		assertThat(output.getAll())
+				.contains("Refused an actuator credential")
+				.doesNotContain(SharedTestProperties.SCRAPE_TOKEN)
+				.doesNotContain(SharedTestProperties.SCRAPE_TOKEN_NEXT);
 	}
 
 	/** A PENDING self-registrant: the operator any stranger can become. Registration is idempotent on the name. */
