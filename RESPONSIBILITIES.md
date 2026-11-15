@@ -1295,6 +1295,11 @@ opaque hash through their `api`; no Spring Security, Spring Session or mail type
   never on the URL. A sign-in resolves `operator::api` then applies the may-authenticate set before any session:
   unknown, unlinked, `SUSPENDED` and `REJECTED` share one redirect. A link needs the current password and, at the
   callback, the same principal with a current stamp. Unlink revokes every other session before and after.
+- **On a mock-IdP boot (`demo`), a linked operator is reachable by anyone** (#276): `MockSsoGateway` signs every
+  visitor in as one canned identity per provider, so whoever presses "Continue with Google" on the operator tab gets
+  the operator that linked it. While `SsoGateway#cooperative` is true, an admin may neither link
+  (`409 ADMIN_LINK_REFUSED_ON_MOCK_IDP`) nor sign in by SSO (the unknown answer), so the approval surface stays
+  password-only; a non-admin's linked console is open to the internet, so a demo holds demo data only.
 - **Both erasure paths revoke before and after `customer`'s scrub** (ADR-0010; not atomic, as above).
   Self-service names the principal from its session. The admin path names it by the canonical form of
   the submitted email (`customer.vocabulary.Emails`), which every customer principal carries, so no

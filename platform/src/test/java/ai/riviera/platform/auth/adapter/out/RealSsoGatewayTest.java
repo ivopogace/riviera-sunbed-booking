@@ -8,6 +8,7 @@ import org.junit.jupiter.api.Test;
 import ai.riviera.platform.auth.application.SsoAuthorizationChallenge;
 import ai.riviera.platform.customer.vocabulary.SsoProvider;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 /**
@@ -34,6 +35,11 @@ class RealSsoGatewayTest {
 				.isInstanceOf(UnsupportedOperationException.class);
 		assertThatThrownBy(() -> apple.exchangeCode("code", "verifier", "nonce", CALLBACK))
 				.isInstanceOf(UnsupportedOperationException.class);
+	}
+
+	@Test
+	void theRealGatewayIsNotCooperative() {
+		assertThat(new RealSsoGateway(List.of(new GoogleSsoGateway(), new AppleSsoGateway())).cooperative()).isFalse();
 	}
 
 	@Test

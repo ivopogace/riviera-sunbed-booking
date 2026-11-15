@@ -83,6 +83,7 @@ export type OperatorLinkStartResult =
   | 'missing-current'
   | 'invalid-current'
   | 'bootstrap-managed'
+  | 'admin-on-demo'
   | 'rate-limited'
   | 'session-lost'
   | 'error';
@@ -360,6 +361,8 @@ function linkStartFailure(error: unknown): OperatorLinkStartResult {
       return 'invalid-current';
     case 'BOOTSTRAP_CREDENTIAL_MANAGED':
       return 'bootstrap-managed';
+    case 'ADMIN_LINK_REFUSED_ON_MOCK_IDP':
+      return 'admin-on-demo';
     default:
       return 'error';
   }
@@ -376,6 +379,8 @@ export function operatorLinkStartMessage(result: OperatorLinkStartResult): strin
       return $localize`That current password is incorrect.`;
     case 'bootstrap-managed':
       return $localize`This account's sign-in is managed by the deployment environment and can't be linked.`;
+    case 'admin-on-demo':
+      return $localize`Admin accounts can't link Google or Apple here: on this demo, anyone can use that sign-in.`;
     case 'rate-limited':
       return $localize`Too many attempts. Please wait a minute and try again.`;
     case 'session-lost':

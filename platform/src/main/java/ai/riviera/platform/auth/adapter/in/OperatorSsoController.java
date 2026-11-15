@@ -87,7 +87,10 @@ class OperatorSsoController {
 		return ResponseEntity.status(HttpStatus.FOUND).location(authorizeUrl).build();
 	}
 
-	/** Codes: {@code BOOTSTRAP_CREDENTIAL_MANAGED} 409, {@code MISSING_/INVALID_CURRENT_PASSWORD} 400. */
+	/**
+	 * Codes: {@code BOOTSTRAP_CREDENTIAL_MANAGED} and, on the mock IdP, {@code ADMIN_LINK_REFUSED_ON_MOCK_IDP} 409;
+	 * {@code MISSING_/INVALID_CURRENT_PASSWORD} 400.
+	 */
 	@PostMapping(SSO_PATH + "/{provider}/link")
 	ResponseEntity<?> link(@PathVariable String provider, @RequestBody LinkRequest body,
 			Authentication authentication, HttpServletRequest request) {
@@ -97,11 +100,15 @@ class OperatorSsoController {
 			return ApiProblem.response(HttpStatus.CONFLICT, "BOOTSTRAP_CREDENTIAL_MANAGED",
 					"This account's sign-in is managed by the deployment environment and cannot be linked.");
 		}
+		Optional<OperatorCredential> credential = accounts.findByUsername(username);
+		if (flow.cooperative() && credential.filter(OperatorCredential::admin).isPresent()) {
+			return ApiProblem.response(HttpStatus.CONFLICT, "ADMIN_LINK_REFUSED_ON_MOCK_IDP",
+					"An admin account cannot link the demo sign-in, which anyone can use.");
+		}
 		if (!PasswordPolicy.isSupplied(body.currentPassword())) {
 			return ApiProblem.response(HttpStatus.BAD_REQUEST, "MISSING_CURRENT_PASSWORD",
 					"The request carries no current password.");
 		}
-		Optional<OperatorCredential> credential = accounts.findByUsername(username);
 		if (credential.isEmpty() || credential.get().passwordHash() == null
 				|| !passwordEncoder.matches(body.currentPassword(), credential.get().passwordHash())) {
 			return ApiProblem.response(HttpStatus.BAD_REQUEST, "INVALID_CURRENT_PASSWORD",

@@ -68,6 +68,11 @@ final class SsoFlow {
 		return authorization;
 	}
 
+	/** Whether the active IdP is the mock, signing any visitor in as its canned identity ({@link SsoGateway#cooperative}). */
+	boolean cooperative() {
+		return gateway.cooperative();
+	}
+
 	ExternalIdentity exchange(HttpServletRequest request, SsoAuthorization authorization, String code) {
 		return gateway.exchangeCode(authorization.provider(), code, authorization.codeVerifier(), authorization.nonce(),
 				callbackUri(request, authorization.provider()));

@@ -58,6 +58,7 @@ describe('OperatorAuth SSO (#276)', () => {
     [400, 'MISSING_CURRENT_PASSWORD', 'missing-current'],
     [400, 'INVALID_CURRENT_PASSWORD', 'invalid-current'],
     [409, 'BOOTSTRAP_CREDENTIAL_MANAGED', 'bootstrap-managed'],
+    [409, 'ADMIN_LINK_REFUSED_ON_MOCK_IDP', 'admin-on-demo'],
     [429, 'RATE_LIMITED', 'rate-limited'],
     [401, 'UNAUTHENTICATED', 'session-lost'],
     [500, undefined, 'error'],

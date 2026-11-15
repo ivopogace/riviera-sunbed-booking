@@ -30,8 +30,9 @@ import jakarta.servlet.http.HttpServletResponse;
 /**
  * Completes an operator-audience SSO round trip (#276), reached only through the session-held record. A sign-in
  * resolves a linked identity and opens the same username-principal, credential-stamped session as a password sign-in;
- * unknown, unlinked and non-authenticating accounts all get one redirect and no session (D-8). A link first re-checks
- * that the session still holds the linking operator with a current stamp. Rationale: RESPONSIBILITIES.md §auth.
+ * unknown, unlinked and non-authenticating accounts, and an admin on the mock IdP, all get one redirect and no
+ * session (D-8). A link first re-checks that the session still holds the linking operator with a current stamp.
+ * Rationale: RESPONSIBILITIES.md §auth.
  */
 final class OperatorSsoCallback {
 
@@ -68,7 +69,8 @@ final class OperatorSsoCallback {
 			HttpServletResponse response) {
 		ExternalIdentity identity = flow.exchange(request, authorization, code);
 		Optional<OperatorCredential> credential = links.resolve(identity.issuer(), identity.subject())
-				.filter(account -> AuthRoles.OPERATOR_MAY_AUTHENTICATE.contains(account.status()));
+				.filter(account -> AuthRoles.OPERATOR_MAY_AUTHENTICATE.contains(account.status()))
+				.filter(account -> !(flow.cooperative() && account.admin()));
 		if (credential.isEmpty()) {
 			return redirectTo(SIGN_IN_FAILED);
 		}

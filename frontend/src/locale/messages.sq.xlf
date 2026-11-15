@@ -6998,6 +6998,13 @@
           <context context-type="sourcefile">src/app/core/operator-auth.ts</context>
         </context-group>
       </trans-unit>
+      <trans-unit id="1561735562994782290" datatype="html">
+        <source>Admin accounts can&apos;t link Google or Apple here: on this demo, anyone can use that sign-in.</source>
+        <target state="translated">Llogaritë admin nuk mund të lidhin Google ose Apple këtu: në këtë demo, këtë hyrje mund ta përdorë kushdo.</target>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/core/operator-auth.ts</context>
+        </context-group>
+      </trans-unit>
       <trans-unit id="1866654339087324158" datatype="html">
         <source>Something went wrong starting the link. Please try again.</source>
         <target state="translated">Diçka shkoi keq gjatë nisjes së lidhjes. Ju lutemi provoni sërish.</target>

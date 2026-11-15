@@ -6998,6 +6998,13 @@
           <context context-type="sourcefile">src/app/core/operator-auth.ts</context>
         </context-group>
       </trans-unit>
+      <trans-unit id="1561735562994782290" datatype="html">
+        <source>Admin accounts can&apos;t link Google or Apple here: on this demo, anyone can use that sign-in.</source>
+        <target state="translated">Gli account admin non possono collegare Google o Apple qui: in questa demo, chiunque può usare questo accesso.</target>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/core/operator-auth.ts</context>
+        </context-group>
+      </trans-unit>
       <trans-unit id="1866654339087324158" datatype="html">
         <source>Something went wrong starting the link. Please try again.</source>
         <target state="translated">Si è verificato un errore durante l'avvio del collegamento. Riprova.</target>

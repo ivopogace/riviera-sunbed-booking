@@ -140,6 +140,30 @@ class OperatorSsoIT {
 				.andExpect(jsonPath("$.code").value("BOOTSTRAP_CREDENTIAL_MANAGED"));
 	}
 
+	/** The mock IdP signs anyone in as its one canned identity, so no admin may hold a link to it. */
+	@Test
+	void anAdminCannotLinkWhileTheMockIdpIsActive() throws Exception {
+		jdbc.sql("UPDATE operator SET is_admin = true WHERE id = :id").param("id", operatorId.value()).update();
+		Cookie session = SessionLoginSupport.operatorSession(mvc, username, PASSWORD);
+
+		startLink(session, linkBody()).andExpect(status().isConflict())
+				.andExpect(jsonPath("$.code").value("ADMIN_LINK_REFUSED_ON_MOCK_IDP"));
+		assertEquals(0, linkRows());
+	}
+
+	/** A link made before a promotion: on the mock IdP the admin gets the unknown answer, never a session. */
+	@Test
+	void anAdminCannotSignInWithTheMockIdp() throws Exception {
+		linkGoogle(SessionLoginSupport.operatorSession(mvc, username, PASSWORD))
+				.andExpect(redirectedUrl("/account/operator-password?sso=linked"));
+		jdbc.sql("UPDATE operator SET is_admin = true WHERE id = :id").param("id", operatorId.value()).update();
+
+		SsoResult result = operatorSignIn("google");
+
+		assertEquals("/account/sign-in?audience=operator&sso=failed", result.location());
+		mvc.perform(get(ME_PATH).cookie(result.session())).andExpect(status().isUnauthorized());
+	}
+
 	@Test
 	void aLinkCallbackOnASessionNowHoldingAnotherOperatorLinksNothing() throws Exception {
 		String other = "sso-other-" + UUID.randomUUID().toString().substring(0, 8);

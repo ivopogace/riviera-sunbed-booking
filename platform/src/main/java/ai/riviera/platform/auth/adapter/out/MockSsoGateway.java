@@ -48,6 +48,11 @@ class MockSsoGateway implements SsoGateway {
 	}
 
 	@Override
+	public boolean cooperative() {
+		return true;
+	}
+
+	@Override
 	public ExternalIdentity exchangeCode(SsoProvider provider, String code, String codeVerifier, String expectedNonce,
 			URI redirectUri) {
 		if (!mockCode(provider, expectedNonce).equals(code)) {

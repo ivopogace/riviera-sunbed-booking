@@ -215,6 +215,10 @@ operator account is a username principal approved by an admin, not an email-keye
 - **One callback per provider for both audiences**, dispatching only on a session-held round-trip record
   found by `state` (provider, audience, intent, PKCE verifier, OIDC nonce, linking operator), never on URL
   input, so a state minted for one audience can never complete as the other (ASVS 10.5).
+- **On a mock-IdP boot, linking is a demo property.** The mock signs every visitor in as one canned
+  identity, so a linked operator is reachable by anyone. While the gateway is cooperative (the mock), an
+  admin may neither link nor sign in by SSO; a non-admin's linked console is open, so such a boot holds demo
+  data only.
 - **Not yet:** a mail telling the operator a sign-in method was linked (`contact_email` is unverified and
   the mailer is not live; ASVS 6.3.7 is level 3).
 

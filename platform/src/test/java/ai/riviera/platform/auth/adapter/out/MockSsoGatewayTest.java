@@ -40,6 +40,11 @@ class MockSsoGatewayTest {
 	}
 
 	@Test
+	void theMockIsCooperative() {
+		assertThat(gateway.cooperative()).isTrue();
+	}
+
+	@Test
 	void aMismatchedNonceIsRefused() {
 		String code = MockSsoGateway.mockCode(SsoProvider.GOOGLE, "the-authorize-nonce");
 

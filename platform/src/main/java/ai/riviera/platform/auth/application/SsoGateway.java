@@ -24,4 +24,12 @@ public interface SsoGateway {
 	 */
 	ExternalIdentity exchangeCode(SsoProvider provider, String code, String codeVerifier, String expectedNonce,
 			URI redirectUri);
+
+	/**
+	 * Whether this IdP signs anyone in as a canned identity (the mock): then a linked operator is reachable by any
+	 * visitor, so the edge refuses an admin's link and sign-in (#276). A real IdP authenticates a person: {@code false}.
+	 */
+	default boolean cooperative() {
+		return false;
+	}
 }
