@@ -124,18 +124,20 @@ describe('app.routes — every lazy route target resolves its module', () => {
    * new lazy route gets this for free with no per-component deep-link spec.
    */
   async function loadedComponentNames(routeList: Routes): Promise<string[]> {
-    const names: string[] = [];
-    for (const route of routeList) {
-      if (route.loadComponent) {
-        const load = route.loadComponent as () => Promise<{ name: string }>;
-        const component = await load();
-        names.push(component.name);
-      }
-      if (route.children) {
-        names.push(...(await loadedComponentNames(route.children)));
-      }
-    }
-    return names;
+    const perRoute = await Promise.all(
+      routeList.map(async (route) => {
+        const names: string[] = [];
+        if (route.loadComponent) {
+          const load = route.loadComponent as () => Promise<{ name: string }>;
+          names.push((await load()).name);
+        }
+        if (route.children) {
+          names.push(...(await loadedComponentNames(route.children)));
+        }
+        return names;
+      }),
+    );
+    return perRoute.flat();
   }
 
   it('resolves all 39 loadComponent targets, including the nested tab-route trees (#999)', async () => {
