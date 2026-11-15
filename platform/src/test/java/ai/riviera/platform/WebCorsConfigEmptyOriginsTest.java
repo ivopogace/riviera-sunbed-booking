@@ -36,7 +36,7 @@ class WebCorsConfigEmptyOriginsTest {
 		// NO Access-Control-Allow-Origin header, so the browser blocks it. The server does NOT 403 —
 		// a blanket 403 would also reject legitimate same-origin writes behind the TLS proxy (the
 		// review-fixed bug); the browser enforces the cross-origin block via the missing header.
-		mockMvc.perform(options("/actuator/health")
+		mockMvc.perform(options("/api/venues")
 						.header("Origin", "https://evil.example.com")
 						.header("Access-Control-Request-Method", "GET"))
 				.andExpect(header().doesNotExist("Access-Control-Allow-Origin"));
