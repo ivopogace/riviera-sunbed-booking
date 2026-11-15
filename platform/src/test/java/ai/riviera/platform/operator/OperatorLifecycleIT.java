@@ -18,6 +18,7 @@ import ai.riviera.platform.operator.vocabulary.ApprovalOutcome;
 import ai.riviera.platform.operator.vocabulary.OperatorAccount;
 import ai.riviera.platform.operator.vocabulary.OperatorId;
 import ai.riviera.platform.operator.vocabulary.OperatorLifecycleOutcome;
+import ai.riviera.platform.shared.SiteLocale;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertInstanceOf;
@@ -157,7 +158,7 @@ class OperatorLifecycleIT {
 	void approveActivatesAPendingOperatorAndReportsItsContactEmail() {
 		OperatorId id = insertOperator("lifecycle-approve", OperatorStatus.PENDING);
 
-		assertEquals(new ApprovalOutcome.Approved("lifecycle-approve@example.com"), lifecycle.approve(id));
+		assertEquals(new ApprovalOutcome.Approved("lifecycle-approve@example.com", SiteLocale.EN), lifecycle.approve(id));
 		assertEquals(OperatorStatus.ACTIVE.name(), statusOf(id));
 	}
 
@@ -195,7 +196,7 @@ class OperatorLifecycleIT {
 	void approveReportsANullAddressWhenTheRowCarriesNone() {
 		OperatorId id = insertOperator("lifecycle-approve-no-email", OperatorStatus.PENDING, null);
 
-		assertEquals(new ApprovalOutcome.Approved(null), lifecycle.approve(id));
+		assertEquals(new ApprovalOutcome.Approved(null, SiteLocale.EN), lifecycle.approve(id));
 	}
 
 	private OperatorId insertOperator(String username, OperatorStatus status) {

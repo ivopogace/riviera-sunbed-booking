@@ -3,6 +3,7 @@ import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { provideRouter, Router } from '@angular/router';
 
 import { ConsoleTheme } from '../core/console-theme';
+import { LocaleService } from '../core/locale';
 import { OperatorAuth } from '../core/operator-auth';
 import { SupportContact } from '../core/support-contact';
 import { SupportContactView } from '../shared/support-contact-view';
@@ -19,11 +20,15 @@ class BlankPage {}
  * surrounding row.
  */
 const operatorAuth = {
+  saveLocale: vi.fn(() => Promise.resolve()),
   restoring: signal(false),
   signedIn: signal(true),
   isAdmin: signal(false),
   username: signal<string | undefined>('maria@example.com'),
 };
+
+/** The language rows, each named in itself. */
+const LANGUAGES = ['English', 'Shqip', 'Italiano'];
 
 /** No channel configured by default, as shipped; a test sets one to see the Contact Riviera group. */
 const support = {
@@ -51,6 +56,7 @@ describe('OperatorAccountChip', () => {
 
   beforeEach(async () => {
     operatorAuth.isAdmin.set(false);
+    operatorAuth.saveLocale.mockReset().mockImplementation(() => Promise.resolve());
     operatorAuth.username.set('maria@example.com');
     support.contact.set(undefined);
     support.loads = 0;
@@ -115,7 +121,7 @@ describe('OperatorAccountChip', () => {
     expect(menu()!.querySelector('[data-testid="oc-account-identity"]')?.textContent).toContain(
       'Signed in as maria@example.com',
     );
-    expect(rows()).toEqual(['Change password', 'Porcelain', 'Dark', 'Sign out']);
+    expect(rows()).toEqual(['Change password', 'Porcelain', 'Dark', ...LANGUAGES, 'Sign out']);
     // Venue actions live under the venue switcher, not in the account chip.
     expect(el.querySelector('[data-testid="oc-create-venue"]')).toBeNull();
     expect(el.textContent).not.toContain('Create a venue');
@@ -131,7 +137,7 @@ describe('OperatorAccountChip', () => {
     operatorAuth.isAdmin.set(true);
     open();
 
-    expect(rows()).toEqual(['Change password', 'Porcelain', 'Dark', 'Sign out']);
+    expect(rows()).toEqual(['Change password', 'Porcelain', 'Dark', ...LANGUAGES, 'Sign out']);
     expect(el.querySelector('[data-testid="oc-admin-link"]')).toBeNull();
     expect(el.querySelector('a[href="/admin"]')).toBeNull();
   });
@@ -154,6 +160,7 @@ describe('OperatorAccountChip', () => {
       'Change password',
       'Porcelain',
       'Dark',
+      ...LANGUAGES,
       'Email help@example.com',
       'WhatsApp +355691234567',
       'Sign out',
@@ -174,7 +181,7 @@ describe('OperatorAccountChip', () => {
     open();
 
     expect(el.textContent).not.toContain('Contact Riviera');
-    expect(rows()).toEqual(['Change password', 'Porcelain', 'Dark', 'Sign out']);
+    expect(rows()).toEqual(['Change password', 'Porcelain', 'Dark', ...LANGUAGES, 'Sign out']);
   });
 
   it('prefixes every test id from the call site', () => {
@@ -188,6 +195,9 @@ describe('OperatorAccountChip', () => {
       'change-password',
       'theme-porcelain',
       'theme-dark',
+      'language-en',
+      'language-sq',
+      'language-it',
       'signout',
     ]) {
       expect(el.querySelector(`[data-testid="oc-${suffix}"]`), suffix).not.toBeNull();
@@ -221,6 +231,34 @@ describe('OperatorAccountChip', () => {
       el.querySelector('[data-testid="oc-theme-porcelain"]')!.getAttribute('aria-pressed'),
     ).toBe('false');
     expect(document.documentElement.getAttribute('data-riv-theme')).toBe(documentTheme);
+  });
+
+  it('the Language rows: each in its own lang, the build pressed; a pick closes, saves it as the operator’s own, then switches (#1785)', async () => {
+    const select = vi
+      .spyOn(TestBed.inject(LocaleService), 'select')
+      .mockImplementation(() => undefined);
+    let settle!: () => void;
+    operatorAuth.saveLocale.mockReturnValue(new Promise<void>((resolve) => (settle = resolve)));
+    open();
+    const group = menu()!.querySelector('[aria-labelledby="oc-language-label"]');
+    expect(group?.getAttribute('role')).toBe('group');
+    expect(el.querySelector('#oc-language-label')?.textContent).toContain('Language');
+    const english = el.querySelector<HTMLButtonElement>('[data-testid="oc-language-en"]')!;
+    const albanian = el.querySelector<HTMLButtonElement>('[data-testid="oc-language-sq"]')!;
+    expect(english.getAttribute('aria-pressed')).toBe('true');
+    expect(albanian.getAttribute('aria-pressed')).toBe('false');
+    expect(albanian.querySelector('[lang="sq"]')?.textContent).toBe('Shqip');
+
+    albanian.click();
+    fixture.detectChanges();
+
+    expect(menu()).toBeNull();
+    expect(document.activeElement).toBe(chip());
+    expect(operatorAuth.saveLocale).toHaveBeenCalledWith('sq');
+    expect(select).not.toHaveBeenCalled();
+    settle();
+    await fixture.whenStable();
+    expect(select).toHaveBeenCalledWith('sq');
   });
 
   it('closes on Escape and returns focus to the chip', () => {

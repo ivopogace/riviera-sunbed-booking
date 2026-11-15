@@ -77,9 +77,9 @@ public class TransactionalMailService implements MailSender {
 	}
 
 	@Override
-	public void sendOperatorApproved(String toEmail, URI signInLink) {
+	public void sendOperatorApproved(String toEmail, SiteLocale locale, URI signInLink) {
 		dispatchQuietly(MailKind.OPERATOR_APPROVED, toEmail,
-				() -> mailer.sendOperatorApproved(toEmail, signInLink));
+				() -> mailer.sendOperatorApproved(toEmail, locale, signInLink));
 	}
 
 	/**

@@ -6859,6 +6859,9 @@
         <context-group purpose="location">
           <context context-type="sourcefile">src/app/language-menu-rows.ts</context>
         </context-group>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/operator/operator-account-chip.ts</context>
+        </context-group>
       </trans-unit>
       <trans-unit id="7127721270506525282" datatype="html">
         <source>front row, premium, online</source>

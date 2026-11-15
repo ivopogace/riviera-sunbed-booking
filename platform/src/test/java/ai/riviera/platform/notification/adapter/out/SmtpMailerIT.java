@@ -623,7 +623,7 @@ class SmtpMailerIT {
 	@Test
 	void deliversOperatorApprovedEmailOverSmtp() throws Exception {
 		URI signInLink = URI.create("https://app.example/account/sign-in");
-		mailer().sendOperatorApproved(TO, signInLink);
+		mailer().sendOperatorApproved(TO, SiteLocale.EN, signInLink);
 
 		MimeMessage message = theOnlyReceivedMessage();
 		assertThat(GreenMailUtil.getAddressList(message.getAllRecipients())).isEqualTo(TO);

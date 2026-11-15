@@ -6,20 +6,22 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import ai.riviera.platform.operator.api.OperatorAccounts;
+import ai.riviera.platform.operator.api.OperatorLanguage;
 import ai.riviera.platform.operator.vocabulary.OperatorCredential;
 import ai.riviera.platform.operator.vocabulary.OperatorId;
 import ai.riviera.platform.operator.api.OperatorProvisioning;
+import ai.riviera.platform.shared.SiteLocale;
 
 /**
- * Credential application service: the read side of an account's stored credential
- * ({@link OperatorAccounts}) and the provisioning/rotation write side
- * ({@link OperatorProvisioning}), package-private behind those ports (invariant #11) and kept apart
+ * Account application service: the read side of an account's stored credential
+ * ({@link OperatorAccounts}), the provisioning/rotation write side ({@link OperatorProvisioning}) and the
+ * operator's own language ({@link OperatorLanguage}), package-private behind those ports (invariant #11) and kept apart
  * from {@link OperatorService}'s ownership reads. It holds no Spring Security type: the
  * {@code passwordHash} arrives already encoded and is never encoded or verified here (RV-BE-11).
  * The writes are {@code @Transactional}; the read is a pure query.
  */
 @Service
-class OperatorAccountService implements OperatorAccounts, OperatorProvisioning {
+class OperatorAccountService implements OperatorAccounts, OperatorProvisioning, OperatorLanguage {
 
 	private final Operators operators;
 
@@ -42,5 +44,11 @@ class OperatorAccountService implements OperatorAccounts, OperatorProvisioning {
 	@Transactional
 	public boolean setPassword(String username, String passwordHash) {
 		return operators.updatePassword(username, passwordHash) > 0;
+	}
+
+	@Override
+	@Transactional
+	public boolean setLocale(String username, SiteLocale locale) {
+		return operators.updateLocale(username, locale) > 0;
 	}
 }

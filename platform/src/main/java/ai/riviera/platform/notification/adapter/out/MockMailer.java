@@ -132,8 +132,8 @@ public class MockMailer implements Mailer {
 	}
 
 	@Override
-	public void sendOperatorApproved(String toEmail, URI signInLink) {
-		SentEmail email = SentEmail.operatorApproved(toEmail, signInLink);
+	public void sendOperatorApproved(String toEmail, SiteLocale locale, URI signInLink) {
+		SentEmail email = SentEmail.operatorApproved(toEmail, locale, signInLink);
 		sent.add(email);
 		// Logged like a recovery link but for the opposite reason: this URL is public, not a credential.
 		log.info("[mock-mailer] {} link (to {}): {}", email.kind(), sanitize(toEmail), signInLink);

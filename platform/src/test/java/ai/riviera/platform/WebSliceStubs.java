@@ -107,6 +107,7 @@ import ai.riviera.platform.operator.api.OperatorAccounts;
 import ai.riviera.platform.operator.api.OperatorDirectory;
 import ai.riviera.platform.operator.api.OperatorLifecycle;
 import ai.riviera.platform.operator.api.OperatorPasswordReset;
+import ai.riviera.platform.operator.api.OperatorLanguage;
 import ai.riviera.platform.operator.api.OperatorProvisioning;
 import ai.riviera.platform.operator.api.OperatorRegistration;
 import ai.riviera.platform.operator.vocabulary.ApprovalOutcome;
@@ -452,7 +453,13 @@ public class WebSliceStubs {
 
 	@Bean
 	OperatorRegistration operatorRegistration() {
-		return (_, _, _) -> new OperatorRegistrationOutcome.AlreadyRegistered();
+		return (_, _, _, _) -> new OperatorRegistrationOutcome.AlreadyRegistered();
+	}
+
+	/** The language-write port {@code OperatorLanguageController} stores with; inert ("no such operator"). */
+	@Bean
+	OperatorLanguage operatorLanguage() {
+		return (_, _) -> false;
 	}
 
 	/**
@@ -591,7 +598,7 @@ public class WebSliceStubs {
 			}
 
 			@Override
-			public void sendOperatorApproved(String toEmail, URI signInLink) {
+			public void sendOperatorApproved(String toEmail, SiteLocale locale, URI signInLink) {
 			}
 		};
 	}

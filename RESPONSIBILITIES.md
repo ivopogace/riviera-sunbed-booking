@@ -821,7 +821,7 @@ catalogue reads, photo serving and `PublicVenueIndex`, and `booking`'s reserve, 
 `operator_venue` rows (reversible) but hides the venues until reinstatement.
 
 **Each transition is a status-guarded `UPDATE … RETURNING`, so only the winner gets the facts:**
-`Approved` the contact email, `Rejected` and `Changed` the username (a `PENDING` operator can hold a
+`Approved` the contact email and language, `Rejected` and `Changed` the username (a `PENDING` operator can hold a
 live session to revoke). An admin that loses a race receives no address and cannot act twice.
 
 **The admin surface always keeps an `ACTIVE` admin** (#1311). A suspend locks every admin row, plus actor and
@@ -830,6 +830,11 @@ admin (`LastActiveAdmin`, 409 `LAST_ACTIVE_ADMIN`) and one by an actor no longer
 (`ActorNotActiveAdmin`, 403): two admins suspending each other leave one. `auth` asks `suspendRefusal` before it
 revokes, so only a race signs out a target whose suspend is refused. A later path that removes an admin (a demote, a
 delete) takes the same lock and keeps the rule.
+
+**I keep each operator's language** (`operator.locale`, #1785), the one its approval notice is written in: the
+register stores the build locale it names (English for none or an unserved one), and `OperatorLanguage` stores each
+pick from the console's language rows. A row from before the column is NULL and reads as English; no backfill.
+`operator_locale_check` lists `shared.SiteLocale`'s codes, so a new locale widens it (`OperatorLocaleIT`).
 
 **An admin-issued password-reset token is honoured only while its operator is `ACTIVE`** (#1737). I store its
 SHA-256 digest, never the token, one live per operator: an issue retires the earlier one, a suspend retires it, and
@@ -971,7 +976,7 @@ tag names the person, invariant #7):
   an account mail in the one its request named. Copy is `mail/messages*.properties` through a private
   Spring `ResourceBundleMessageSource` (English the base file and fallback, never the JVM's locale;
   `MailCopyBundleTest` holds the files to one key set), and every link sits under the locale's subpath
-  (`EmailedLink.under`). The operator-approved notice stays English: operators carry no locale. The
+  (`EmailedLink.under`). The operator-approved notice is in the operator's stored language, English if none. The
   support block names channels only, never the same-day promise: its season is answered live.
 - **The link origin is `auth`'s variable under my own key**: `RIVIERA_RECOVERY_LINK_BASE_URL`
   binds `riviera.notification.booking-link.base-url` (one deployed origin; a second variable could
@@ -1151,10 +1156,11 @@ is the trigger for asking the question, and the answer is always ownership.
   all failed rows before filtering and would starve one module behind another's backlog. Refund and
   mail listeners are never on it: they re-ask the gateway or re-send a mail (admin levers).
 - `SiteLocale`, the locales the SPA is built and served in (ADR-0030): `web` serves their shells
-  (`SpaLocale` keys off it), `booking` stores a guest's, `notification` writes mail in one, `auth` names
+  (`SpaLocale` keys off it), `booking` stores a guest's, `operator` an operator's, `notification` writes mail in one, `auth` names
   one for account mail. In `web`, `booking → web` would close `web → auth → notification → booking →
   web`; in `notification`, `booking → notification` a cycle; `customer` would hold a type it neither
-  stores nor decides. A client value only selects a member (`fromCode`), never reaches a path raw.
+  stores nor decides. A client value only selects a member (`fromCode`; `ofCode` where a write refuses an unserved
+  code), never reaches a path raw.
 
 **Not my job:**
 - **Any business logic or module-owned state** → its owner: a change here ripples everywhere.
@@ -1242,7 +1248,7 @@ per-request check the chain's filter calls) and `vocabulary` (`AuthRoles`, `Bloc
 **Job:** turn a credential into a server-side session and keep it honest: both `UserDetailsService`s
 and their `AuthenticationManager`s, session establishment and rotation, the credential stamp, session
 revocation, SSO, the password policy, account recovery, the login, register, `/me` and self-service
-password endpoints, and the admin-lifecycle and both erasure endpoints that revoke sessions in the same
+password and language endpoints, and the admin-lifecycle and both erasure endpoints that revoke sessions in the same
 request (a domain module calling `auth` would cycle). `customer` and `operator` supply identity and an
 opaque hash through their `api`; no Spring Security, Spring Session or mail type enters them
 (`*AuthPlacementTests`).

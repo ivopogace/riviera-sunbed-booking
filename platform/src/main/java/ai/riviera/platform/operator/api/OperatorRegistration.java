@@ -1,6 +1,7 @@
 package ai.riviera.platform.operator.api;
 
 import ai.riviera.platform.operator.vocabulary.OperatorRegistrationOutcome;
+import ai.riviera.platform.shared.SiteLocale;
 
 /**
  * Operator self-registration. The edge encodes the password first, so the module stores an opaque
@@ -13,9 +14,9 @@ import ai.riviera.platform.operator.vocabulary.OperatorRegistrationOutcome;
 public interface OperatorRegistration {
 
 	/**
-	 * Create a {@code PENDING} operator if the username is free. The pre-encoded {@code passwordHash} is
-	 * stored opaquely; {@code contactEmail} is informational — for the admin's approval decision, not a
-	 * login key, not unique, not verified. See {@link OperatorRegistrationOutcome} for the two cases.
+	 * Create a {@code PENDING} operator if the username is free, its hash stored opaquely; {@code contactEmail}
+	 * informs the admin's approval (no login key, not unique or verified); {@code locale} writes the approval
+	 * notice. See {@link OperatorRegistrationOutcome} for the two cases.
 	 */
-	OperatorRegistrationOutcome register(String username, String passwordHash, String contactEmail);
+	OperatorRegistrationOutcome register(String username, String passwordHash, String contactEmail, SiteLocale locale);
 }

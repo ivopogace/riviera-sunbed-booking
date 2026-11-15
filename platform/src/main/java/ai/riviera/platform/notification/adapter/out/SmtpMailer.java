@@ -29,14 +29,12 @@ import ai.riviera.platform.shared.SiteLocale;
 /**
  * Real SMTP {@link Mailer} over {@link JavaMailSender} (ADR-0011): Scaleway TEM in deployment, any relay by config
  * ({@code application-mailer.properties}); missing SMTP config fails at boot. Plain text, no tracking markup, copy in
- * the guest's {@link SiteLocale} ({@link MailCopy}). Never logs a bearer credential (invariant #7); CRLF-strips
+ * the recipient's {@link SiteLocale} ({@link MailCopy}). Never logs a bearer credential (invariant #7); CRLF-strips
  * untrusted header text ({@link #headerSafe}). Pinned by {@code SmtpMailerIT} and {@code MailerProfileWiringTest}.
  */
 @Component
 @Profile("mailer | smtp4dev")
 class SmtpMailer implements Mailer {
-
-	private static final String OPERATOR_APPROVED_SUBJECT = "Your operator account is approved";
 
 	private static final String ROW_BOOKING_CODE = "row.bookingCode";
 	private static final String ROW_VENUE = "row.venue";
@@ -331,17 +329,10 @@ class SmtpMailer implements Mailer {
 		return copy.block(BOOKING_ROWS, List.of(new Row(ROW_BOOKING_CODE, bookingCode), new Row(ROW_VENUE, venueName), days));
 	}
 
-	/** Operators carry no locale, so this notice stays English. */
 	@Override
-	public void sendOperatorApproved(String toEmail, URI signInLink) {
-		send(toEmail, OPERATOR_APPROVED_SUBJECT, """
-				Your operator account has been approved.
-
-				Venues you own are now live and bookable by tourists, and any venue you
-				add goes live as soon as you create it. Manage them any time from the
-				operator console:
-
-				%s""".formatted(signInLink));
+	public void sendOperatorApproved(String toEmail, SiteLocale locale, URI signInLink) {
+		MailCopy copy = MailCopy.in(locale);
+		send(toEmail, copy.text("operatorApproved.subject"), copy.text("operatorApproved.body", signInLink.toString()));
 	}
 
 	private static List<String> widthOf(List<String> base, String... more) {
