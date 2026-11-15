@@ -83,7 +83,7 @@ final class RateLimitFilter extends OncePerRequestFilter {
 	private static final String SSO_AUTHORIZE_TEMPLATE = "/api/auth/sso/{provider}/authorize";
 	private static final String SSO_CALLBACK_TEMPLATE = "/api/auth/sso/{provider}/callback";
 	/** Operator SSO (#276): the anonymous sign-in authorize, and the link start, which verifies a password. */
-	private static final String OPERATOR_SSO_PATH_PREFIX = "/api/auth/operator/sso/";
+	static final String OPERATOR_SSO_PATH_PREFIX = "/api/auth/operator/sso/";
 	private static final String OPERATOR_SSO_AUTHORIZE_TEMPLATE = "/api/auth/operator/sso/{provider}/authorize";
 	static final String OPERATOR_SSO_LINK_TEMPLATE = "/api/auth/operator/sso/{provider}/link";
 

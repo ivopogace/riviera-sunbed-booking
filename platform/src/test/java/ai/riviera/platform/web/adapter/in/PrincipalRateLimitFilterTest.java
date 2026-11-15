@@ -78,6 +78,19 @@ class PrincipalRateLimitFilterTest {
 	}
 
 	@Test
+	void aSuccessfulOperatorSsoLinkStartIsRefunded() throws Exception {
+		SecurityContextHolder.getContext().setAuthentication(UsernamePasswordAuthenticationToken.authenticated(
+				"sso-refund-op", null, AuthorityUtils.createAuthorityList("ROLE_OPERATOR")));
+		for (int i = 0; i < 3; i++) {
+			MockHttpServletResponse response = new MockHttpServletResponse();
+			filter.doFilter(new MockHttpServletRequest("POST", "/api/auth/operator/sso/apple/link"), response,
+					new MockFilterChain());
+
+			assertEquals(200, response.getStatus(), "a 2xx link start gives its token back");
+		}
+	}
+
+	@Test
 	void noAuthenticationPassesUnbudgeted() throws Exception {
 		for (int i = 0; i < 3; i++) {
 			MockFilterChain chain = new MockFilterChain();

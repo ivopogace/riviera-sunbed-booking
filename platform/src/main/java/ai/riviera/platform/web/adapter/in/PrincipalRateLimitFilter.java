@@ -35,6 +35,7 @@ final class PrincipalRateLimitFilter extends OncePerRequestFilter {
 	private static final String OPERATOR_PASSWORD_PATH = RateLimitFilter.OPERATOR_PASSWORD_PATH;
 	private static final String CUSTOMER_PASSWORD_PATH = RateLimitFilter.CUSTOMER_PASSWORD_PATH;
 	private static final String VERIFICATION_RESEND_PATH = RateLimitFilter.VERIFICATION_RESEND_PATH;
+	private static final String OPERATOR_SSO_PATH_PREFIX = RateLimitFilter.OPERATOR_SSO_PATH_PREFIX;
 	private static final String OPERATOR_SSO_LINK_TEMPLATE = RateLimitFilter.OPERATOR_SSO_LINK_TEMPLATE;
 
 	private final AntPathMatcher paths = new AntPathMatcher();
@@ -61,8 +62,9 @@ final class PrincipalRateLimitFilter extends OncePerRequestFilter {
 				|| VERIFICATION_RESEND_PATH.equals(path) || isOperatorSsoLink(path));
 	}
 
+	/** The prefix check keeps the matcher off every other POST (booking create, the webhooks). */
 	private boolean isOperatorSsoLink(String path) {
-		return paths.match(OPERATOR_SSO_LINK_TEMPLATE, path);
+		return path.startsWith(OPERATOR_SSO_PATH_PREFIX) && paths.match(OPERATOR_SSO_LINK_TEMPLATE, path);
 	}
 
 	@Override

@@ -1433,7 +1433,7 @@ mutating `/api/admin/**` action, §`audit`) live in `web`; `challenge` and `audi
   before the controller; it decodes the identity in the charset the controller binds with, so
   neither size, framing nor encoding lets a login skip the per-identity budget (#1288). Forgot-password stays
   non-enumerating (D-8): a refusal precedes the account lookup, identical for every address.
-- **One throttle budget per account, across login and password change (#364):** the per-IP budgets are volume
+- **One throttle budget per account, across login, password change and SSO link start (#364, #276):** the per-IP budgets are volume
   control; the account's (`riviera.ratelimit.username`, `IdentityBuckets`) is keyed on the submitted identity at login
   and on the session's principal at `POST /api/auth/operator/password`, `/api/me/password` and the operator SSO link
   start (#276), by `PrincipalRateLimitFilter` after `AuthorizationFilter`, so a CSRF-less, anonymous or wrong-role
