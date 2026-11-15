@@ -41,6 +41,7 @@ import ai.riviera.platform.venue.vocabulary.SeasonClosure;
 import ai.riviera.platform.venue.vocabulary.SetBookingInfo;
 import ai.riviera.platform.venue.vocabulary.SetId;
 import ai.riviera.platform.venue.vocabulary.VenueId;
+import ai.riviera.platform.venue.vocabulary.VenuePhone;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
@@ -67,6 +68,7 @@ class ViewBookingServiceTest {
 	private static final CustomerId GUEST = new CustomerId(7);
 	private static final SetId SET = new SetId(2);
 	private static final VenueId VENUE = new VenueId(1);
+	private static final VenuePhone VENUE_PHONE = new VenuePhone("+355691234567");
 	private static final LocalDate DATE = LocalDate.of(2026, 8, 1);
 
 	/** 11:00 Tirane on {@code DATE} (CEST): the service day is open and ends at 22:00Z. */
@@ -152,6 +154,13 @@ class ViewBookingServiceTest {
 		BookingDetail detail = service.byCode(CODE).orElseThrow();
 
 		assertThat(detail.emailWithheld()).isTrue();
+	}
+
+	@Test
+	void carriesTheVenuePhoneForTheHelpBlock() {
+		givenBooking(BookingStatus.CONFIRMED);
+
+		assertThat(service.byCode(CODE).orElseThrow().venuePhone()).isEqualTo(VENUE_PHONE);
 	}
 
 	@Test
@@ -253,6 +262,7 @@ class ViewBookingServiceTest {
 
 		BookingDetail detail = service.byCode(CODE).orElseThrow();
 
+		assertThat(detail.venuePhone()).isEqualTo(VENUE_PHONE);
 		assertThat(detail.move()).isNull();
 		assertThat(detail.stretches().get(0).move()).isNull();
 		assertThat(detail.stretches().get(1).move()).isEqualTo(new BookingMove("Back row", 4, 1, 2, movedAt, deadline));
@@ -790,6 +800,6 @@ class ViewBookingServiceTest {
 	private static SetBookingInfo setInfo() {
 		return new SetBookingInfo(SET, VENUE, "Miramar", "Front row", 2, Pool.ONLINE,
 				new MoneyView(4500L, "EUR"), LocalTime.of(18, 0), LocalTime.of(16, 0),
-				BookingMode.INSTANT, SeasonClosure.open(), null);
+				BookingMode.INSTANT, SeasonClosure.open(), null, VENUE_PHONE);
 	}
 }

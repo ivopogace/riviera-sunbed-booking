@@ -24,7 +24,7 @@ record BookingDetailView(String code, String status, long venueId, String venueN
 		Instant requestExpiresAt, CheckoutInstructionView payment, boolean emailWithheld,
 		boolean payWindowClosed, String cancelReason, String declineReason, String cancellationWindowAtBirth,
 		ReviewPanelView reviewPanel, MoveView move, List<StretchView> stretches,
-		List<RefundedDayView> refundedDays, boolean nothingLeft) {
+		List<RefundedDayView> refundedDays, boolean nothingLeft, String venuePhone) {
 
 	/** One day refunded while the booking went on: {@code reason} a {@code RefundReason} name, {@code released} per ADR-0027. */
 	record RefundedDayView(String day, MoneyView amount, String reason, boolean released) {
@@ -63,7 +63,8 @@ record BookingDetailView(String code, String status, long venueId, String venueN
 				ReviewPanelView.of(d.reviewPanel(), d.reviewNameSuggestion()),
 				d.move() == null ? null : MoveView.of(d.move()),
 				d.stretches().stream().map(StretchView::of).toList(),
-				d.refundedDays().stream().map(RefundedDayView::of).toList(), d.nothingLeft());
+				d.refundedDays().stream().map(RefundedDayView::of).toList(), d.nothingLeft(),
+				d.venuePhone() == null ? null : d.venuePhone().e164());
 	}
 
 	/**

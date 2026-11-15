@@ -11,6 +11,7 @@ import ai.riviera.platform.review.vocabulary.ReviewPanel;
 import ai.riviera.platform.venue.vocabulary.MoneyView;
 import ai.riviera.platform.venue.vocabulary.SetId;
 import ai.riviera.platform.venue.vocabulary.VenueId;
+import ai.riviera.platform.venue.vocabulary.VenuePhone;
 
 /**
  * The booking-view screen: cancellation terms server-computed (invariant #10), money in minor units (#5), pay
@@ -18,7 +19,7 @@ import ai.riviera.platform.venue.vocabulary.VenueId;
  * open, something left) and {@code withdrawable} (a {@code PENDING_REQUEST} retraction, no policy) are never both
  * true; {@code payment} is set only while payable. {@code emailWithheld} is asked only once {@code CONFIRMED}, else
  * this code-gated view is a suppression oracle. {@code reviewPanel} is review's answer, never derived from {@code status};
- * {@code refundedDays} a storm's days given back (#1210); {@code nothingLeft} every day refunded (ADR-0026 §7; a stay's: its {@code LiveRemainder}'s).
+ * {@code refundedDays} a storm's days given back (#1210); {@code nothingLeft} every day refunded (ADR-0026 §7; a stay's: its {@code LiveRemainder}'s); {@code venuePhone} null if none given.
  */
 public record BookingDetail(String code, BookingStatus status, VenueId venueId, String venueName,
 		String rowLabel, int positionNo, LocalDate bookingDate, LocalDate lastDate, MoneyView amount,
@@ -30,7 +31,7 @@ public record BookingDetail(String code, BookingStatus status, VenueId venueId, 
 		boolean payWindowClosed, RefundReason cancelReason, DeclineReason declineReason,
 		CancellationWindow cancellationWindowAtBirth, ReviewPanel reviewPanel,
 		String reviewNameSuggestion, BookingMove move, List<StayStretch> stretches,
-		List<RefundedDay> refundedDays, boolean nothingLeft) {
+		List<RefundedDay> refundedDays, boolean nothingLeft, VenuePhone venuePhone) {
 
 	/**
 	 * One stretch of a stitched stay (design D6); a lone booking has none. {@code move} is the remodel

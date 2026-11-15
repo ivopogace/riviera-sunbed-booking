@@ -82,7 +82,7 @@ class CreateBookingServiceTest {
 	private SetBookingInfo set(Pool pool, BookingMode mode, SeasonClosure closure, Integer maxStayDays) {
 		return new SetBookingInfo(SET, new VenueId(1), "Miramar", "Front row", 2, pool,
 				new MoneyView(4500L, "EUR"), LocalTime.of(18, 0), LocalTime.of(16, 0), mode, closure,
-				maxStayDays);
+				maxStayDays, null);
 	}
 
 	private static final RequestWindows WINDOWS =

@@ -26,6 +26,7 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.hamcrest.Matchers.containsString;
 import static org.hamcrest.Matchers.not;
+import static org.hamcrest.Matchers.nullValue;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -470,6 +471,21 @@ class BookingControllerIT {
 				.andExpect(jsonPath("$.status").value("CONFIRMED"))
 				.andExpect(jsonPath("$.cancellable").value(false))
 				.andExpect(jsonPath("$.nothingLeft").value(true));
+	}
+
+	@Test
+	void theViewNamesTheVenuePhoneOnlyWhereGiven() throws Exception {
+		long venue = boundaryVenueOwnedBySeededOperator("16:00");
+		jdbc.sql("UPDATE venue SET phone = '+355691234567' WHERE id = :v").param("v", venue).update();
+		String withPhone = createAndGetCode(boundaryOnlineSet(venue), bookable());
+		String without = createAndGetCode(onlineSet(), bookable().plusDays(9));
+
+		mvc.perform(get("/api/bookings/{code}", withPhone))
+				.andExpect(status().isOk())
+				.andExpect(jsonPath("$.venuePhone").value("+355691234567"));
+		mvc.perform(get("/api/bookings/{code}", without))
+				.andExpect(status().isOk())
+				.andExpect(jsonPath("$.venuePhone").value(nullValue()));
 	}
 
 	@Test

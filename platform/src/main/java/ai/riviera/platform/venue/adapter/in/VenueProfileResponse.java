@@ -17,13 +17,13 @@ import ai.riviera.platform.venue.vocabulary.VenueLocation;
  * returns as {@code expectedVersion}, a stale one 409. Display-only here: {@code commissionBps} and
  * {@code payoutCurrency} (admin-written) and {@code seasonClosure} (its own endpoint).
  * {@code photos} always keys all three lower-case slots to a PREVIEW URL, {@code null} when empty.
- * A {@code null} {@code location} is no pin; a {@code null} {@code maxStayDays} is any length.
+ * A {@code null} {@code location} is no pin; a {@code null} {@code maxStayDays} is any length, a {@code null} {@code phone} none.
  */
 record VenueProfileResponse(String name, String beach, String description,
 		String bookingMode, String bookingCutoff, String salesClose, int commissionBps,
 		String payoutCurrency, List<String> amenities, Integer distanceToWaterM, long version,
 		Map<String, SlotPhoto> photos, SeasonClosureView seasonClosure, VenueLocation location,
-		Integer maxStayDays) {
+		Integer maxStayDays, String phone) {
 
 	record SlotPhoto(String previewUrl) {
 	}
@@ -39,6 +39,6 @@ record VenueProfileResponse(String name, String beach, String description,
 				v.commissionBps(), v.payoutCurrency(), v.amenities().stream().map(Amenity::name).toList(),
 				v.distanceToWaterM(), v.version(), photos,
 				SeasonClosureView.of(v.seasonClosure(), v.closedForSeason()), v.location(),
-				v.maxStayDays());
+				v.maxStayDays(), v.phone() == null ? null : v.phone().e164());
 	}
 }

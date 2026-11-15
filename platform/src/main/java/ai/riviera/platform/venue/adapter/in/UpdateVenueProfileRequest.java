@@ -10,11 +10,12 @@ import java.util.stream.Collectors;
 import ai.riviera.platform.venue.domain.SalesClose;
 import ai.riviera.platform.venue.vocabulary.Amenity;
 import ai.riviera.platform.venue.vocabulary.VenueLocation;
+import ai.riviera.platform.venue.vocabulary.VenuePhone;
 import ai.riviera.platform.venue.application.VenueProfileCommand;
 
 /**
  * The body of {@code PATCH /api/venues/{venueId}}, which REPLACES the profile: a null or absent
- * {@code amenities}, {@code distanceToWaterM}, {@code location} or {@code maxStayDays} clears it;
+ * {@code amenities}, {@code distanceToWaterM}, {@code location}, {@code maxStayDays} or {@code phone} clears it;
  * commission and payout currency are absent. {@code bookingCutoff} is {@code "HH:mm"} in
  * {@code Europe/Tirane}; {@code salesClose} is required: 00:01, 16:00 or 23:59. {@link #toCommand()}
  * throws IAE on bad input, for the caller to wrap as a 400. {@code expectedVersion} stays a boxed
@@ -22,7 +23,7 @@ import ai.riviera.platform.venue.application.VenueProfileCommand;
  */
 record UpdateVenueProfileRequest(String name, String beach, String description,
 		String bookingMode, String bookingCutoff, String salesClose, List<String> amenities,
-		Integer distanceToWaterM, LocationBody location, Long expectedVersion, Integer maxStayDays) {
+		Integer distanceToWaterM, LocationBody location, Long expectedVersion, Integer maxStayDays, String phone) {
 
 	/**
 	 * The raw coordinate pair off the wire. Unvalidated by design: {@link VenueLocation} owns the
@@ -37,11 +38,16 @@ record UpdateVenueProfileRequest(String name, String beach, String description,
 				.collect(Collectors.toUnmodifiableSet());
 		return new VenueProfileCommand(name, BeachCode.parse(beach), description, bookingMode,
 				parseCutoff(bookingCutoff), parseSalesClose(salesClose), parsed, distanceToWaterM,
-				parseLocation(location), maxStayDays);
+				parseLocation(location), maxStayDays, parsePhone(phone));
 	}
 
 	private static VenueLocation parseLocation(LocationBody body) {
 		return body == null ? null : new VenueLocation(body.latitude(), body.longitude());
+	}
+
+	/** Blank is no phone, as an emptied console field sends it. */
+	private static VenuePhone parsePhone(String raw) {
+		return raw == null || raw.isBlank() ? null : VenuePhone.parse(raw);
 	}
 
 	private static Amenity parseCode(String code) {
