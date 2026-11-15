@@ -12,5 +12,5 @@ import java.time.LocalDate;
  */
 public record MoveReminderMail(String bookingCode, String venueName, LocalDate moveDate, LocalDate stayLastDate,
 		String fromRowLabel, int fromPositionNo, String toRowLabel, int toPositionNo, int rowsAway,
-		int positionsAway, URI bookingLink, boolean fromDayHeld) {
+		int positionsAway, URI bookingLink, boolean fromDayHeld, String venuePhone) {
 }

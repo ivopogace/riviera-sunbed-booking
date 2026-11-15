@@ -113,7 +113,7 @@ class BookingCancellationMailListenerTest {
 		listener.on(EVENT);
 
 		verify(mails).sendBookingCancellation(EMAIL, SiteLocale.EN, new BookingCancellationMail(
-				CODE, "Vala Beach", BOOKING_DATE, 4500, "EUR", RefundReason.POLICY, null));
+				CODE, "Vala Beach", BOOKING_DATE, 4500, "EUR", RefundReason.POLICY, null, null));
 		verifyNoInteractions(rebookLinks);
 	}
 
@@ -136,7 +136,7 @@ class BookingCancellationMailListenerTest {
 		listener.on(nothingRefunded);
 
 		verify(mails).sendBookingCancellation(EMAIL, SiteLocale.EN, new BookingCancellationMail(
-				CODE, "Vala Beach", BOOKING_DATE, 0, "EUR", RefundReason.POLICY, null));
+				CODE, "Vala Beach", BOOKING_DATE, 0, "EUR", RefundReason.POLICY, null, null));
 	}
 
 	/** AC-3: one event, every channel — the reason reaches the transport rather than being flattened. */
@@ -153,7 +153,7 @@ class BookingCancellationMailListenerTest {
 
 		verify(mails).sendBookingCancellation(EMAIL, SiteLocale.EN, new BookingCancellationMail(
 				CODE, "Vala Beach", BOOKING_DATE, 4500, "EUR", reason,
-				reason == RefundReason.VENUE_CHANGE ? MAP_LINK : null));
+				reason == RefundReason.VENUE_CHANGE ? MAP_LINK : null, null));
 	}
 
 	/**
@@ -173,9 +173,9 @@ class BookingCancellationMailListenerTest {
 		listener.on(venueCaused);
 
 		verify(mails).sendBookingCancellation(EMAIL, SiteLocale.EN, new BookingCancellationMail(
-				CODE, "Vala Beach", BOOKING_DATE, 4500, "EUR", RefundReason.VENUE_CHANGE, MAP_LINK));
+				CODE, "Vala Beach", BOOKING_DATE, 4500, "EUR", RefundReason.VENUE_CHANGE, MAP_LINK, null));
 		verify(mails).sendBookingCancellation(EMAIL, SiteLocale.EN, new BookingCancellationMail(
-				CODE, "Vala Beach", BOOKING_DATE, 4500, "EUR", RefundReason.VENUE_CHANGE, DISCOVERY_LINK));
+				CODE, "Vala Beach", BOOKING_DATE, 4500, "EUR", RefundReason.VENUE_CHANGE, DISCOVERY_LINK, null));
 	}
 
 	/** A released unpaid claim is the same fact with nothing to return, and still gets the way back. */
@@ -189,7 +189,7 @@ class BookingCancellationMailListenerTest {
 				RefundReason.VENUE_CHANGE));
 
 		verify(mails).sendBookingCancellation(EMAIL, SiteLocale.EN, new BookingCancellationMail(
-				CODE, "Vala Beach", BOOKING_DATE, 0, "EUR", RefundReason.VENUE_CHANGE, DISCOVERY_LINK));
+				CODE, "Vala Beach", BOOKING_DATE, 0, "EUR", RefundReason.VENUE_CHANGE, DISCOVERY_LINK, null));
 	}
 
 	/** #1770: a booking made in Italian is cancelled in Italian, its way back under the Italian subpath. */
@@ -203,7 +203,7 @@ class BookingCancellationMailListenerTest {
 				RefundReason.VENUE_CHANGE));
 
 		verify(mails).sendBookingCancellation(EMAIL, SiteLocale.IT, new BookingCancellationMail(
-				CODE, "Vala Beach", BOOKING_DATE, 0, "EUR", RefundReason.VENUE_CHANGE, DISCOVERY_LINK));
+				CODE, "Vala Beach", BOOKING_DATE, 0, "EUR", RefundReason.VENUE_CHANGE, DISCOVERY_LINK, null));
 	}
 
 	@ParameterizedTest(name = "{0}")
@@ -278,7 +278,7 @@ class BookingCancellationMailListenerTest {
 				RefundReason.VENUE_CHANGE));
 
 		verify(mails).sendBookingCancellation(EMAIL, SiteLocale.EN, new BookingCancellationMail(
-				CODE, "Vala Beach", BOOKING_DATE, 4500, "EUR", RefundReason.VENUE_CHANGE, null));
+				CODE, "Vala Beach", BOOKING_DATE, 4500, "EUR", RefundReason.VENUE_CHANGE, null, null));
 		verifyNoInteractions(rebookLinks);
 	}
 

@@ -13,5 +13,5 @@ import ai.riviera.platform.booking.vocabulary.RefundReason;
  * {@code released} and the code-gated link. The booking goes on for its other days. Public for its adapters.
  */
 public record DayRefundMail(String bookingCode, String venueName, LocalDate serviceDate, long refundMinor,
-		String currency, RefundReason reason, boolean released, URI bookingLink) {
+		String currency, RefundReason reason, boolean released, URI bookingLink, String venuePhone) {
 }

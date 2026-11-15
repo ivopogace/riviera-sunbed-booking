@@ -114,7 +114,7 @@ public class BookingMailFactsService {
 		}
 		return new MoveReminderMailFacts.Resolved(contact.get().email(), new MoveReminderMail(move.code(),
 				to.venueName(), move.moveDate(), move.stayLastDate(), from.rowLabel(), from.positionNo(),
-				to.rowLabel(), to.positionNo(), move.rowsAway(), move.positionsAway(), bookingLink, move.fromDayHeld()),
+				to.rowLabel(), to.positionNo(), move.rowsAway(), move.positionsAway(), bookingLink, move.fromDayHeld(), e164(to)),
 				move.locale());
 	}
 
@@ -136,7 +136,7 @@ public class BookingMailFactsService {
 			return new StayRequestMailFacts.Missing(MissingBookingFact.NO_CONTACT);
 		}
 		return new StayRequestMailFacts.Resolved(contact.get().email(), stay.get().code(), set.get().venueName(),
-				stay.get().firstDate(), stay.get().lastDate(), stay.get().locale());
+				stay.get().firstDate(), stay.get().lastDate(), stay.get().locale(), e164(set.get()));
 	}
 
 	/**
@@ -156,7 +156,7 @@ public class BookingMailFactsService {
 		}
 		URI rebookLink = endedByRemodel ? rebookLinks.forDate(set.get().venueId(), stay.firstDate(), stay.locale()) : null;
 		return new StayCancellationMailFacts.Resolved(contact.get().email(), new BookingCancellationMail(stay.code(),
-				set.get().venueName(), stay.firstDate(), stay.lastDate(), refundMinor, currency, reason, rebookLink),
+				set.get().venueName(), stay.firstDate(), stay.lastDate(), refundMinor, currency, reason, rebookLink, e164(set.get())),
 				stay.locale());
 	}
 

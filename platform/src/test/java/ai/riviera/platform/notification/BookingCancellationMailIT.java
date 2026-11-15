@@ -152,7 +152,7 @@ class BookingCancellationMailIT {
 		SentEmail sent = mailer.lastTo(guest).orElseThrow();
 		assertThat(sent.kind()).isEqualTo(SentEmail.Kind.BOOKING_CANCELLATION);
 		assertThat(sent.cancellation()).isEqualTo(new BookingCancellationMail(
-				code, set.venueName(), date, refundMinor, "EUR", RefundReason.POLICY, null));
+				code, set.venueName(), date, refundMinor, "EUR", RefundReason.POLICY, null, null));
 		assertThat(refundMinor).as("cancelled long before the cutoff — ADR-0005 tier FULL").isPositive();
 	}
 
@@ -180,7 +180,7 @@ class BookingCancellationMailIT {
 
 		assertThat(mailer.lastTo(guest).orElseThrow().cancellation())
 				.isEqualTo(new BookingCancellationMail("WEATHER1", set.venueName(), date, 7331L, "EUR",
-						RefundReason.WEATHER, null));
+						RefundReason.WEATHER, null, null));
 	}
 
 	/**

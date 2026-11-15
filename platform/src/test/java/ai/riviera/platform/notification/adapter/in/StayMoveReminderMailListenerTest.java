@@ -52,7 +52,7 @@ class StayMoveReminderMailListenerTest {
 			MOVE_DAY.plusDays(2), new SetId(1L), new SetId(2L), 1, 3, true, SiteLocale.EN);
 	private static final URI LINK = URI.create("https://riviera.example/booking/STAYCODE");
 	private static final MoveReminderMail MAIL = new MoveReminderMail("STAYCODE", "Vala Beach", MOVE_DAY,
-			MOVE_DAY.plusDays(2), "A", 3, "B", 6, 1, 3, LINK, true);
+			MOVE_DAY.plusDays(2), "A", 3, "B", 6, 1, 3, LINK, true, null);
 
 	private final BookingNotificationFacts bookings = mock(BookingNotificationFacts.class);
 	private final BookingMailFactsService facts = mock(BookingMailFactsService.class);

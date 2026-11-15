@@ -118,7 +118,7 @@ class BookingMovedMailIT {
 		assertThat(sent.kind()).isEqualTo(SentEmail.Kind.BOOKING_MOVED);
 		Instant deadline = cutoff.freeExitEndsAt(date, movedAt);
 		assertThat(sent.moved()).isEqualTo(new BookingMovedMail("MOVED001", venueName, date, "A", 3, "Z", 87, 0, 84,
-				deadline, URI.create(sent.moved().bookingLink().toString())));
+				deadline, URI.create(sent.moved().bookingLink().toString()), null));
 		assertThat(sent.moved().bookingLink().getPath()).endsWith("/booking/MOVED001");
 		assertThat(fixtures.outstandingPublicationsFor(BookingMailFixtures.BOOKING_MOVED_LISTENER_ID,
 				new BookingId(booking))).isZero();

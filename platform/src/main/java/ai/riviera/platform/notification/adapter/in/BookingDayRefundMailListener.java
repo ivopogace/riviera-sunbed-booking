@@ -51,7 +51,7 @@ class BookingDayRefundMailListener {
 			case BookingMailFacts.Resolved booking -> mails.sendDayRefund(booking.toEmail(), booking.locale(),
 					new DayRefundMail(booking.bookingCode(), booking.venueName(), event.serviceDate(),
 							event.refundMinor(), event.currency(), event.refundReason(), event.released(),
-							links.forBooking(booking.bookingCode(), booking.locale())));
+							links.forBooking(booking.bookingCode(), booking.locale()), booking.venuePhone()));
 		}
 	}
 

@@ -66,18 +66,18 @@ class TransactionalMailServiceTest {
 			"CODE1234", "Vala Beach", LocalDate.of(2026, 8, 1), "A", 3, 4500, "EUR",
 			CancellationWindow.FREE, 0, null);
 	private static final BookingCancellationMail CANCELLATION = new BookingCancellationMail(
-			"CODE1234", "Vala Beach", LocalDate.of(2026, 8, 1), 4500, "EUR", RefundReason.POLICY, null);
+			"CODE1234", "Vala Beach", LocalDate.of(2026, 8, 1), 4500, "EUR", RefundReason.POLICY, null, null);
 	private static final PaymentDueMail PAYMENT_DUE = new PaymentDueMail(
 			"CODE1234", "Vala Beach", LocalDate.of(2026, 8, 1), LocalDate.of(2026, 8, 1),
 			Instant.parse("2026-07-31T18:00:00Z"), 4500, "EUR",
-			URI.create("https://riviera.example/booking/CODE1234"), CancellationWindow.FREE, 0);
+			URI.create("https://riviera.example/booking/CODE1234"), CancellationWindow.FREE, 0, null);
 	private static final RequestDeclinedMail DECLINED = new RequestDeclinedMail(
 			"CODE1234", "Vala Beach", LocalDate.of(2026, 8, 1), LocalDate.of(2026, 8, 1),
 			URI.create("https://riviera.example/booking/CODE1234"),
-			ai.riviera.platform.booking.vocabulary.DeclineReason.VENUE);
+			ai.riviera.platform.booking.vocabulary.DeclineReason.VENUE, null);
 	private static final RequestExpiredMail EXPIRED = new RequestExpiredMail(
 			"CODE1234", "Vala Beach", LocalDate.of(2026, 8, 1), LocalDate.of(2026, 8, 1),
-			URI.create("https://riviera.example/booking/CODE1234"));
+			URI.create("https://riviera.example/booking/CODE1234"), null);
 
 	private final Mailer mailer = mock(Mailer.class);
 	private final EmailSuppressions suppressions = mock(EmailSuppressions.class);

@@ -14,11 +14,11 @@ import ai.riviera.platform.booking.vocabulary.RefundReason;
  * the two {@link RefundReason#VENUE_CHANGE} shapes apart; it embeds no credential.
  */
 public record BookingCancellationMail(String bookingCode, String venueName, LocalDate bookingDate,
-		LocalDate lastDate, long refundMinor, String currency, RefundReason reason, URI rebookLink) {
+		LocalDate lastDate, long refundMinor, String currency, RefundReason reason, URI rebookLink, String venuePhone) {
 
 	/** A one-day booking: its last day is its first. */
 	public BookingCancellationMail(String bookingCode, String venueName, LocalDate bookingDate,
-			long refundMinor, String currency, RefundReason reason, URI rebookLink) {
-		this(bookingCode, venueName, bookingDate, bookingDate, refundMinor, currency, reason, rebookLink);
+			long refundMinor, String currency, RefundReason reason, URI rebookLink, String venuePhone) {
+		this(bookingCode, venueName, bookingDate, bookingDate, refundMinor, currency, reason, rebookLink, venuePhone);
 	}
 }

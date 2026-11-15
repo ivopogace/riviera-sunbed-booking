@@ -113,8 +113,8 @@ class SmtpMailer implements Mailer {
 	}
 
 	/**
-	 * The venue's own phone when it gave one, then the configured support channels one per line, each under a
-	 * blank line; empty when neither exists. {@code venuePhone} is E.164 or {@code null}.
+	 * The closing block of every guest booking mail: the venue's own phone when it gave one ({@code venuePhone},
+	 * E.164 or {@code null}), then the configured channels one per line, each under a blank line; empty when neither.
 	 */
 	private String supportLines(MailCopy copy, String venueName, String venuePhone) {
 		List<String> parts = new ArrayList<>();
@@ -149,7 +149,8 @@ class SmtpMailer implements Mailer {
 		}
 		String block = copy.block(List.of("row.booking", ROW_VENUE, ROW_DATE, ROW_DAYS, ROW_REFUND), rows);
 		send(toEmail, copy.text("cancellation.subject", headerSafe(cancellation.venueName())),
-				opening(copy, cancellation) + PARAGRAPH + block + PARAGRAPH + after + rebookLine(copy, cancellation));
+				opening(copy, cancellation) + PARAGRAPH + block + PARAGRAPH + after + rebookLine(copy, cancellation)
+						+ supportLines(copy, cancellation.venueName(), cancellation.venuePhone()));
 	}
 
 	/**
@@ -198,7 +199,8 @@ class SmtpMailer implements Mailer {
 				copy.text("paymentDue.opening", paymentDue.venueName()) + PARAGRAPH + block + PARAGRAPH
 						+ copy.text("paymentDue.payHere") + PARAGRAPH + paymentDue.payLink() + PARAGRAPH
 						+ copy.text("paymentDue.closing")
-						+ disclosureLine(copy, paymentDue.cancellationWindowAtBirth(), paymentDue.lateCancelRefundBps()));
+						+ disclosureLine(copy, paymentDue.cancellationWindowAtBirth(), paymentDue.lateCancelRefundBps())
+						+ supportLines(copy, paymentDue.venueName(), paymentDue.venuePhone()));
 	}
 
 	/**
@@ -231,7 +233,8 @@ class SmtpMailer implements Mailer {
 						moved.fromRowLabel() + moved.fromPositionNo(),
 						distance(copy, moved.rowsAway(), moved.positionsAway()))
 						+ "\n" + copy.text(oneDay ? "moved.unchangedDate" : "moved.unchangedDays") + PARAGRAPH
-						+ block + PARAGRAPH + freeExitLine(copy, moved) + PARAGRAPH + moved.bookingLink());
+						+ block + PARAGRAPH + freeExitLine(copy, moved) + PARAGRAPH + moved.bookingLink()
+						+ supportLines(copy, moved.venueName(), moved.venuePhone()));
 	}
 
 	@Override
@@ -251,7 +254,8 @@ class SmtpMailer implements Mailer {
 				: copy.text("moveReminder.opening", copy.date(reminder.moveDate()), reminder.venueName(), to, distance);
 		send(toEmail, copy.text("moveReminder.subject", headerSafe(reminder.venueName())),
 				opening + "\n" + copy.text("moveReminder.staff") + PARAGRAPH + block + PARAGRAPH
-						+ copy.text("moveReminder.yourStay") + PARAGRAPH + reminder.bookingLink());
+						+ copy.text("moveReminder.yourStay") + PARAGRAPH + reminder.bookingLink()
+						+ supportLines(copy, reminder.venueName(), reminder.venuePhone()));
 	}
 
 	@Override
@@ -264,7 +268,8 @@ class SmtpMailer implements Mailer {
 				new Row(ROW_REFUND, copy.amount(refund.refundMinor(), refund.currency()))));
 		send(toEmail, copy.text("dayRefund.subject", headerSafe(refund.venueName())),
 				dayRefundOpening(copy, refund) + PARAGRAPH + block + PARAGRAPH + copy.text("refund.onItsWay")
-						+ PARAGRAPH + refund.bookingLink());
+						+ PARAGRAPH + refund.bookingLink()
+						+ supportLines(copy, refund.venueName(), refund.venuePhone()));
 	}
 
 	/**
@@ -310,7 +315,8 @@ class SmtpMailer implements Mailer {
 		send(toEmail, copy.text("declined.subject", headerSafe(declined.venueName())),
 				declineLine(copy, declined) + PARAGRAPH + bookingBlock(copy, declined.bookingCode(), declined.venueName(),
 						copy.daysRow(declined.bookingDate(), declined.lastDate()))
-						+ PARAGRAPH + copy.text("request.seeHere") + PARAGRAPH + declined.statusLink());
+						+ PARAGRAPH + copy.text("request.seeHere") + PARAGRAPH + declined.statusLink()
+						+ supportLines(copy, declined.venueName(), declined.venuePhone()));
 	}
 
 	/** The one line that says why the request ended (ADR-0025). */
@@ -329,7 +335,8 @@ class SmtpMailer implements Mailer {
 		send(toEmail, copy.text("expired.subject", headerSafe(expired.venueName())),
 				copy.text("expired.opening") + PARAGRAPH + bookingBlock(copy, expired.bookingCode(), expired.venueName(),
 						copy.daysRow(expired.bookingDate(), expired.lastDate()))
-						+ PARAGRAPH + copy.text("request.seeHere") + PARAGRAPH + expired.statusLink());
+						+ PARAGRAPH + copy.text("request.seeHere") + PARAGRAPH + expired.statusLink()
+						+ supportLines(copy, expired.venueName(), expired.venuePhone()));
 	}
 
 	private static String bookingBlock(MailCopy copy, String bookingCode, String venueName, Row days) {

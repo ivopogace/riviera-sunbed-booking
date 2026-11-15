@@ -57,7 +57,7 @@ class StayCancellationMailListenerTest {
 					LocalDate.of(2026, 8, 4))),
 			18000, "EUR", true, CancellationWindow.FREE, 0, SiteLocale.EN);
 	private static final BookingCancellationMail MAIL = new BookingCancellationMail(CODE, "Vala Beach",
-			LocalDate.of(2026, 8, 1), LocalDate.of(2026, 8, 4), 6750, "EUR", RefundReason.POLICY, null);
+			LocalDate.of(2026, 8, 1), LocalDate.of(2026, 8, 4), 6750, "EUR", RefundReason.POLICY, null, null);
 
 	private final BookingNotificationFacts bookings = mock(BookingNotificationFacts.class);
 	private final BookingMailFactsService facts = mock(BookingMailFactsService.class);

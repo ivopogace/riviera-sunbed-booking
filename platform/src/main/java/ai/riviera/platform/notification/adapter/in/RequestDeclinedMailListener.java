@@ -53,7 +53,7 @@ class RequestDeclinedMailListener {
 			case BookingMailFacts.Resolved booking -> mails.sendRequestDeclined(booking.toEmail(), booking.locale(),
 					new RequestDeclinedMail(booking.bookingCode(), booking.venueName(),
 							event.bookingDate(), event.lastDay(), links.forBooking(booking.bookingCode(), booking.locale()),
-							event.reasonOrVenue()));
+							event.reasonOrVenue(), booking.venuePhone()));
 		}
 	}
 
@@ -71,7 +71,7 @@ class RequestDeclinedMailListener {
 			}
 			case StayRequestMailFacts.Resolved stay -> mails.sendRequestDeclined(stay.toEmail(), stay.locale(),
 					new RequestDeclinedMail(stay.stayCode(), stay.venueName(), stay.firstDate(), stay.lastDate(),
-							links.forBooking(stay.stayCode(), stay.locale()), event.reason()));
+							links.forBooking(stay.stayCode(), stay.locale()), event.reason(), stay.venuePhone()));
 		}
 	}
 

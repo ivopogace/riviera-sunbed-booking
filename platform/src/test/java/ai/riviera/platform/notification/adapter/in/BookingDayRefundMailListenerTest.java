@@ -61,7 +61,7 @@ class BookingDayRefundMailListenerTest {
 		listener.on(EVENT);
 
 		verify(mails).sendDayRefund("guest@example.com", SiteLocale.EN,
-				new DayRefundMail("STAYCODE", "Vala Beach", DAY, 3000L, "EUR", RefundReason.WEATHER, false, LINK));
+				new DayRefundMail("STAYCODE", "Vala Beach", DAY, 3000L, "EUR", RefundReason.WEATHER, false, LINK, null));
 		assertThat(meters.find(ObservabilityMetrics.MAIL_DAY_REFUND_ABANDONED).counters()).isEmpty();
 	}
 
@@ -76,9 +76,9 @@ class BookingDayRefundMailListenerTest {
 		listener.on(new BookingDayRefunded(BOOKING, new VenueId(3L), SET, DAY, 3000L, "EUR", null, null, false));
 
 		verify(mails).sendDayRefund("guest@example.com", SiteLocale.EN,
-				new DayRefundMail("STAYCODE", "Vala Beach", DAY, 3000L, "EUR", RefundReason.VENUE, true, LINK));
+				new DayRefundMail("STAYCODE", "Vala Beach", DAY, 3000L, "EUR", RefundReason.VENUE, true, LINK, null));
 		verify(mails).sendDayRefund("guest@example.com", SiteLocale.EN,
-				new DayRefundMail("STAYCODE", "Vala Beach", DAY, 3000L, "EUR", RefundReason.WEATHER, false, LINK));
+				new DayRefundMail("STAYCODE", "Vala Beach", DAY, 3000L, "EUR", RefundReason.WEATHER, false, LINK, null));
 	}
 
 	@Test

@@ -88,7 +88,7 @@ class DayRefundMailIT {
 		assertThat(sent.kind()).isEqualTo(SentEmail.Kind.DAY_REFUND);
 		DayRefundMail mail = sent.dayRefund();
 		assertThat(mail).isEqualTo(new DayRefundMail("DAYWX0001", venueNameOf(set.venueId()), day, 3000L, "EUR",
-				RefundReason.WEATHER, false, mail.bookingLink()));
+				RefundReason.WEATHER, false, mail.bookingLink(), null));
 		assertThat(mail.bookingLink().getPath()).endsWith("/booking/DAYWX0001");
 		assertThat(fixtures.outstandingPublicationsFor(BookingMailFixtures.DAY_REFUND_LISTENER_ID, new BookingId(bookingId)))
 				.as("the publication completes once the mail left").isZero();

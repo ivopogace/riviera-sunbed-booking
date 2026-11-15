@@ -70,7 +70,7 @@ class BookingMovedMailListenerTest {
 		listener.on(EVENT);
 
 		verify(mails).sendBookingMoved(EMAIL, SiteLocale.EN, new BookingMovedMail(CODE, "Vala Beach", BOOKING_DATE, "A", 3, "A", 7,
-				0, 4, DEADLINE, URI.create("https://riviera.example/booking/" + CODE)));
+				0, 4, DEADLINE, URI.create("https://riviera.example/booking/" + CODE), null));
 	}
 
 	@Test
@@ -82,7 +82,7 @@ class BookingMovedMailListenerTest {
 
 		verify(mails).sendBookingMoved(EMAIL, SiteLocale.EN, new BookingMovedMail(CODE, "Vala Beach", BOOKING_DATE,
 				BOOKING_DATE.plusDays(2), "A", 3, "A", 7, 0, 4, DEADLINE, false,
-				URI.create("https://riviera.example/booking/" + CODE)));
+				URI.create("https://riviera.example/booking/" + CODE), null));
 	}
 
 	@Test
@@ -95,7 +95,7 @@ class BookingMovedMailListenerTest {
 
 		verify(mails).sendBookingMoved(EMAIL, SiteLocale.EN, new BookingMovedMail(CODE, "Vala Beach", BOOKING_DATE,
 				BOOKING_DATE.plusDays(2), "A", 3, "A", 7, 0, 4, null, true,
-				URI.create("https://riviera.example/booking/" + CODE)));
+				URI.create("https://riviera.example/booking/" + CODE), null));
 	}
 
 	@Test
@@ -106,7 +106,7 @@ class BookingMovedMailListenerTest {
 		listener.on(new BookingMoved(BOOKING_ID, new VenueId(4L), FROM, TO, BOOKING_DATE, null));
 
 		verify(mails).sendBookingMoved(EMAIL, SiteLocale.EN, new BookingMovedMail(CODE, "Vala Beach", BOOKING_DATE, BOOKING_DATE,
-				"A", 3, "A", 7, 0, 4, DEADLINE, false, URI.create("https://riviera.example/booking/" + CODE)));
+				"A", 3, "A", 7, 0, 4, DEADLINE, false, URI.create("https://riviera.example/booking/" + CODE), null));
 	}
 
 	@ParameterizedTest(name = "{0}")

@@ -60,7 +60,7 @@ class BookingCancellationMailListener {
 			case BookingMailFacts.Resolved booking -> mails.sendBookingCancellation(booking.toEmail(), booking.locale(),
 					new BookingCancellationMail(booking.bookingCode(), booking.venueName(),
 							event.bookingDate(), event.lastDay(), event.refundMinor(), event.currency(), event.reason(),
-							rebookLinkFor(event, booking.locale())));
+							rebookLinkFor(event, booking.locale()), booking.venuePhone()));
 		}
 	}
 

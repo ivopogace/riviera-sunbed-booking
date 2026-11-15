@@ -998,12 +998,13 @@ tag names the person, invariant #7):
   emailed link is mail, and `auth` already depends on me, while I can never depend on `auth`.
 
 - **The support channels are mine, as configuration** (`SupportContact`, from `RIVIERA_SUPPORT_EMAIL` /
-  `RIVIERA_SUPPORT_WHATSAPP`, #1735): the one source both confirmation mails and the SPA's help surfaces
-  read, through the anonymous `GET /api/support-contact` in my own `adapter/in`, so no port is published.
-  Mine because the mails are the only backend consumer and no domain module may depend on me. An unset
-  channel renders nowhere, never a placeholder; WhatsApp is a plain `wa.me` link. The read also answers
-  whether today, in `Europe/Tirane` (#6), is in the same-day-answer season (May–October). A booking mail's
-  block opens with the venue's own phone when it gave one (`SetBookingInfo#phone`, read at send time).
+  `RIVIERA_SUPPORT_WHATSAPP`, #1735): the one source every guest booking mail (#1750, one closing block
+  from `SmtpMailer#supportLines`) and the SPA's help surfaces read, through the anonymous
+  `GET /api/support-contact` in my own `adapter/in`, so no port is published. Mine because the mails are
+  the only backend consumer and no domain module may depend on me. An unset channel renders nowhere,
+  never a placeholder; WhatsApp is a plain `wa.me` link. The read also answers whether today, in
+  `Europe/Tirane` (#6), is in the same-day-answer season (May–October). The block opens with the venue's own
+  phone when it gave one (`SetBookingInfo#phone`, read at send time).
 
 **Not My Job:**
 - Deciding **when** to send, minting/hashing recovery tokens, building **tokenized** links → the
