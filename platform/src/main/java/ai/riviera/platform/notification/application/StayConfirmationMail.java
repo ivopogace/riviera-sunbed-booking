@@ -9,12 +9,12 @@ import ai.riviera.platform.booking.vocabulary.CancellationWindow;
  * What a stitched stay's one confirmation email renders: the stay's {@code bookingCode} (a bearer
  * credential, invariant #7; never a stretch's row code), its span, each stop in day order and the total
  * in minor units + ISO currency (#5). Days are inclusive {@code Europe/Tirane} service days (#6). The
- * birth window is rendered as {@link BookingConfirmationMail}'s. Rules: {@code RESPONSIBILITIES.md}
- * §notification.
+ * birth window and {@code venuePhone} are rendered as {@link BookingConfirmationMail}'s. Rules:
+ * {@code RESPONSIBILITIES.md} §notification.
  */
 public record StayConfirmationMail(String bookingCode, String venueName, LocalDate firstDate,
 		LocalDate lastDate, List<Stop> stops, long amountMinor, String currency,
-		CancellationWindow cancellationWindowAtBirth, int lateCancelRefundBps) {
+		CancellationWindow cancellationWindowAtBirth, int lateCancelRefundBps, String venuePhone) {
 
 	public StayConfirmationMail {
 		stops = List.copyOf(stops);

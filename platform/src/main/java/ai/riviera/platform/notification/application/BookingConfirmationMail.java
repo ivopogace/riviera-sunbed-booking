@@ -10,17 +10,17 @@ import ai.riviera.platform.booking.vocabulary.CancellationWindow;
  * payload. {@code amountMinor} (the stay's total) + {@code currency} are minor units + ISO 4217 (#5),
  * formatted only by the transport; the dates are inclusive {@code Europe/Tirane} service days (#6).
  * The birth window is rendered, never decided: only CLOSED may say "can't cancel", and {@code null}
- * (older payloads) renders like FREE, forever. Rules: {@code RESPONSIBILITIES.md} §notification.
+ * (older payloads) renders like FREE, forever; {@code venuePhone} is E.164 or null. Rules: RESPONSIBILITIES.md §notification.
  */
 public record BookingConfirmationMail(String bookingCode, String venueName, LocalDate bookingDate,
 		LocalDate lastDate, String rowLabel, int positionNo, long amountMinor, String currency,
-		CancellationWindow cancellationWindowAtBirth, int lateCancelRefundBps) {
+		CancellationWindow cancellationWindowAtBirth, int lateCancelRefundBps, String venuePhone) {
 
 	/** A one-day booking: its last day is its first. */
 	public BookingConfirmationMail(String bookingCode, String venueName, LocalDate bookingDate,
 			String rowLabel, int positionNo, long amountMinor, String currency,
-			CancellationWindow cancellationWindowAtBirth, int lateCancelRefundBps) {
+			CancellationWindow cancellationWindowAtBirth, int lateCancelRefundBps, String venuePhone) {
 		this(bookingCode, venueName, bookingDate, bookingDate, rowLabel, positionNo, amountMinor, currency,
-				cancellationWindowAtBirth, lateCancelRefundBps);
+				cancellationWindowAtBirth, lateCancelRefundBps, venuePhone);
 	}
 }

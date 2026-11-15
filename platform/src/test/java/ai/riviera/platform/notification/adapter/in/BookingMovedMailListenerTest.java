@@ -51,7 +51,7 @@ class BookingMovedMailListenerTest {
 	private static final Instant DEADLINE = Instant.parse("2026-09-11T13:00:00Z");
 
 	private static final BookingMoved EVENT = new BookingMoved(BOOKING_ID, new VenueId(4L), FROM, TO, BOOKING_DATE);
-	private static final BookingMailFacts.Resolved FACTS = new BookingMailFacts.Resolved(EMAIL, CODE, "Vala Beach", "A", 7, SiteLocale.EN);
+	private static final BookingMailFacts.Resolved FACTS = new BookingMailFacts.Resolved(EMAIL, CODE, "Vala Beach", "A", 7, SiteLocale.EN, null);
 	private static final BookingMoveFacts MOVE = new BookingMoveFacts(BOOKING_DATE, "A", 3, "A", 7, 0, 4, MOVED_AT, DEADLINE, false);
 
 	private final BookingMailFactsService facts = mock(BookingMailFactsService.class);

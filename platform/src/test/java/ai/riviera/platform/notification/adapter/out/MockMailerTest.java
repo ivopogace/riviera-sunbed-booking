@@ -30,7 +30,7 @@ class MockMailerTest {
 
 	private static final BookingConfirmationMail CONFIRMATION = new BookingConfirmationMail(
 			BOOKING_CODE, "Miramar Beach", LocalDate.of(2026, 8, 15), "A", 3, 2500, "EUR",
-			CancellationWindow.CLOSED, 0);
+			CancellationWindow.CLOSED, 0, null);
 
 	private static final BookingCancellationMail CANCELLATION = new BookingCancellationMail(
 			BOOKING_CODE, "Miramar Beach", LocalDate.of(2026, 8, 15), 2500, "EUR", RefundReason.POLICY, null);

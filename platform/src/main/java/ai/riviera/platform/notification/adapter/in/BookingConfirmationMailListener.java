@@ -70,7 +70,7 @@ class BookingConfirmationMailListener {
 					new BookingConfirmationMail(booking.bookingCode(), booking.venueName(),
 							event.bookingDate(), event.lastDay(), booking.rowLabel(), booking.positionNo(),
 							event.amountMinor(), event.currency(),
-							event.cancellationWindowAtBirth(), event.lateCancelRefundBps()));
+							event.cancellationWindowAtBirth(), event.lateCancelRefundBps(), booking.venuePhone()));
 		}
 		catch (RuntimeException e) {
 			attempts.recordAttempt(event.bookingId(), MailAttemptSource.AUTOMATIC,

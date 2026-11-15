@@ -25,6 +25,7 @@ import ai.riviera.platform.venue.vocabulary.SeasonClosure;
 import ai.riviera.platform.venue.vocabulary.SetBookingInfo;
 import ai.riviera.platform.venue.vocabulary.SetId;
 import ai.riviera.platform.venue.vocabulary.VenueId;
+import ai.riviera.platform.venue.vocabulary.VenuePhone;
 
 import org.junit.jupiter.api.Test;
 
@@ -53,9 +54,10 @@ class BookingMailFactsServiceTest {
 
 	private static final BookingNotificationInfo BOOKING =
 			new BookingNotificationInfo("ABCD2345", CUSTOMER_ID, SiteLocale.EN);
+	private static final String VENUE_PHONE = "+355692223333";
 	private static final SetBookingInfo SET = new SetBookingInfo(SET_ID, new VenueId(3L), "Vala Beach",
 			"A", 3, Pool.ONLINE, new MoneyView(4500, "EUR"), LocalTime.of(18, 0), LocalTime.of(16, 0),
-			BookingMode.INSTANT, SeasonClosure.open(), null, null);
+			BookingMode.INSTANT, SeasonClosure.open(), null, new VenuePhone(VENUE_PHONE));
 	private static final GuestContact CONTACT =
 			new GuestContact("tourist@example.com", "Tourist", "+355691234567");
 
@@ -75,7 +77,7 @@ class BookingMailFactsServiceTest {
 		BookingMailFacts resolved = facts.resolve(BOOKING_ID, SET_ID);
 
 		assertThat(resolved).isEqualTo(new BookingMailFacts.Resolved(
-				"tourist@example.com", "ABCD2345", "Vala Beach", "A", 3, SiteLocale.EN));
+				"tourist@example.com", "ABCD2345", "Vala Beach", "A", 3, SiteLocale.EN, VENUE_PHONE));
 	}
 
 	@Test
@@ -134,7 +136,7 @@ class BookingMailFactsServiceTest {
 		when(sets.setBookingInfo(SET_ID)).thenReturn(Optional.of(SET));
 		when(sets.setBookingInfo(SECOND_SET_ID)).thenReturn(Optional.of(new SetBookingInfo(SECOND_SET_ID,
 				new VenueId(3L), "Vala Beach", "B", 5, Pool.ONLINE, new MoneyView(4500, "EUR"), LocalTime.of(18, 0),
-				LocalTime.of(16, 0), BookingMode.INSTANT, SeasonClosure.open(), null, null)));
+				LocalTime.of(16, 0), BookingMode.INSTANT, SeasonClosure.open(), null, new VenuePhone(VENUE_PHONE))));
 		when(customers.findById(CUSTOMER_ID)).thenReturn(Optional.of(CONTACT));
 
 		assertThat(facts.resolveStay(STAY, CancellationWindow.LATE, 2500)).isEqualTo(new StayMailFacts.Resolved(
@@ -142,7 +144,7 @@ class BookingMailFactsServiceTest {
 						LocalDate.of(2026, 8, 3),
 						List.of(new StayConfirmationMail.Stop(LocalDate.of(2026, 8, 1), LocalDate.of(2026, 8, 2), "A", 3),
 								new StayConfirmationMail.Stop(LocalDate.of(2026, 8, 3), LocalDate.of(2026, 8, 3), "B", 5)),
-						13500, "EUR", CancellationWindow.LATE, 2500), SiteLocale.EN));
+						13500, "EUR", CancellationWindow.LATE, 2500, VENUE_PHONE), SiteLocale.EN));
 	}
 
 	@Test

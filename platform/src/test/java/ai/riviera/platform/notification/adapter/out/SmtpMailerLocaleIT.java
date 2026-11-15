@@ -78,7 +78,7 @@ class SmtpMailerLocaleIT {
 								"Passwort zurücksetzen"),
 						inEach("fjalëkalimi juaj mbetet i pandryshuar", "la tua password resta invariata", "Ihr Passwort bleibt unverändert")),
 				kind("confirmation", (m, l) -> m.sendBookingConfirmation(TO, l, new BookingConfirmationMail(CODE, VENUE,
-								DAY, DAY, "A", 3, 2500, "EUR", CancellationWindow.LATE, 2250)),
+								DAY, DAY, "A", 3, 2500, "EUR", CancellationWindow.LATE, 2250, null)),
 						inEach("Rezervimi juaj te Miramar Beach u konfirmua",
 								"La tua prenotazione presso Miramar Beach è confermata",
 								"Ihre Buchung bei Miramar Beach ist bestätigt"),
@@ -86,7 +86,7 @@ class SmtpMailerLocaleIT {
 				kind("stay confirmation", (m, l) -> m.sendStayConfirmation(TO, l, new StayConfirmationMail(CODE, VENUE,
 								DAY, LAST, List.of(new StayConfirmationMail.Stop(DAY, DAY.plusDays(1), "A", 3),
 										new StayConfirmationMail.Stop(LAST, LAST, "B", 5)), 7500, "EUR",
-								CancellationWindow.CLOSED, 0)),
+								CancellationWindow.CLOSED, 0, null)),
 						inEach("Qëndrimi juaj te Miramar Beach u konfirmua",
 								"Il tuo soggiorno presso Miramar Beach è confermato",
 								"Ihr Aufenthalt bei Miramar Beach ist bestätigt"),
@@ -166,7 +166,7 @@ class SmtpMailerLocaleIT {
 	@Test
 	void aTranslatedBlockAlignsItsOwnLabelsAndTheSupportChannelsFollowTheLocale() throws Exception {
 		mailer(new SupportContact("help@example.com", "355691234567")).sendBookingConfirmation(TO, SiteLocale.IT,
-				new BookingConfirmationMail(CODE, VENUE, DAY, LAST, "A", 3, 7500, "EUR", CancellationWindow.FREE, 0));
+				new BookingConfirmationMail(CODE, VENUE, DAY, LAST, "A", 3, 7500, "EUR", CancellationWindow.FREE, 0, null));
 
 		assertThat(normalized(theOnlyReceivedMessage())).isEqualTo("""
 				Il tuo set di lettini è confermato.

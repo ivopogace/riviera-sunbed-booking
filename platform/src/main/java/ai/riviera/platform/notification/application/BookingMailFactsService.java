@@ -65,7 +65,8 @@ public class BookingMailFactsService {
 			return new BookingMailFacts.Missing(MissingBookingFact.NO_CONTACT);
 		}
 		return new BookingMailFacts.Resolved(contact.get().email(), booking.get().code(),
-				set.get().venueName(), set.get().rowLabel(), set.get().positionNo(), booking.get().locale());
+				set.get().venueName(), set.get().rowLabel(), set.get().positionNo(), booking.get().locale(),
+				e164(set.get()));
 	}
 
 	/**
@@ -76,12 +77,14 @@ public class BookingMailFactsService {
 			int lateCancelRefundBps) {
 		List<StayConfirmationMail.Stop> stops = new ArrayList<>();
 		String venueName = null;
+		String venuePhone = null;
 		for (StayConfirmationFacts.Stop stop : stay.stops()) {
 			Optional<SetBookingInfo> set = sets.setBookingInfo(stop.setId());
 			if (set.isEmpty()) {
 				return new StayMailFacts.Missing(MissingBookingFact.NO_SET);
 			}
 			venueName = set.get().venueName();
+			venuePhone = e164(set.get());
 			stops.add(new StayConfirmationMail.Stop(stop.firstDate(), stop.lastDate(), set.get().rowLabel(),
 					set.get().positionNo()));
 		}
@@ -91,7 +94,7 @@ public class BookingMailFactsService {
 		}
 		return new StayMailFacts.Resolved(contact.get().email(), new StayConfirmationMail(stay.code(), venueName,
 				stay.firstDate(), stay.lastDate(), stops, stay.amountMinor(),
-				stay.currency(), windowAtBirth, lateCancelRefundBps), stay.locale());
+				stay.currency(), windowAtBirth, lateCancelRefundBps, venuePhone), stay.locale());
 	}
 
 	/**
@@ -155,5 +158,10 @@ public class BookingMailFactsService {
 		return new StayCancellationMailFacts.Resolved(contact.get().email(), new BookingCancellationMail(stay.code(),
 				set.get().venueName(), stay.firstDate(), stay.lastDate(), refundMinor, currency, reason, rebookLink),
 				stay.locale());
+	}
+
+	/** The venue's phone as the mails render it, or {@code null} when the venue gave none. */
+	private static String e164(SetBookingInfo set) {
+		return set.phone() == null ? null : set.phone().e164();
 	}
 }

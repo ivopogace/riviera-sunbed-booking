@@ -88,7 +88,7 @@ class SmtpMailer implements Mailer {
 				copy.text("confirmation.opening") + PARAGRAPH + block + PARAGRAPH + copy.text("confirmation.closing")
 						+ disclosureLine(copy, confirmation.cancellationWindowAtBirth(),
 								confirmation.lateCancelRefundBps())
-						+ supportLines(copy));
+						+ supportLines(copy, confirmation.venueName(), confirmation.venuePhone()));
 	}
 
 	@Override
@@ -109,20 +109,27 @@ class SmtpMailer implements Mailer {
 						+ copy.text("stayConfirmation.closing")
 						+ disclosureLine(copy, confirmation.cancellationWindowAtBirth(),
 								confirmation.lateCancelRefundBps())
-						+ supportLines(copy));
+						+ supportLines(copy, confirmation.venueName(), confirmation.venuePhone()));
 	}
 
-	/** The configured support channels under a blank line, one per line; empty when none is configured. */
-	private String supportLines(MailCopy copy) {
-		if (!support.hasChannel()) {
-			return "";
+	/**
+	 * The venue's own phone when it gave one, then the configured support channels one per line, each under a
+	 * blank line; empty when neither exists. {@code venuePhone} is E.164 or {@code null}.
+	 */
+	private String supportLines(MailCopy copy, String venueName, String venuePhone) {
+		List<String> parts = new ArrayList<>();
+		if (venuePhone != null) {
+			parts.add(copy.text("support.venuePhone", venueName, venuePhone));
 		}
-		List<Row> channels = new ArrayList<>();
-		support.email().ifPresent(email -> channels.add(new Row("support.email", email)));
-		support.whatsappNumber().ifPresent(number -> channels.add(new Row("support.whatsapp",
-				number + " (" + support.whatsappLink().orElseThrow() + ")")));
-		return PARAGRAPH + copy.text("support.heading") + "\n"
-				+ copy.block(List.of("support.email", "support.whatsapp"), channels);
+		if (support.hasChannel()) {
+			List<Row> channels = new ArrayList<>();
+			support.email().ifPresent(email -> channels.add(new Row("support.email", email)));
+			support.whatsappNumber().ifPresent(number -> channels.add(new Row("support.whatsapp",
+					number + " (" + support.whatsappLink().orElseThrow() + ")")));
+			parts.add(copy.text("support.heading") + "\n"
+					+ copy.block(List.of("support.email", "support.whatsapp"), channels));
+		}
+		return parts.stream().map(part -> PARAGRAPH + part).collect(Collectors.joining());
 	}
 
 	@Override

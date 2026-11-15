@@ -72,7 +72,7 @@ class BookingCancellationMailListenerTest {
 	private static final URI MAP_LINK = URI.create("https://riviera.test/venues/4?date=2026-08-12");
 	private static final URI DISCOVERY_LINK = URI.create("https://riviera.test/?date=2026-08-12");
 	private static final BookingMailFacts.Resolved FACTS =
-			new BookingMailFacts.Resolved(EMAIL, CODE, "Vala Beach", "A", 3, SiteLocale.EN);
+			new BookingMailFacts.Resolved(EMAIL, CODE, "Vala Beach", "A", 3, SiteLocale.EN, null);
 
 	private final BookingMailFactsService facts = mock(BookingMailFactsService.class);
 	private final TransactionalMailService mails = mock(TransactionalMailService.class);
@@ -195,7 +195,7 @@ class BookingCancellationMailListenerTest {
 	/** #1770: a booking made in Italian is cancelled in Italian, its way back under the Italian subpath. */
 	@Test
 	void aTranslatedBookingIsMailedAndLinkedInItsLanguage() {
-		givenTheFactsAre(new BookingMailFacts.Resolved(EMAIL, CODE, "Vala Beach", "A", 3, SiteLocale.IT));
+		givenTheFactsAre(new BookingMailFacts.Resolved(EMAIL, CODE, "Vala Beach", "A", 3, SiteLocale.IT, null));
 		givenTheRemodelEndedIt();
 		when(rebookLinks.forDate(new VenueId(4L), BOOKING_DATE, SiteLocale.IT)).thenReturn(DISCOVERY_LINK);
 

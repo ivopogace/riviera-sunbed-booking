@@ -261,7 +261,7 @@ class TemWebhookIT {
 
 	private static BookingConfirmationMail confirmation() {
 		return new BookingConfirmationMail("CODE1234", "Vala Beach", LocalDate.of(2026, 8, 1), "A", 3,
-				4500, "EUR", CancellationWindow.FREE, 0);
+				4500, "EUR", CancellationWindow.FREE, 0, null);
 	}
 
 	private String reasonFor(String domain) {

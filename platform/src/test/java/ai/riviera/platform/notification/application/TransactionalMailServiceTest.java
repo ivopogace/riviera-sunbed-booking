@@ -64,7 +64,7 @@ class TransactionalMailServiceTest {
 	private static final URI SIGN_IN_LINK = URI.create("https://riviera.example/account/sign-in");
 	private static final BookingConfirmationMail CONFIRMATION = new BookingConfirmationMail(
 			"CODE1234", "Vala Beach", LocalDate.of(2026, 8, 1), "A", 3, 4500, "EUR",
-			CancellationWindow.FREE, 0);
+			CancellationWindow.FREE, 0, null);
 	private static final BookingCancellationMail CANCELLATION = new BookingCancellationMail(
 			"CODE1234", "Vala Beach", LocalDate.of(2026, 8, 1), 4500, "EUR", RefundReason.POLICY, null);
 	private static final PaymentDueMail PAYMENT_DUE = new PaymentDueMail(

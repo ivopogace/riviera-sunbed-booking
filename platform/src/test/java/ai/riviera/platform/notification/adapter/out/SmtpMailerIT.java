@@ -62,7 +62,9 @@ class SmtpMailerIT {
 
 	private static final BookingConfirmationMail CONFIRMATION = new BookingConfirmationMail(
 			BOOKING_CODE, "Miramar Beach", LocalDate.of(2026, 8, 15), "Front row · Sea view", 3, 2500, "EUR",
-			CancellationWindow.FREE, 0);
+			CancellationWindow.FREE, 0, null);
+
+	private static final String VENUE_PHONE = "+355691234567";
 
 	@RegisterExtension
 	static GreenMailExtension greenMail = new GreenMailExtension(ServerSetupTest.SMTP);
@@ -127,6 +129,47 @@ class SmtpMailerIT {
 	}
 
 	@Test
+	void aConfirmationNamesTheVenuePhoneAboveTheSupportChannels() throws Exception {
+		mailer(new SupportContact("help@example.com", null)).sendBookingConfirmation(TO, SiteLocale.EN,
+				withVenuePhone(CONFIRMATION));
+
+		assertThat(normalized(theOnlyReceivedMessage())).endsWith("""
+				Show the booking code at the venue on arrival.
+
+				To reach Miramar Beach directly, call +355691234567.
+
+				Need help? Contact Riviera:
+				  Email:     help@example.com""");
+	}
+
+	@Test
+	void aVenuePhoneAloneStillGetsItsLine() throws Exception {
+		mailer().sendBookingConfirmation(TO, SiteLocale.EN, withVenuePhone(CONFIRMATION));
+
+		assertThat(normalized(theOnlyReceivedMessage())).endsWith("""
+				Show the booking code at the venue on arrival.
+
+				To reach Miramar Beach directly, call +355691234567.""");
+	}
+
+	@Test
+	void aStayConfirmationNamesTheVenuePhoneInTheGuestsLanguage() throws Exception {
+		mailer().sendStayConfirmation(TO, SiteLocale.SQ, new StayConfirmationMail(
+				BOOKING_CODE, "Miramar Beach", LocalDate.of(2026, 8, 15), LocalDate.of(2026, 8, 16),
+				List.of(new StayConfirmationMail.Stop(LocalDate.of(2026, 8, 15), LocalDate.of(2026, 8, 16), "A", 1)),
+				5000, "EUR", CancellationWindow.FREE, 0, VENUE_PHONE));
+
+		assertThat(normalized(theOnlyReceivedMessage()))
+				.endsWith("Për të kontaktuar drejtpërdrejt Miramar Beach, telefononi +355691234567.");
+	}
+
+	private static BookingConfirmationMail withVenuePhone(BookingConfirmationMail mail) {
+		return new BookingConfirmationMail(mail.bookingCode(), mail.venueName(), mail.bookingDate(), mail.lastDate(),
+				mail.rowLabel(), mail.positionNo(), mail.amountMinor(), mail.currency(), mail.cancellationWindowAtBirth(),
+				mail.lateCancelRefundBps(), VENUE_PHONE);
+	}
+
+	@Test
 	void aConfirmationNamesOnlyTheChannelsConfigured() throws Exception {
 		mailer(new SupportContact(null, "355691234567")).sendBookingConfirmation(TO, SiteLocale.EN, CONFIRMATION);
 
@@ -146,7 +189,7 @@ class SmtpMailerIT {
 		mailer(new SupportContact("help@example.com", null)).sendStayConfirmation(TO, SiteLocale.EN, new StayConfirmationMail(
 				BOOKING_CODE, "Miramar Beach", LocalDate.of(2026, 8, 15), LocalDate.of(2026, 8, 16),
 				List.of(new StayConfirmationMail.Stop(LocalDate.of(2026, 8, 15), LocalDate.of(2026, 8, 16), "A", 1)),
-				5000, "EUR", CancellationWindow.FREE, 0));
+				5000, "EUR", CancellationWindow.FREE, 0, null));
 
 		assertThat(normalized(theOnlyReceivedMessage())).endsWith("""
 				Need help? Contact Riviera:
@@ -157,7 +200,7 @@ class SmtpMailerIT {
 	void rangeRendersDaysLine() throws Exception {
 		mailer().sendBookingConfirmation(TO, SiteLocale.EN, new BookingConfirmationMail(BOOKING_CODE, "Miramar Beach",
 				LocalDate.of(2026, 8, 15), LocalDate.of(2026, 8, 19), "Front row · Sea view", 3, 12500, "EUR",
-				CancellationWindow.FREE, 0));
+				CancellationWindow.FREE, 0, null));
 
 		String body = theOnlyReceivedMessage().getContent().toString();
 		assertThat(body).contains("Days:          15 August – 19 August 2026 (5 days)", "EUR 125.00");
@@ -172,7 +215,7 @@ class SmtpMailerIT {
 								"Front row · Sea view", 3),
 						new StayConfirmationMail.Stop(LocalDate.of(2026, 8, 18), LocalDate.of(2026, 8, 18), "B", 1),
 						new StayConfirmationMail.Stop(LocalDate.of(2026, 8, 19), LocalDate.of(2026, 8, 20), "C", 7)),
-				15000, "EUR", CancellationWindow.LATE, 2500));
+				15000, "EUR", CancellationWindow.LATE, 2500, null));
 
 		MimeMessage message = theOnlyReceivedMessage();
 		assertThat(GreenMailUtil.getHeaders(message)).contains("Subject: Your stay at Miramar Beach is confirmed")
@@ -384,7 +427,7 @@ class SmtpMailerIT {
 
 	private static BookingConfirmationMail withBirthWindow(CancellationWindow window, int lateBps) {
 		return new BookingConfirmationMail(BOOKING_CODE, "Miramar Beach", LocalDate.of(2026, 8, 15),
-				"Front row · Sea view", 3, 2500, "EUR", window, lateBps);
+				"Front row · Sea view", 3, 2500, "EUR", window, lateBps, null);
 	}
 
 	@Test
@@ -641,7 +684,7 @@ class SmtpMailerIT {
 	void aVenueNameCarryingNewlinesCannotInjectHeaders() throws Exception {
 		BookingConfirmationMail injected = new BookingConfirmationMail(BOOKING_CODE,
 				"Evil\r\nBcc: attacker@example.com\r\nX-Injected: yes", LocalDate.of(2026, 8, 15),
-				"A", 3, 2500, "EUR", CancellationWindow.FREE, 0);
+				"A", 3, 2500, "EUR", CancellationWindow.FREE, 0, null);
 
 		mailer().sendBookingConfirmation(TO, SiteLocale.EN, injected);
 

@@ -87,16 +87,16 @@ phone never reaches the public venue page or the venue list read.
 
 ## Execution status
 
-**Stage pointer:** implement (phase 0)
+**Stage pointer:** implement (phase 3); draft PR #1796
 
-**Next action:** red `VenuePhoneTest`
+**Next action:** console phone field (red `venue-tab.spec.ts`)
 
 | Phase | Status | Commits |
 |-------|--------|---------|
-| 0 — venue | ⏳ | |
-| 1 — booking view read | | |
-| 2 — confirmation mails | | |
-| 3 — frontend | | |
+| 0 — venue | ✅ | 739c665d |
+| 1 — booking view read | ✅ | 739c665d |
+| 2 — confirmation mails | ✅ | (this commit) |
+| 3 — frontend | ⏳ | |
 | 4 — after #1750 | | |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
