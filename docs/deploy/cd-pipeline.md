@@ -162,7 +162,7 @@ must include `frontend/`, so:
       `localhost`, `127.0.0.1` or `[::1]` for a local run, else boot aborts naming `riviera.web.public-origin`,
       never the value. This stricter rule is the one a deployed value must meet.
   - `RIVIERA_SUPPORT_EMAIL` / `RIVIERA_SUPPORT_WHATSAPP` (#1735) — the support channels the help
-    page, the booking view, the console account menu and both confirmation mails name. **Unset or
+    page, the booking view, the console account menu and every guest booking mail name. **Unset or
     blank shows that channel nowhere**, never a placeholder, so leave each unset until its value
     exists (the mailbox waits on the platform domain, #370). The WhatsApp value is the
     international number with its country code (`+355…`; spaces, dashes and dots are dropped),
