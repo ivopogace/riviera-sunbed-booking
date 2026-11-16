@@ -78,7 +78,7 @@ const MAP_OVERVIEW_CLASS: Record<MapTileState, string> = {
   premium: 'text-riv-tile-premium-ink bg-current/16',
   partly: `text-riv-tile-available-ink ${HALF} after:border-riv-tile-partly-tint`,
   walkin:
-    'text-riv-tile-walkin-ink after:absolute after:top-1/2 after:left-1/2 after:-translate-1/2 after:rounded-full after:border-[16cqw] after:border-current',
+    'text-riv-tile-walkin-ink after:absolute after:top-1/2 after:left-1/2 after:-translate-1/2 after:rounded-full after:border-[24cqw] after:border-current',
   taken:
     'text-riv-tile-taken-border after:absolute after:top-1/2 after:-left-1/4 after:w-[150%] after:-translate-y-1/2 after:-rotate-45 after:border-t-[1.5px] after:border-current',
 };
