@@ -1,5 +1,15 @@
 import { HttpErrorResponse } from '@angular/common/http';
-import { Component, computed, effect, inject, signal, untracked } from '@angular/core';
+import {
+  afterNextRender,
+  Component,
+  computed,
+  effect,
+  inject,
+  Injector,
+  signal,
+  untracked,
+} from '@angular/core';
+import { NgTemplateOutlet } from '@angular/common';
 import { toSignal } from '@angular/core/rxjs-interop';
 import { Title } from '@angular/platform-browser';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
@@ -11,15 +21,33 @@ import { AmenityChip } from '../shared/amenity-chip';
 import { ClosedForSeasonChip } from '../shared/closed-for-season-chip';
 import { SemanticChip } from '../shared/semantic-chip';
 import { BeachMapCanvas, BeachMapCanvasRow, BeachMapRowDef } from '../shared/beach-map-canvas';
+import {
+  BeachLensCell,
+  BeachRowLens,
+  BeachRowLensRow,
+  BeachRowLensTilesDef,
+} from '../shared/beach-row-lens';
+import { belowSm } from '../shared/phone-viewport';
+import { PrimaryCta } from '../shared/primary-cta';
 import { CardGlass } from '../shared/card-glass';
 import { MapSkeletonGrid } from '../shared/map-skeleton-grid';
 import { SkeletonBlock } from '../shared/skeleton-block';
 import { LoadAnnouncer } from '../shared/load-announcer';
 import { ClockIcon } from '../shared/clock-icon';
 import { FAILURE_DIRECTIVES } from '../shared/failure-panel';
-import { MAP_TILE_LEGEND, MAP_TILE_MEANING, MapTile, MapTileState, mapTileState } from './map-tile';
+import {
+  MAP_FREE_STATES,
+  MAP_OVERVIEW_LEGEND,
+  MAP_OVERVIEW_LOOKS,
+  MAP_TILE_LEGEND,
+  MAP_TILE_MEANING,
+  MapTile,
+  mapOverviewKey,
+  mapTileState,
+} from './map-tile';
 import { rowPriceLabel, rowZoneKey } from './row-price-label';
-import { formatMoney, MoneyView } from '../shared/money';
+import { TileView, VenueMapRow } from './venue-map-row';
+import { formatMoney, formatMoneyRange, MoneyView } from '../shared/money';
 import { focusMover } from '../shared/focus-after-render';
 import { formatBookingDate, formatStay } from '../shared/booking-date-label';
 import { PanelGlass } from '../shared/panel-glass';
@@ -43,7 +71,7 @@ import { spotLabel, tierSentenceLabel } from '../shared/set-label';
 import { ItineraryView, PhotoView, PlanView, SetView, VenueMapView } from '../shared/venue-views';
 import { AvailabilityCalendar, CountsLoader, MAX_STAY_DAYS } from '../shared/availability-calendar';
 import { PartlyFreeSheet } from './partly-free-sheet';
-import { StayPlan, stretchFillVar } from './stay-plan';
+import { StayPlan, stretchFillVar, stretchRingVar } from './stay-plan';
 import { stayRule } from '../shared/stay-rule';
 import { SetRun, freeDaysOf, longestRunAcross } from './stay-runs';
 import { VenueReviews } from './venue-reviews';
@@ -55,35 +83,16 @@ import { AlertIcon } from '../shared/alert-icon';
 import { UmbrellaIcon } from '../shared/umbrella-icon';
 import { ArrowLeftIcon } from '../shared/arrow-left-icon';
 
-/**
- * One rendered set on the map: the raw {@link SetView}, whether it is bookable
- * (invariant #3), and its accessible name (state carried by text, not colour — WCAG AA).
- */
-interface TileView {
-  readonly set: SetView;
-  readonly bookable: boolean;
-  /** How the tile looks and what it announces — the appearance, the markers and the legend
-   *  swatches all resolve from this one value (a FREE walk-in set is `walkin`). */
-  readonly state: MapTileState;
-  /** Accessible name for a non-interactive tile (`<li>`). */
-  readonly name: string;
-  /** Accessible name for the bookable button (adds the "Select to book" affordance). */
-  readonly bookName: string;
-  /** Free on some of the stay's days: tappable to see which, never bookable as it stands. */
-  readonly partly: boolean;
-  /** How many of the stay's days the set is free on — the badge a partly-free tile wears. */
-  readonly freeDays: number;
-  /** Accessible name for the partly-free button (adds the "see which days" affordance). */
-  readonly partlyName: string;
-  /** The set's 1-based place in the open stitched plan, or undefined when it is not in it. */
-  readonly planIndex: number | undefined;
-  /** The `--riv-plan-fill` value of that place, the stretch token the plan colours it with. */
-  readonly planFill: string | null;
+/** One row of the map: the canvas's row contract (`sm` up), the lens's (phone), and the tiles. */
+interface MapRow extends BeachMapCanvasRow, BeachRowLensRow {
+  readonly tiles: readonly TileView[];
 }
 
-/** One row of the map: the shared canvas's row contract plus this surface's tiles. */
-interface MapRow extends BeachMapCanvasRow {
-  readonly tiles: readonly TileView[];
+/** The visitor's pick as the bottom bar states it. */
+interface PickView {
+  readonly set: SetView;
+  readonly spot: string;
+  readonly price: string;
 }
 
 /**
@@ -158,6 +167,12 @@ interface VenueHeader {
     TouchTarget,
     BeachMapCanvas,
     BeachMapRowDef,
+    BeachRowLens,
+    BeachRowLensTilesDef,
+    BeachLensCell,
+    VenueMapRow,
+    PrimaryCta,
+    NgTemplateOutlet,
     SkeletonBlock,
     MapSkeletonGrid,
     MapTile,
@@ -180,6 +195,13 @@ interface VenueHeader {
 export class VenueMap {
   /** The legend's rows, in tile-state order — labelled beside the colours they explain. */
   protected readonly legend = MAP_TILE_LEGEND;
+  /** The phone legend: the same states in their overview looks, plus the pick. */
+  protected readonly overviewLegend = MAP_OVERVIEW_LEGEND;
+  protected readonly overviewLooks = MAP_OVERVIEW_LOOKS;
+
+  /** Below `sm` the map is the row lens and a tap picks; from `sm` up it is the canvas, as ever. */
+  protected readonly phone = belowSm();
+  private readonly injector = inject(Injector);
 
   /** The band letterboxes, so it states the width its PAINTED photo needs — {@link CONTAIN_SIZES}. */
   protected readonly bandSizes = CONTAIN_SIZES.band;
@@ -255,6 +277,12 @@ export class VenueMap {
 
   /** The set whose booking dialog is open, or undefined when closed. */
   protected readonly selectedSet = signal<SetView | undefined>(undefined);
+  /** The id of the visitor's pick (phone only): one at a time, cleared with the days it was made for. */
+  private readonly pickId = signal<number | undefined>(undefined);
+  /** The rows the phone lens has open. Seeded per map read by {@link defaultOpenRows}. */
+  protected readonly lensOpen = signal<readonly string[]>([]);
+  /** True until the next map read has seeded {@link lensOpen}: a fresh venue or other days. */
+  private lensUnseeded = true;
   /** The partly-free set whose days are being shown, or undefined when the sheet is closed. */
   protected readonly partlySet = signal<SetView | undefined>(undefined);
   /** The itinerary read for the current stay, once it has answered; undefined while none is asked or in flight. */
@@ -422,13 +450,72 @@ export class VenueMap {
     }
     const entries = [...byRow.entries()];
     const zones = entries.map(([, sets]) => rowZoneKey(sets));
-    return entries.map(([label, sets], index) => ({
-      code: label,
-      priceLabel: rowPriceLabel(sets),
-      zoneStart: index === 0 || zones[index] !== zones[index - 1],
-      tileCount: sets.length,
-      tiles: sets.map((set) => this.toTile(set)),
-    }));
+    const starts = entries.map((_, index) => index === 0 || zones[index] !== zones[index - 1]);
+    const tiles = entries.map(([, sets]) => sets.map((set) => this.toTile(set)));
+    return entries.map(([label, sets], index) => {
+      // The zone this row sits in: from its start row up to the next start.
+      let from = index;
+      while (!starts[from]) {
+        from--;
+      }
+      let to = index + 1;
+      while (to < entries.length && !starts[to]) {
+        to++;
+      }
+      const zoneSets = entries.slice(from, to).flatMap(([, s]) => s);
+      const zoneTiles = tiles.slice(from, to).flat();
+      const price = rowPriceLabel(sets);
+      const zonePrice = formatMoneyRange(zoneSets.map((s) => s.price));
+      const free = freeCountOf(tiles[index]);
+      const count = freeOfLabel(free, sets.length);
+      const picked = tiles[index].findIndex((tile) => tile.picked);
+      const firstFree = tiles[index].findIndex((tile) => isFreeLook(tile));
+      return {
+        code: label,
+        priceLabel: price,
+        zoneStart: starts[index],
+        tileCount: sets.length,
+        tiles: tiles[index],
+        band: starts[index]
+          ? { title: zonePrice, note: freeOfLabel(freeCountOf(zoneTiles), zoneTiles.length) }
+          : null,
+        cells: tiles[index].map((tile) => ({
+          state: tile.picked ? 'pick' : mapOverviewKey(tile.set),
+          ring: tile.planRing,
+        })),
+        note: to - from > 1 ? $localize`:A beach-map row's free sets:${free}:count: free` : null,
+        summary: price === zonePrice ? count : `${price} · ${count}`,
+        label: $localize`:Accessible name of a beach-map row:Row ${label}:row:, ${price}:price:, ${count}:free:`,
+        closeLabel: $localize`:Accessible name of the control that closes an open beach-map row:Close row ${label}:row:`,
+        panTo:
+          picked >= 0
+            ? { index: picked, align: 'center' as const }
+            : firstFree >= 0
+              ? { index: firstFree, align: 'start' as const }
+              : null,
+      };
+    });
+  });
+
+  /** The pick, while it is still a bookable set on a phone-width map. */
+  protected readonly pick = computed<PickView | undefined>(() => {
+    const tile = this.rows()
+      .flatMap((row) => row.tiles)
+      .find((t) => t.picked);
+    return tile === undefined
+      ? undefined
+      : {
+          set: tile.set,
+          spot: spotLabel(tile.set.rowLabel, tile.set.positionNo),
+          price: this.money(tile.set.price),
+        };
+  });
+  /** What the pick's live region says: the bar's arrival, and nothing once the pick is gone. */
+  protected readonly pickAnnouncement = computed(() => {
+    const pick = this.pick();
+    return pick === undefined
+      ? ''
+      : $localize`:Screen-reader announcement when a set is picked on the phone beach map:${pick.spot}:spot: picked, ${pick.price}:price:. The button to continue is at the bottom of the screen.`;
   });
 
   constructor() {
@@ -482,6 +569,8 @@ export class VenueMap {
     this.epoch++;
     this.venue.set(undefined);
     this.selectedSet.set(undefined);
+    this.pickId.set(undefined);
+    this.lensUnseeded = true;
     // The reset takes any focus-trapped modal AND its trigger, so move focus deliberately (RV-FE-9).
     const modalWasOpen =
       this.pickerOpen() || this.lightboxIndex() !== undefined || this.partlySet() !== undefined;
@@ -516,6 +605,7 @@ export class VenueMap {
     const partly = state === 'partly' && !fenced;
     const freeDays = freeDaysOf(set, this.dayCount());
     const place = this.planPlaces().get(set.id);
+    const picked = bookable && this.phone() && this.pickId() === set.id;
     const announced =
       state === 'partly'
         ? $localize`${MAP_TILE_MEANING.partly.announced}:state:, free ${freeDays}:free: of ${this.dayCount()}:days: days`
@@ -532,6 +622,8 @@ export class VenueMap {
       partlyName: $localize`${name}:tile:. Select to see which days.`,
       planIndex: place === undefined ? undefined : place + 1,
       planFill: place === undefined ? null : stretchFillVar(place),
+      planRing: place === undefined ? null : stretchRingVar(place),
+      picked,
     };
   }
 
@@ -636,6 +728,7 @@ export class VenueMap {
       next: (venue) => {
         if (this.epoch === epoch) {
           this.venue.set(venue);
+          this.settleLens();
           this.openPendingSelection(venue);
           if (this.planOpen() || this.noSetCovers()) {
             this.loadItinerary(this.planAnchorSet()?.id);
@@ -706,6 +799,8 @@ export class VenueMap {
     }
     this.selectedSet.set(undefined);
     this.partlySet.set(undefined);
+    this.pickId.set(undefined);
+    this.lensUnseeded = true;
     this.resetPlan();
     this.selectedDate.set(days.first);
     this.selectedLastDate.set(days.last);
@@ -787,6 +882,39 @@ export class VenueMap {
     this.selectedSet.set(set);
   }
 
+  /** A tap on a bookable tile of the phone lens: pick it, or unpick it on a second tap. */
+  protected togglePick(set: SetView): void {
+    this.pickId.update((id) => (id === set.id ? undefined : set.id));
+  }
+
+  /** The bar's action: today's dialog, for the pick. */
+  protected bookPick(): void {
+    const pick = this.pick();
+    if (pick !== undefined) {
+      this.select(pick.set);
+    }
+  }
+
+  /**
+   * After a map read: drop a pick that is no longer bookable, and seed the lens's open row when the
+   * read was for a fresh venue or other days: the pick's row, else the first with a free set.
+   */
+  private settleLens(): void {
+    if (this.pick() === undefined) {
+      this.pickId.set(undefined);
+    }
+    const rows = this.rows();
+    if (this.lensUnseeded) {
+      this.lensUnseeded = false;
+      const home =
+        rows.find((row) => row.tiles.some((tile) => tile.picked)) ??
+        rows.find((row) => freeCountOf(row.tiles) > 0);
+      this.lensOpen.set(home === undefined ? [] : [home.code]);
+    } else {
+      this.lensOpen.update((open) => open.filter((code) => rows.some((row) => row.code === code)));
+    }
+  }
+
   /** Show which of the stay's days a partly-free set covers. */
   protected showDays(set: SetView): void {
     this.lastTriggerId = set.id;
@@ -814,11 +942,24 @@ export class VenueMap {
   }
 
   private focusTile(setId: number | undefined): void {
-    if (setId !== undefined) {
+    if (setId === undefined) {
+      return;
+    }
+    if (!this.phone()) {
       queueMicrotask(() => {
         document.querySelector<HTMLElement>(`[data-set-id="${setId}"]`)?.focus();
       });
+      return;
     }
+    // On a phone the tile exists only while its row is open: open it, then focus once rendered.
+    const row = this.rows().find((r) => r.tiles.some((tile) => tile.set.id === setId));
+    if (row !== undefined && !this.lensOpen().includes(row.code)) {
+      this.lensOpen.set([row.code]);
+    }
+    afterNextRender(
+      { write: () => document.querySelector<HTMLElement>(`[data-set-id="${setId}"]`)?.focus() },
+      { injector: this.injector },
+    );
   }
 
   /** Open the lightbox on `index`, remembering `triggerTestId` so closing returns focus there. */
@@ -834,9 +975,14 @@ export class VenueMap {
   }
 
   protected onDialogClose(): void {
+    const set = this.selectedSet();
     this.selectedSet.set(undefined);
-    // Return focus to the tile that opened the dialog (modal a11y).
-    this.focusTile(this.lastTriggerId);
+    // Return focus to what opened the dialog (modal a11y): the bar's action for the pick, else the tile.
+    if (set !== undefined && this.pick()?.set.id === set.id) {
+      this.moveFocus('pick-book');
+    } else {
+      this.focusTile(this.lastTriggerId);
+    }
   }
 
   /** The plan dialog closed without booking: re-read the map, so a spot taken meanwhile re-plans the stay. */
@@ -848,6 +994,7 @@ export class VenueMap {
 
   protected async onBooked(): Promise<void> {
     this.selectedSet.set(undefined);
+    this.pickId.set(undefined);
     this.selectedPlan.set(undefined);
     // The confirmation screen reads BookingService.lastConfirmation() (set by the POST), so no
     // navigation state is needed.
@@ -856,6 +1003,7 @@ export class VenueMap {
 
   protected async onAwaiting(): Promise<void> {
     this.selectedSet.set(undefined);
+    this.pickId.set(undefined);
     this.selectedPlan.set(undefined);
     // The payment page reads BookingService.lastAwaitingPayment() (set by the 202 POST) to mount
     // the Stripe Payment Element; confirmation follows the verified webhook (invariant #8).
@@ -864,8 +1012,23 @@ export class VenueMap {
 
   protected async onRequested(): Promise<void> {
     this.selectedSet.set(undefined);
+    this.pickId.set(undefined);
     this.selectedPlan.set(undefined);
     // Nothing is charged until the venue accepts; the request-sent screen reads lastRequested().
     await this.router.navigate(['/booking/requested']);
   }
+}
+
+/** Whether a tile wears a free look: what every free count on the phone map counts. */
+function isFreeLook(tile: TileView): boolean {
+  return MAP_FREE_STATES.includes(tile.state);
+}
+
+function freeCountOf(tiles: readonly TileView[]): number {
+  return tiles.filter(isFreeLook).length;
+}
+
+/** "5 of 7 free": a zone's or a row's free count against its sets. */
+function freeOfLabel(free: number, total: number): string {
+  return $localize`:Free sets against all sets in a beach-map zone or row:${free}:free: of ${total}:total: free`;
 }
