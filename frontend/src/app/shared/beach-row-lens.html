@@ -129,9 +129,10 @@
                     [style.outline]="cell.ring ? '1.5px solid ' + cell.ring : null"
                   ></span>
                 }
+                <!-- Cut to its own columns: a note that widened the scroller would read as panning, hide itself, fit again and reappear, without end. -->
                 @if (item.noteColumn; as column) {
                   <span
-                    class="self-center text-right text-[12px] font-semibold whitespace-nowrap text-riv-card-ink-soft"
+                    class="min-w-0 self-center truncate text-right text-[12px] font-semibold text-riv-card-ink-soft"
                     data-testid="lens-row-note"
                     [style.grid-column]="column + ' / -1'"
                     >{{ row.note }}</span

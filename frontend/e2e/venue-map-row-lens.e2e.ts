@@ -306,6 +306,25 @@ test('a closed row is named with its row, price and free count; what it draws is
   await expect(openRow(page, 'A').getByTestId('lens-band')).toContainText('€35–€45');
 });
 
+test('a row note too long for its spare columns is cut short and never makes the overview pan', async ({
+  page,
+}) => {
+  await openMap(page, miramarMapVenue());
+  const note = closedRow(page, 'E').getByTestId('lens-row-note');
+  const scroller = closedRow(page, 'E').locator('[data-lens-cells]');
+  await expect(note).toHaveText('5 free');
+
+  // A longer translation on a narrower phone, stood in for by a long text: a note that widened
+  // the scroller would hide itself as "panning", fit again, reappear, and so on for ever.
+  await note.evaluate((el) => (el.textContent = 'a note far too long for six spare columns'));
+
+  expect(await scroller.evaluate((el) => el.scrollWidth - el.clientWidth)).toBeLessThanOrEqual(1);
+  await expect(page.getByTestId('lens-position')).toHaveCount(0);
+  await expect(note).toBeVisible();
+  const cut = await note.evaluate((el) => el.scrollWidth > el.clientWidth);
+  expect(cut).toBe(true);
+});
+
 test('a 20-column beach fits a 390px phone with cells of at least 12px and no overview pan', async ({
   page,
 }) => {
