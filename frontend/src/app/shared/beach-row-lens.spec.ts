@@ -332,7 +332,6 @@ describe('BeachRowLens', () => {
     it('pans to the tile the row names only when that tile is out of view', async () => {
       const panTo = { index: 4, align: 'start' } as const;
       fixture.componentInstance.rows.update((rows) => [{ ...rows[0], panTo }, ...rows.slice(1)]);
-      const lens = fixture.debugElement.children[0].componentInstance as BeachRowLens;
       // The opening pan runs in the same render that inserts the row: stub the geometry it reads.
       const offsets = vi
         .spyOn(HTMLElement.prototype, 'offsetLeft', 'get')
@@ -365,7 +364,6 @@ describe('BeachRowLens', () => {
         await settle();
         // Tile 3 spans 100–144px, in view from position 1: no pan.
         expect(openRow('A')!.querySelector<HTMLElement>('[data-lens-pan]')!.scrollLeft).toBe(0);
-        expect(lens).toBeDefined();
       } finally {
         offsets.mockRestore();
         widths.mockRestore();

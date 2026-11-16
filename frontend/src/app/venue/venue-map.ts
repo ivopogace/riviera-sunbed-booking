@@ -279,7 +279,7 @@ export class VenueMap {
   protected readonly selectedSet = signal<SetView | undefined>(undefined);
   /** The id of the visitor's pick (phone only): one at a time, cleared with the days it was made for. */
   private readonly pickId = signal<number | undefined>(undefined);
-  /** The rows the phone lens has open. Seeded per map read by {@link defaultOpenRows}. */
+  /** The rows the phone lens has open. Seeded per map read by {@link settleLens}. */
   protected readonly lensOpen = signal<readonly string[]>([]);
   /** True until the next map read has seeded {@link lensOpen}: a fresh venue or other days. */
   private lensUnseeded = true;
