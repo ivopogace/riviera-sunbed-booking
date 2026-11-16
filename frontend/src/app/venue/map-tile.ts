@@ -69,10 +69,9 @@ const MAP_TILE_PICK_CLASS =
 const HALF = 'after:absolute after:inset-x-0 after:bottom-0 after:border-b-[50cqw]';
 
 /**
- * How each state looks at overview scale (`shared/beach-row-lens.ts`'s cells and the phone legend):
- * told apart by shape, each drawn in `currentColor` on the cell's `::after`. Free is a tinted box
- * in the tier's hue, partly a half fill, walk-in a dot, taken a strike; nothing here is solid.
- * Keyed by {@link MapTileState}, so a new state cannot ship without an overview look.
+ * Each state at overview scale (the phone lens's cells and legend): told apart by shape, drawn in
+ * `currentColor` on `::after`, none of them solid. Keyed by {@link MapTileState}, so a new state
+ * cannot ship without an overview look.
  */
 const MAP_OVERVIEW_CLASS: Record<MapTileState, string> = {
   available: 'text-riv-tile-available-ink bg-current/18',

@@ -2,8 +2,8 @@ import type { MockSetView, MockVenueMapView } from './venue-views';
 
 /**
  * The seeded Miramar Beach Club's beach map as a demo database holds it: row A is 13 sets wide,
- * rows B–I 7, with per-set prices that open five price zones (A, B, C, D, E–I). The phone-density
- * spec measures this shape (#1732); the per-set prices are the ones the zone chips summarise.
+ * rows B–I 7, with per-set prices that open five price zones (A, B, C, D, E–I). The phone row-lens
+ * spec measures this shape (#1762); the per-set prices are the ones the zone bands summarise.
  */
 const ROW_PRICES: Record<string, readonly number[]> = {
   A: [4500, 4500, 4500, 4500, 4500, 4500, 3500, 3500, 3500, 3500, 3500, 3500, 3500],

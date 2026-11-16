@@ -1536,9 +1536,24 @@ The SPA rules whose TSDoc points here; structure is `riviera-frontend`'s, stylin
 - **The Daily view's phone rail keeps two tiles per row** (`shared/beach-map-canvas.ts`, the `labels`
   rail below `sm`, and its right-hand price column), kept on purpose (#1626): since #1586 a row's label
   is its one grid letter (§ `venue`, rows by grid letter), so the count no longer serves a long name. The
-  tourist map no longer shares it: its rail is the letter and its zone price a header band (`capped-labels`
-  / `capped-spans`), four whole tiles of a 7-wide row at 390px (#1732). The tile accessible names carry
-  the label and the price on every width.
+  tourist map no longer shares it: from `sm` up its rail is the letter and its zone price a header band
+  (`capped-labels` / `capped-spans`, #1732), and below `sm` it leaves the canvas for the row lens, next.
+  The tile accessible names carry the label and the price on every width.
+- **Below `sm` the tourist beach map is the row lens, and a tap picks** (`shared/beach-row-lens.ts`,
+  `venue/venue-map.ts`, #1762): every row one button at overview scale, one row open to 44px tiles.
+  The switch is `shared/phone-viewport.ts`'s signal on Tailwind's own `sm` query, not CSS hiding,
+  because behaviour differs too: a phone tap makes the set **the pick** and a bar opens the dialog;
+  from `sm` up a tap opens it at once. The lens knows no tourist vocabulary: a surface hands it rows,
+  cells keyed by its own states, their looks and the tile template (`venue/venue-map-row.ts` here),
+  and its spec mounts a made-up vocabulary with several rows open, the Daily view's reuse (#1807).
+- **On the lens solid means the pick and nothing else, and states differ by shape** (`venue/map-tile.ts`):
+  free a tinted box, partly free a half fill, walk-in a dot, taken a strike. Every shape is a real
+  `border` in `currentColor`, never a gradient or shadow, which forced colours drop. A free count
+  counts the cells wearing a free look, so "N of M free" agrees with what is drawn. A plan ring takes
+  `--riv-stretch-N-ring`, not the fill: it sits on the wash, light in riviera where the fills turn light.
+- **Lens cells shrink to a 12px floor, then the overview pans as one block** under a position bar and
+  follows the open row's pan. A 20-column beach fits a 390px phone only because the map card (and
+  its skeleton) sits in a 12px gutter there. Rows scroll with the page, never inside the lens.
 - **The rails' label ellipsis and `rowName()`'s non-letter branch stay, defensive only** (#1626): the
   rails render active sets only (`active_set_position`, `JdbcVenueCatalog`), so no live map reaches a
   long label; the unit specs keep the classes, `loading-skeletons.e2e.ts` the capped rail's width under

@@ -106,6 +106,14 @@ model in `docs/architecture/domain-model.md`.
   of one region inset from the other three edges: the venue sheet's own head and groups, its rows
   flat rather than carded, and the **row is the pin's preview** there too. The one selected row
   expands. _Avoid_: sidebar, split view, master-detail.
+- **Row lens** — a venue's beach map on a phone: every row drawn small as one button, the whole
+  beach in view, and one row at a time **open** to full-size tiles. A beach too wide to fit pans
+  all its closed rows together. From `sm` up the same map is the plain grid.
+  _Avoid_: overview, zoom, mini-map, accordion.
+- **Pick** — on the row lens, the one set the visitor has tapped and not yet booked: drawn solid,
+  on its tile and on its closed row, and named by the **pick bar** at the foot of the screen, whose
+  action opens the booking dialog. It is not a booking or a hold; other days or a second tap clear it.
+  _Avoid_: selection, cart, basket, reservation.
 - **Foot row** — the phone's map chrome on one row at the map's foot, over the venue sheet at
   rest: Near me on one side, the tile credit on the other; no zoom column (a pinch zooms). The
   pins are fitted into the map above it. _Avoid_: bottom bar.
