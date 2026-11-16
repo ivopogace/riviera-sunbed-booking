@@ -91,7 +91,8 @@ export type MapOverviewKey = MapTileState | 'partly-premium' | 'pick';
 export const MAP_OVERVIEW_LOOKS: Record<MapOverviewKey, string> = {
   ...MAP_OVERVIEW_CLASS,
   'partly-premium': `text-riv-tile-premium-ink ${HALF} after:border-riv-tile-partly-premium-tint`,
-  pick: 'text-riv-tile-pick-fill after:absolute after:inset-0 after:border-[50cqw] after:border-current',
+  // Wider than half the cell on purpose: at a fractional cell size two 50cqw borders leave a seam.
+  pick: 'text-riv-tile-pick-fill after:absolute after:inset-0 after:border-[60cqw] after:border-current',
 };
 
 /** The states a free count counts: the ones wearing a free look. */

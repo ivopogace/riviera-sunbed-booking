@@ -105,7 +105,7 @@
               aria-hidden="true"
               >{{ row.code }}</span
             >
-            <!-- Padded and pulled back by the same 2px, so a cell's ring is not clipped by the scroller. -->
+            <!-- Padded and pulled back by the same 2px, so a cell's ring is not clipped by the scroller. The grid is at least as wide as all its columns, a narrow row's empty ones included, or that row could not pan as far as the widest. -->
             <span
               class="-m-0.5 block min-w-0 flex-1 scrollbar-none overflow-x-auto overflow-y-hidden p-0.5"
               [class]="fadeClass(overviewFade())"
@@ -114,7 +114,7 @@
               (scroll)="onOverviewScroll($event)"
             >
               <span
-                class="grid"
+                class="grid min-w-max"
                 [class]="dense() ? 'gap-0.5 [&>[data-state]]:rounded-[3px]' : 'gap-[3px]'"
                 [style.grid-template-columns]="gridColumns()"
               >
