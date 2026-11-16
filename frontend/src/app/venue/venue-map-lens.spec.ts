@@ -401,6 +401,24 @@ describe('VenueMap on a phone: the row lens (#1762)', () => {
       expect(tile(7).getAttribute('aria-pressed')).toBe('false');
     });
 
+    it('is cleared when a re-read of the same days finds the set no longer bookable', async () => {
+      await load();
+      await tap(tile(2));
+
+      // Any same-days re-read; the retry handler is the one this spec can reach without a plan dialog.
+      (fixture.componentInstance as unknown as { retry(): void }).retry();
+      const taken = beach();
+      venueReq().flush({
+        ...taken,
+        sets: taken.sets.map((set) => (set.id === 2 ? { ...set, availability: 'TAKEN' } : set)),
+      });
+      await settle();
+
+      expect(one('pick-bar')).toBeNull();
+      expect(openCodes()).toEqual(['A']);
+      expect(all('lens-cell').filter((cell) => cell.dataset['state'] === 'pick')).toHaveLength(0);
+    });
+
     it('is cleared when the booking goes through', async () => {
       await load();
       const navigate = vi.spyOn(TestBed.inject(Router), 'navigate').mockResolvedValue(true);

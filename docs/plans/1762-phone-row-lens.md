@@ -90,15 +90,15 @@ None.
 
 ## Execution status
 
-**Stage pointer:** implement (phase 0)
+**Stage pointer:** PR — draft #1808 open; full mocked e2e, then screenshots, then ready for review
 
-**Next action:** write `beach-row-lens.spec.ts`
+**Next action:** fill the PR body with the 390px sheets, mark ready, run the review gate (high)
 
 | Phase | Status | Commits |
 |-------|--------|---------|
-| 0 — the lens | ⏳ | |
-| 1 — tourist wiring | | |
-| 2 — looks and contrast | | |
-| 3 — wide and deep | | |
-| 4 — render proofs | | |
-| 5 — docs + i18n | | |
+| 0 — the lens | ✅ | 183a501 |
+| 1 — tourist wiring | ✅ | 183a501, e5b0883 |
+| 2 — looks and contrast | ✅ | e5b0883 |
+| 3 — wide and deep | ✅ | a2236a6 |
+| 4 — render proofs | ✅ | a2236a6, 2b78098 |
+| 5 — docs + i18n | ✅ | e5b0883, 8c038e8 |
