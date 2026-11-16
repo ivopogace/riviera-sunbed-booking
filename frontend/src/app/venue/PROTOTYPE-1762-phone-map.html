@@ -11,6 +11,10 @@
   free is a half tint in the row's own hue. The open row's head is its band and carries the row
   letter, so a 7-wide row fits at 44px with no pan. Rows in a shared band show their own free
   count in the empty columns. The open row follows the pick, else the first row with a free set.
+  Wide and deep beaches (the editor allows 40 × 26): ?beach=wide20|wide40|deep26. Up to 20 columns
+  the overview fits, cells shrinking to a 12px floor. Past 20, ?wide=pan (default) keeps 12px cells
+  and pans every closed row as one block, following the open row; ?wide=fit squeezes all columns in
+  as a free-vs-not density map. The open row starts at the pick when it holds it.
   Fixture: Miramar (frontend/e2e/support/miramar-map.ts): row A 13 wide, B–I 7, five price zones,
   taken where (position + row) % 5 === 0; partly-free and walk-in sets added for the prototype.
   Colours are copied from src/tailwind.css's theme tokens.
@@ -355,11 +359,90 @@
       }
 
       /* overview cells: not pressable, state by fill vs ring (3:1 non-text contrast) */
+      .ovwrap {
+        flex: 1;
+        min-width: 0;
+      }
       .ov {
         display: grid;
-        grid-template-columns: repeat(13, 1fr);
         gap: 3px;
+      }
+      .ov.small {
+        gap: 2px;
+      }
+      .ov.small .cell {
+        border-radius: 3px;
+      }
+      /* past the fit: the whole overview pans as one block, every row in step */
+      .ovwrap.panning {
+        overflow-x: auto;
+        scrollbar-width: none;
+        padding: 4px;
+        margin: -4px;
+        -webkit-mask: linear-gradient(90deg, #000 calc(100% - 20px), transparent 100%);
+      }
+      .ovwrap.panning.scrolled {
+        -webkit-mask: linear-gradient(
+          90deg,
+          transparent 0,
+          #000 20px,
+          #000 calc(100% - 20px),
+          transparent 100%
+        );
+      }
+      .ovwrap.panning.ended {
+        -webkit-mask: linear-gradient(90deg, transparent 0, #000 20px);
+      }
+      .ovwrap.panning::-webkit-scrollbar {
+        display: none;
+      }
+      .ovwrap.panning .ov {
+        width: max-content;
+      }
+      .ovbar {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        margin: 0 22px 4px 30px;
+        font-size: 12px;
+        color: var(--card-ink-soft);
+      }
+      .ovbar div {
         flex: 1;
+        height: 4px;
+        border-radius: 2px;
+        background: var(--chip-border);
+        position: relative;
+      }
+      .ovbar i {
+        position: absolute;
+        top: 0;
+        bottom: 0;
+        border-radius: 2px;
+        background: var(--accent-ink);
+      }
+      /* squeezed to fit: a density map, free vs not */
+      .ov.micro {
+        gap: 1px;
+      }
+      .ov.micro .cell {
+        border-radius: 1.5px;
+        box-shadow: none;
+        background: color-mix(in srgb, var(--c) 75%, transparent);
+      }
+      .ov.micro .cell.tk,
+      .ov.micro .cell.wk {
+        background: none;
+        box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--tk-border) 55%, transparent);
+        opacity: 1;
+      }
+      .ov.micro .cell.sel {
+        background: var(--sel-fill);
+        box-shadow:
+          0 0 0 1.5px var(--card-glass),
+          0 0 0 3px var(--sel-fill);
+        position: relative;
+        z-index: 1;
       }
       /* one vocabulary at both scales: tint + edge = free, strike = taken, SOLID = your pick only */
       .cell,
@@ -563,19 +646,65 @@
     <div class="switcher" id="switcher"></div>
 
     <script>
-      // ---- fixture: Miramar, as frontend/e2e/support/miramar-map.ts ----
-      const ROWS = {
-        A: [4500, 4500, 4500, 4500, 4500, 4500, 3500, 3500, 3500, 3500, 3500, 3500, 3500],
-        B: [3500, 3500, 3500, 3500, 3500, 3500, 2500],
-        C: [3000, 3000, 3000, 3000, 3000, 3000, 2000],
-        D: [2500, 2500, 2500, 2000, 2500, 2500, 2000],
-        E: [2000, 2000, 2000, 2000, 2000, 2000, 2000],
-        F: [2000, 2000, 2000, 2000, 2000, 2000, 2000],
-        G: [2000, 2000, 2000, 2000, 2000, 2000, 2000],
-        H: [2000, 2000, 2000, 2000, 2000, 2000, 2000],
-        I: [2000, 2000, 2000, 2000, 2000, 2000, 2000],
+      // ---- fixtures: Miramar as frontend/e2e/support/miramar-map.ts, plus made-up wide and deep beaches ----
+      const qs = new URLSearchParams(location.search);
+      const fill = (n, minor) => Array(n).fill(minor);
+      const letters = (from, to) =>
+        Array.from({ length: to - from + 1 }, (_, i) => String.fromCharCode(65 + from + i));
+      const many = (labels, n, minor) => Object.fromEntries(labels.map((l) => [l, fill(n, minor)]));
+      const BEACHES = {
+        miramar: {
+          name: 'Miramar Beach Club',
+          rows: {
+            A: [4500, 4500, 4500, 4500, 4500, 4500, 3500, 3500, 3500, 3500, 3500, 3500, 3500],
+            B: [3500, 3500, 3500, 3500, 3500, 3500, 2500],
+            C: [3000, 3000, 3000, 3000, 3000, 3000, 2000],
+            D: [2500, 2500, 2500, 2000, 2500, 2500, 2000],
+            ...many(letters(4, 8), 7, 2000),
+          },
+          zones: [['A'], ['B'], ['C'], ['D'], letters(4, 8)],
+        },
+        wide20: {
+          name: 'Wide beach · 20 across',
+          rows: {
+            A: fill(20, 4500),
+            B: fill(20, 3500),
+            ...many(letters(2, 5), 18, 2500),
+            ...many(letters(6, 7), 14, 2000),
+          },
+          zones: [['A'], ['B'], letters(2, 5), letters(6, 7)],
+        },
+        wide40: {
+          name: 'Widest beach · 40 across',
+          rows: {
+            A: fill(40, 4500),
+            ...many(letters(1, 2), 40, 3500),
+            ...many(letters(3, 5), 36, 2500),
+            ...many(letters(6, 9), 32, 2000),
+          },
+          zones: [['A'], letters(1, 2), letters(3, 5), letters(6, 9)],
+        },
+        deep26: {
+          name: 'Deep beach · 26 rows',
+          rows: {
+            A: fill(10, 4500),
+            ...many(letters(1, 2), 10, 3500),
+            ...many(letters(3, 7), 10, 2500),
+            ...many(letters(8, 25), 10, 2000),
+          },
+          zones: [['A'], letters(1, 2), letters(3, 7), letters(8, 25)],
+        },
       };
-      const COLS = 13;
+      const beachKey = BEACHES[qs.get('beach')] ? qs.get('beach') : 'miramar';
+      const BEACH = BEACHES[beachKey];
+      const ROWS = BEACH.rows;
+      const COLS = Math.max(...Object.values(ROWS).map((r) => r.length));
+      // Up to FIT_COLS the overview fits the width (cells shrink to a 12px floor). Past it:
+      // ?wide=pan keeps 12px cells and pans the whole overview as one block; ?wide=fit squeezes
+      // every column in as a density map (free vs not, no finer state).
+      const FIT_COLS = 20;
+      const wide = COLS <= FIT_COLS ? 'none' : qs.get('wide') === 'fit' ? 'fit' : 'pan';
+      document.querySelector('.venue-head h1').textContent = BEACH.name;
       const rows = Object.entries(ROWS).map(([label, prices], r) => ({
         label,
         sets: prices.map((minor, p) => ({
@@ -586,7 +715,7 @@
           state:
             (p + r) % 5 === 0
               ? 'taken'
-              : label !== 'A' && p === 6 && r < 4
+              : r > 0 && r < 4 && p === prices.length - 1
                 ? 'walkin'
                 : (p + r) % 7 === 3
                   ? 'partly'
@@ -596,13 +725,7 @@
           },
         })),
       }));
-      const ZONES = [
-        { name: 'Front row', rows: ['A'] },
-        { name: 'Second row', rows: ['B'] },
-        { name: 'Third row', rows: ['C'] },
-        { name: 'Fourth row', rows: ['D'] },
-        { name: 'Back rows', rows: ['E', 'F', 'G', 'H', 'I'] },
-      ];
+      const ZONES = BEACH.zones.map((rows) => ({ rows }));
       const eur = (m) => '€' + m / 100;
       const span = (sets) => {
         const ps = sets.map((s) => s.minor);
@@ -617,11 +740,11 @@
         freeIn(rows) + ' of ' + totalIn(rows) + ' sets free';
 
       // ---- state ----
-      const qs = new URLSearchParams(location.search);
       const state = {
         theme: qs.get('theme') || 'porcelain',
         lens: qs.get('lens') || null, // open row label
         sel: qs.get('sel') || null,
+        ovx: Number(qs.get('ovx')) || 0, // the panned overview's scroll offset
       };
       if (qs.has('shot')) document.body.classList.add('shot');
       const defaultLens = () =>
@@ -650,7 +773,7 @@
         for (let c = 1; c <= COLS; c++) {
           const s = r.sets[c - 1];
           if (!s) {
-            if (note && COLS - r.sets.length >= 3) {
+            if (note && wide !== 'pan' && COLS - c + 1 >= (COLS > 13 ? 5 : 3)) {
               h += `<span class="rowfree" style="grid-column:${c} / -1">${note}</span>`;
               break;
             }
@@ -659,7 +782,9 @@
           }
           h += `<i class="cell ${state.sel === s.code ? 'sel' : cls(s)}"></i>`;
         }
-        return `<div class="ov" aria-hidden="true">${h}</div>`;
+        const cols = wide === 'pan' ? `repeat(${COLS}, 12px)` : `repeat(${COLS}, minmax(0, 1fr))`;
+        const size = wide === 'fit' ? 'micro' : COLS > 13 ? 'small' : '';
+        return `<div class="ovwrap ${wide === 'pan' ? 'panning' : ''}" aria-hidden="true"><div class="ov ${size}" style="grid-template-columns:${cols}">${h}</div></div>`;
       };
       const legend = () =>
         `<div class="legend">
@@ -674,6 +799,8 @@
       // ---- row lens ----
       function lensMap() {
         let h = legend();
+        if (wide === 'pan')
+          h += `<div class="ovbar" aria-hidden="true"><div><i id="ovthumb"></i></div><span id="ovtext"></span></div>`;
         for (const z of ZONES) {
           const zr = rowsOf(z);
           const solo = zr.length === 1;
@@ -695,19 +822,64 @@
             }
           }
         }
-        if (!state.lens) h += `<p class="hint">Tap a row to open it and pick a set.</p>`;
+        if (wide === 'pan')
+          h += `<p class="hint">Swipe the rows sideways for the rest of the beach.</p>`;
+        else if (!state.lens) h += `<p class="hint">Tap a row to open it and pick a set.</p>`;
         return h;
       }
 
-      // the open row starts at position 1, unless no free set shows there
+      // the open row starts at the pick when it holds it, else at position 1, unless no free set shows there
       function startPan() {
         const pan = document.getElementById('pan');
-        const first = pan && pan.querySelector('.tile:not([aria-disabled])');
-        if (first && first.offsetLeft + first.offsetWidth > pan.scrollLeft + pan.clientWidth)
-          pan.scrollLeft = first.offsetLeft - 8;
+        if (!pan) return;
+        const hidden = (t) => t && t.offsetLeft + t.offsetWidth > pan.scrollLeft + pan.clientWidth;
+        const sel = pan.querySelector('.sel');
+        const first = pan.querySelector('.tile:not([aria-disabled])');
+        if (hidden(sel)) pan.scrollLeft = sel.offsetLeft - (pan.clientWidth - sel.offsetWidth) / 2;
+        else if (!sel && hidden(first)) pan.scrollLeft = first.offsetLeft - 8;
+        followOpenRow();
+      }
+      // a panned overview follows the open row, so the columns being picked from stay in view
+      function followOpenRow() {
+        const pan = document.getElementById('pan');
+        const w = document.querySelector('.ovwrap.panning');
+        if (!pan || !w) return;
+        const col = (pan.scrollLeft + pan.clientWidth / 2) / 47;
+        state.ovx = Math.max(
+          0,
+          Math.min(w.scrollWidth - w.clientWidth, col * 14 - w.clientWidth / 2),
+        );
+        syncOverview();
       }
 
-      // ---- render + wiring ----
+      // every closed row scrolls in step; the bar says which columns are in view
+      function syncOverview(from) {
+        const wraps = [...document.querySelectorAll('.ovwrap.panning')];
+        if (!wraps.length) return;
+        if (from) state.ovx = from.scrollLeft;
+        const w = wraps[0];
+        const max = w.scrollWidth - w.clientWidth;
+        for (const x of wraps) {
+          if (x !== from && Math.abs(x.scrollLeft - state.ovx) > 1) x.scrollLeft = state.ovx;
+          x.classList.toggle('scrolled', state.ovx > 2 && state.ovx < max - 2);
+          x.classList.toggle('ended', state.ovx >= max - 2);
+        }
+        const first = Math.floor(state.ovx / 14) + 1;
+        const last = Math.min(COLS, Math.floor((state.ovx + w.clientWidth - 8) / 14));
+        const thumb = document.getElementById('ovthumb');
+        thumb.style.left = ((first - 1) / COLS) * 100 + '%';
+        thumb.style.width = ((last - first + 1) / COLS) * 100 + '%';
+        document.getElementById('ovtext').textContent = `${first}–${last} of ${COLS}`;
+      }
+      document.addEventListener(
+        'scroll',
+        (e) => {
+          if (e.target.id === 'pan') followOpenRow();
+          else if (e.target.matches?.('.ovwrap.panning')) syncOverview(e.target);
+        },
+        true,
+      );
+
       let panFor;
       function render() {
         document.documentElement.dataset.theme = state.theme;
@@ -718,6 +890,7 @@
         bar.hidden = !s;
         if (s)
           bar.innerHTML = `<span><b>Set ${s.code}</b> · ${eur(s.minor)} · full day</span><button>Book this set</button>`;
+        syncOverview();
         if (panFor !== state.lens) startPan();
         panFor = state.lens;
         renderSwitcher();
@@ -726,6 +899,9 @@
       function syncUrl() {
         const p = new URLSearchParams();
         p.set('theme', state.theme);
+        if (beachKey !== 'miramar') p.set('beach', beachKey);
+        if (wide === 'fit') p.set('wide', 'fit');
+        if (state.ovx) p.set('ovx', Math.round(state.ovx));
         p.set('lens', state.lens || 'none');
         if (state.sel) p.set('sel', state.sel);
         if (document.body.classList.contains('shot')) p.set('shot', '1');
