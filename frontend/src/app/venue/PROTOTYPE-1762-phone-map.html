@@ -12,6 +12,10 @@
     A — Overview → zoom: whole beach small; tap a zone to zoom to 44px tiles, mini-map while zoomed.
     B — Mini-map: today's 44px grid unchanged, plus a draggable whole-beach navigator above it.
     C — Row lens: every row is a ≥44px-tall button at overview scale; the tapped row opens to 44px tiles.
+  Round 3 (C only): the open row's head IS its band (no repeat) and carries the row letter, so a
+  7-wide row fits at 44px with no pan; partly free is a half tint in the row's own hue, never the
+  pick's solid; rows in a shared band show their own free count in the empty columns; ?lens=none
+  is the whole beach with no row open; the open row follows the pick, else the first free row.
 -->
 <html lang="en">
   <head>
@@ -200,7 +204,7 @@
         border: 1px solid var(--chip-border);
         border-radius: 999px;
         padding: 1px 8px;
-        margin: 8px 0 4px;
+        margin: 6px 0 2px;
       }
       .band em {
         font-style: normal;
@@ -252,6 +256,9 @@
       .tile.pt {
         border: 2px dotted var(--av-ink);
       }
+      .tile.pr.pt:not(.sel) {
+        border-color: var(--pr-ink);
+      }
       .tile.wk {
         border-color: var(--wk-border);
         background:
@@ -263,6 +270,7 @@
       .tile.sel {
         background: var(--sel-fill);
         border-color: var(--sel-fill);
+        border-style: solid;
         color: var(--sel-ink);
         position: relative;
       }
@@ -270,7 +278,7 @@
         content: '✓';
         position: absolute;
         top: -7px;
-        right: -7px;
+        right: -5px;
         width: 18px;
         height: 18px;
         border-radius: 999px;
@@ -283,7 +291,7 @@
       }
       .lens .chev {
         flex: none;
-        width: 24px;
+        width: 16px;
         text-align: center;
         font-size: 18px;
         line-height: 1;
@@ -358,20 +366,32 @@
       /* one vocabulary at both scales: tint + edge = free, strike = taken, SOLID = your pick only */
       .cell,
       .sw {
+        --c: var(--av-ink);
         aspect-ratio: 1;
         border-radius: 4px;
         background: var(--av-tint);
-        box-shadow: inset 0 0 0 1.5px var(--av-ink);
+        box-shadow: inset 0 0 0 1.5px var(--c);
       }
       .cell.pr,
       .sw.pr {
+        --c: var(--pr-ink);
         background: var(--pr-tint);
-        box-shadow: inset 0 0 0 1.5px var(--pr-ink);
       }
       .cell.pt,
       .sw.pt {
-        background: linear-gradient(135deg, var(--av-ink) 0 50%, transparent 50%);
-        box-shadow: inset 0 0 0 1.5px var(--av-ink);
+        background: linear-gradient(
+          0deg,
+          color-mix(in srgb, var(--c) 50%, transparent) 0 50%,
+          transparent 50%
+        );
+      }
+      .rowfree {
+        align-self: center;
+        text-align: right;
+        font-size: 12px;
+        font-weight: 600;
+        color: var(--card-ink-soft);
+        white-space: nowrap;
       }
       .cell.wk,
       .sw.wk {
@@ -409,12 +429,12 @@
         min-height: 44px;
         display: flex;
         align-items: center;
-        gap: 8px;
+        gap: 6px;
         background: transparent;
         border: 0;
         border-radius: 12px;
         padding: 0;
-        margin: 2px 0;
+        margin: 0;
         cursor: pointer;
         font-family: inherit;
         color: inherit;
@@ -432,10 +452,30 @@
       }
       .open-head {
         display: flex;
-        justify-content: space-between;
+        align-items: center;
+        gap: 6px;
         font-size: 12px;
+        font-weight: 600;
         color: var(--card-ink-soft);
-        margin: 0 0 6px 32px;
+        margin: 0 0 6px;
+      }
+      .open-head .band {
+        margin: 0;
+      }
+      .open-head .closebtn {
+        margin-left: auto;
+      }
+      .open .pan {
+        flex: 1;
+        padding: 9px 8px 0;
+        margin: -9px -8px 0;
+        -webkit-mask: linear-gradient(
+          90deg,
+          transparent 0,
+          #000 3px,
+          #000 calc(100% - 3px),
+          transparent 100%
+        );
       }
 
       /* A + B: mini-map */
@@ -687,27 +727,36 @@
         sel: qs.get('sel') || null,
       };
       if (qs.has('shot')) document.body.classList.add('shot');
-      if (state.variant === 'C' && state.lens === null) {
-        state.lens = rows.find((r) => r.sets.some((s) => !s.taken)).label; // default: first row with a free set
-      }
+      const defaultLens = () =>
+        (
+          rows.find((r) => r.sets.some((s) => s.code === state.sel)) ||
+          rows.find((r) => r.sets.some((s) => !s.taken))
+        ).label; // the pick's row, else the first row with a free set
+      if (state.lens === 'none') state.lens = null;
+      else if (state.variant === 'C' && state.lens === null) state.lens = defaultLens();
 
       // ---- pieces ----
       const zoneBand = (z) => {
         const rs = rowsOf(z);
         const sets = rs.flatMap((r) => r.sets);
-        return `<div class="band">${span(sets)} <em>· ${freeIn(rs)} of ${totalIn(rs)} free</em></div>`;
+        return `<div class="band" role="presentation">${span(sets)} <em>· ${freeIn(rs)} of ${totalIn(rs)} free</em></div>`;
       };
       const cls = (s) =>
-        ({ taken: 'tk', walkin: 'wk', partly: 'pt' })[s.state] || (s.premium ? 'pr' : '');
+        ({ taken: 'tk', walkin: 'wk' })[s.state] ||
+        (s.premium ? 'pr ' : '') + (s.state === 'partly' ? 'pt' : '');
       const tile = (s) =>
         s.taken
           ? `<button class="tile ${cls(s)}" aria-label="${s.code}, ${s.state === 'walkin' ? 'walk-in only' : 'taken'}" aria-disabled="true">${s.pos}</button>`
           : `<button class="tile ${s.premium ? 'pr' : ''} ${s.state === 'partly' ? 'pt' : ''} ${state.sel === s.code ? 'sel' : ''}" data-sel="${s.code}" aria-label="${s.code}, ${eur(s.minor)}, ${s.state === 'partly' ? 'partly free' : 'free'}" aria-pressed="${state.sel === s.code}">${s.pos}</button>`;
-      const cells = (r) => {
+      const cells = (r, note = '') => {
         let h = '';
         for (let c = 1; c <= COLS; c++) {
           const s = r.sets[c - 1];
           if (!s) {
+            if (note && COLS - r.sets.length >= 3) {
+              h += `<span class="rowfree" style="grid-column:${c} / -1">${note}</span>`;
+              break;
+            }
             h += '<i class="cell hole"></i>';
             continue;
           }
@@ -787,26 +836,40 @@
       function variantC() {
         let h = legend(true);
         for (const z of ZONES) {
-          h += zoneBand(z);
-          for (const r of rowsOf(z)) {
+          const zr = rowsOf(z);
+          const solo = zr.length === 1;
+          if (!(solo && zr[0].label === state.lens)) h += zoneBand(z);
+          for (const r of zr) {
             const free = r.sets.filter((s) => !s.taken).length;
+            const count = `${free} of ${r.sets.length} free`;
             if (r.label === state.lens) {
+              const own =
+                span(r.sets) === span(zr.flatMap((x) => x.sets)) ? '' : span(r.sets) + ' · ';
               h += `<div class="open" id="open">
-                  <div class="open-head"><span>Row ${r.label} · ${span(r.sets)} · ${free} of ${r.sets.length} free</span><button class="closebtn" data-lens="" aria-expanded="true" aria-label="Close row ${r.label}">⌃</button></div>
-                  <div class="row"><span class="chip">${r.label}</span><div class="pan" id="pan"><div class="track">${r.sets.map(tile).join('')}</div></div></div>
+                  <div class="open-head"><span class="chip">${r.label}</span>${solo ? zoneBand(z) : `<span>${own}${count}</span>`}<button class="closebtn" data-lens="" aria-expanded="true" aria-label="Close row ${r.label}">⌃</button></div>
+                  <div class="row"><div class="pan" id="pan"><div class="track">${r.sets.map(tile).join('')}</div></div></div>
                 </div>`;
             } else {
-              h += `<button class="lens" data-lens="${r.label}" aria-expanded="false" aria-label="Row ${r.label}, ${span(r.sets)}, ${free} of ${r.sets.length} free">
-                  <span class="chip">${r.label}</span>${cells(r)}<span class="chev" aria-hidden="true">›</span>
+              h += `<button class="lens" data-lens="${r.label}" aria-expanded="false" aria-label="Row ${r.label}, ${span(r.sets)}, ${count}">
+                  <span class="chip">${r.label}</span>${cells(r, solo ? '' : free + ' free')}<span class="chev" aria-hidden="true">›</span>
                 </button>`;
             }
           }
         }
-        h += `<p class="hint">Tap a row to open it. The open row is where you pick.</p>`;
+        if (!state.lens) h += `<p class="hint">Tap a row to open it and pick a set.</p>`;
         return h;
       }
 
+      // the open row starts at position 1, unless no free set shows there
+      function startPan() {
+        const pan = state.variant === 'C' && document.getElementById('pan');
+        const first = pan && pan.querySelector('.tile:not([aria-disabled])');
+        if (first && first.offsetLeft + first.offsetWidth > pan.scrollLeft + pan.clientWidth)
+          pan.scrollLeft = first.offsetLeft - 8;
+      }
+
       // ---- render + wiring ----
+      let panFor;
       function render() {
         document.documentElement.dataset.theme = state.theme;
         const wash = document.getElementById('wash');
@@ -817,6 +880,8 @@
         if (s)
           bar.innerHTML = `<span><b>Set ${s.code}</b> · ${eur(s.minor)} · full day</span><button>Book this set</button>`;
         wireMini();
+        if (panFor !== state.lens) startPan();
+        panFor = state.lens;
         renderSwitcher();
         syncUrl();
       }
@@ -825,7 +890,7 @@
         p.set('variant', state.variant);
         p.set('theme', state.theme);
         if (state.variant === 'A' && state.zone !== null) p.set('zone', state.zone);
-        if (state.variant === 'C' && state.lens) p.set('lens', state.lens);
+        if (state.variant === 'C') p.set('lens', state.lens || 'none');
         if (state.sel) p.set('sel', state.sel);
         if (document.body.classList.contains('shot')) p.set('shot', '1');
         history.replaceState(null, '', '?' + p);
@@ -905,7 +970,7 @@
         if (t.dataset.v) {
           state.variant = t.dataset.v;
           state.zone = null;
-          state.lens = t.dataset.v === 'C' ? rows[0].label : null;
+          state.lens = t.dataset.v === 'C' ? defaultLens() : null;
         } else if (t.dataset.t) state.theme = t.dataset.t;
         else if (t.dataset.zone)
           state.zone = t.dataset.zone === 'out' ? null : Number(t.dataset.zone);
@@ -931,7 +996,7 @@
         const i = order.indexOf(state.variant) + (e.key === 'ArrowRight' ? 1 : -1);
         state.variant = order[(i + 3) % 3];
         state.zone = null;
-        state.lens = state.variant === 'C' ? rows[0].label : null;
+        state.lens = state.variant === 'C' ? defaultLens() : null;
         render();
       });
       render();
