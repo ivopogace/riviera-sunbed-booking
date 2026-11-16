@@ -45,6 +45,8 @@ async function openMap(
     options.theme ?? 'porcelain',
   );
   await expect(page.getByTestId('row-lens')).toBeVisible();
+  // The default open row animates in: nothing is measured before it has.
+  await settle(page);
 }
 
 const closedRow = (page: Page, code: string): Locator => page.locator(`[data-lens-row="${code}"]`);
@@ -110,7 +112,8 @@ for (const theme of THEMES) {
   test(`a 7-wide row fits at 44px and a tap picks a set — ${theme}`, async ({ page }) => {
     await openMap(page, miramarMapVenue(), { theme });
     await closedRow(page, 'B').click();
-    // The open animation scales the row: measure once it has run.
+    // The open animation scales the row: measure once it has rendered and run.
+    await expect(openRow(page, 'B')).toBeVisible();
     await settle(page);
 
     const pan = openRow(page, 'B').getByTestId('lens-pan');
@@ -131,14 +134,12 @@ for (const theme of THEMES) {
     await expect(tile(page, 'B', 2)).toHaveAttribute('aria-pressed', 'true');
     const bar = page.getByTestId('pick-bar');
     await expect(bar).toContainText('B · spot 2 · €35');
-    // The tick is never clipped by the row's pan viewport: it paints where its box is.
-    const tick = page.getByTestId('pick-tick');
-    const tickBox = (await tick.boundingBox())!;
-    const hit = await page.evaluate(
-      ({ x, y }) => document.elementFromPoint(x, y)?.closest('[data-testid="pick-tick"]') !== null,
-      { x: tickBox.x + tickBox.width / 2, y: tickBox.y + 2 },
-    );
-    expect(hit).toBe(true);
+    // The tick overhangs its tile; the pan viewport, which clips, has the headroom for all of it.
+    const tick = (await page.getByTestId('pick-tick').boundingBox())!;
+    const picked = (await tile(page, 'B', 2).boundingBox())!;
+    expect(tick.y).toBeLessThan(picked.y);
+    expect(tick.y).toBeGreaterThanOrEqual(panBox.y);
+    expect(tick.x + tick.width).toBeLessThanOrEqual(panBox.x + panBox.width);
 
     await expectTouchTargets(page, `tourist row lens with a pick at 390px, ${theme}`);
     await expectNoSeriousAxeViolations(page, `tourist row lens with a pick at 390px, ${theme}`);

@@ -55,6 +55,10 @@ test.describe('icon sizes on the tourist surfaces at a phone width', () => {
       .getByRole('button', { name: /Select to book/ })
       .first()
       .click();
+
+    // On a phone the tap picks the set; the bar's action opens the dialog (#1762).
+
+    await page.getByTestId('pick-book').click();
     await expectBox(page.getByTestId('dialog-close').locator('svg'), 14);
   });
 

@@ -202,6 +202,10 @@ export class BeachRowLens {
   protected readonly cols = computed(() => Math.max(1, ...this.rows().map((r) => r.cells.length)));
   protected readonly dense = computed(() => this.cols() >= BeachRowLens.DENSE_COLS);
   protected readonly gridColumns = computed(() => `repeat(${this.cols()}, minmax(12px, 1fr))`);
+  /** Every column at the 12px floor plus the gaps: what a row is never narrower than. */
+  protected readonly gridMinWidth = computed(
+    () => this.cols() * 12 + (this.cols() - 1) * (this.dense() ? 2 : 3),
+  );
 
   /** True while the overview is wider than a closed row: the block pans and the bar shows. */
   protected readonly overflowing = signal(false);

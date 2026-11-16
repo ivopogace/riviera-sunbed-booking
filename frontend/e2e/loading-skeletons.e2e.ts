@@ -1,5 +1,6 @@
 import { expect, test, type Locator, type Page } from '@playwright/test';
 
+import { settle } from './support/booking-dialog';
 import { expectNoSeriousAxeViolations } from './support/axe';
 import { mockWholeConsole, signInAsOperator } from './support/operator-console.mocks';
 import { photoViews } from './support/photo-views';
@@ -442,10 +443,8 @@ for (const [labels, venue] of [
   ['short row names', RICH_VENUE],
   ['row names at the 40-character limit', LONG_LABEL_VENUE],
 ] as const) {
-  for (const [size, viewport] of [
-    ['desktop', DESKTOP],
-    ['a phone', PHONE],
-  ] as const) {
+  // Desktop only: below sm the map that lands is the row lens, which has no rail (#1762).
+  for (const [size, viewport] of [['desktop', DESKTOP]] as const) {
     test(`the tourist beach map’s rail holds its width across the load — ${labels}, ${size} (#749)`, async ({
       page,
     }) => {
@@ -500,10 +499,8 @@ const LETTER_VENUE = {
   sets: sets().map((s) => ({ ...s, rowLabel: s.rowLabel === 'Front row' ? 'A' : 'B' })),
 };
 
-for (const [size, viewport] of [
-  ['desktop', DESKTOP],
-  ['a phone', PHONE],
-] as const) {
+// Desktop only: below sm the map that lands is the row lens, which has no rail (#1762).
+for (const [size, viewport] of [['desktop', DESKTOP]] as const) {
   test(`the tourist beach map’s letter rail does not move at all — ${size} (#749, #1732)`, async ({
     page,
   }) => {
@@ -525,6 +522,28 @@ for (const [size, viewport] of [
     ).toBeLessThan(1);
   });
 }
+
+test('the tourist map card keeps its side edges and only grows when the row lens lands on a phone (#1762)', async ({
+  page,
+}) => {
+  await page.setViewportSize(PHONE);
+  const release = await holdVenueRead(page, RICH_VENUE);
+
+  await page.goto('/venues/1');
+  await expect(page.getByTestId('map-skeleton-tile').first()).toBeVisible();
+  const before = (await page.getByTestId('beach-grid').boundingBox())!;
+  // The skeleton states no row name and no count.
+  await expect(page.getByTestId('map-loading')).not.toContainText(/free|Row/);
+
+  release();
+  await expect(page.getByTestId('row-lens')).toBeVisible();
+  await settle(page);
+
+  const after = (await page.getByTestId('beach-grid').boundingBox())!;
+  expect(Math.abs(after.x - before.x), 'left edge').toBeLessThan(1);
+  expect(Math.abs(after.width - before.width), 'width').toBeLessThan(1);
+  expect(after.height, 'the card grows, never shrinks').toBeGreaterThanOrEqual(before.height);
+});
 
 for (const [surface, tileTestid, gridTestid, open] of [
   ['the tourist beach map', 'map-skeleton-tile', 'map-skeleton-grid', 'tourist'],
@@ -563,6 +582,12 @@ for (const [surface, tileTestid, gridTestid, open] of [
     await expect(
       page.getByTestId(open === 'operator' ? 'daily-tile' : 'set-tile').first(),
     ).toBeVisible();
+    if (open === 'tourist') {
+      // The tourist map that lands on a phone is the row lens (#1762): it never drags, so no hint.
+      await expect(page.getByTestId('row-lens')).toBeVisible();
+      await expect(page.getByTestId('scroll-hint')).toHaveCount(0);
+      return;
+    }
     // The loaded map overflows the same phone, so the hint the skeleton withheld is now honest.
     await expect(page.getByTestId('scroll-hint')).toHaveCount(1);
     // The card grows by that line here: a settle DOWNWARD, which is the direction #744 chose.
@@ -612,10 +637,8 @@ for (const [prices, venue, chip] of [
   ['bare amounts, under the reservation', BARE_PRICE_VENUE, /^€30$/],
   ['price spans past the cap', WIDE_PRICE_VENUE, /^€125,000–€999,995$/],
 ] as const) {
-  for (const [size, viewport] of [
-    ['desktop', DESKTOP],
-    ['a phone', PHONE],
-  ] as const) {
+  // Desktop only: the phone's row lens has no pan viewport to narrow (#1762).
+  for (const [size, viewport] of [['desktop', DESKTOP]] as const) {
     test(`the tourist beach map’s right edge holds across the load — ${prices}, ${size} (#751, #1732)`, async ({
       page,
     }) => {

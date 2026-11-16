@@ -250,6 +250,8 @@ test('the Review step scrolls to its pay button on a phone viewport', async ({ p
     .getByRole('button', { name: /Select to book/ })
     .first()
     .click();
+  // On a phone the tap picks the set; the bar's action opens the dialog (#1762).
+  await page.getByTestId('pick-book').click();
   const dialog = page.getByRole('dialog');
   await expect(dialog).toBeVisible();
   await fillDetailsAndContinue(dialog);

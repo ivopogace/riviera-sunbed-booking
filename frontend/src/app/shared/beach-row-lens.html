@@ -114,7 +114,8 @@
               (scroll)="onOverviewScroll($event)"
             >
               <span
-                class="grid min-w-max"
+                class="grid"
+                [style.min-width.px]="gridMinWidth()"
                 [class]="dense() ? 'gap-0.5 [&>[data-state]]:rounded-[3px]' : 'gap-[3px]'"
                 [style.grid-template-columns]="gridColumns()"
               >
