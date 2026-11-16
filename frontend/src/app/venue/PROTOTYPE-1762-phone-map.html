@@ -256,7 +256,7 @@
       .tile.pt {
         border: 2px dotted var(--av-ink);
       }
-      .tile.pr.pt {
+      .tile.pr.pt:not(.sel) {
         border-color: var(--pr-ink);
       }
       .tile.wk {
@@ -270,6 +270,7 @@
       .tile.sel {
         background: var(--sel-fill);
         border-color: var(--sel-fill);
+        border-style: solid;
         color: var(--sel-ink);
         position: relative;
       }
@@ -277,7 +278,7 @@
         content: '✓';
         position: absolute;
         top: -7px;
-        right: -7px;
+        right: -5px;
         width: 18px;
         height: 18px;
         border-radius: 999px;
@@ -466,13 +467,13 @@
       }
       .open .pan {
         flex: 1;
-        padding: 0 8px;
-        margin: 0 -8px;
+        padding: 9px 8px 0;
+        margin: -9px -8px 0;
         -webkit-mask: linear-gradient(
           90deg,
           transparent 0,
-          #000 8px,
-          #000 calc(100% - 8px),
+          #000 3px,
+          #000 calc(100% - 3px),
           transparent 100%
         );
       }
