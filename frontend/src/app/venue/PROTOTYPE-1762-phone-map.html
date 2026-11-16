@@ -2,20 +2,18 @@
 <!--
   PROTOTYPE — throwaway, never merged (#1762). Question: on a 390px phone, how should the tourist
   beach map show the WHOLE beach and still let them pick a set on a ≥44px target?
-  Three structurally different variants on one page, switchable with ?variant=A|B|C and
-  ?theme=porcelain|riviera|dark (floating bar, or ←/→). Open the file directly in a browser.
-  Round 2 (design critique): free = tint + edge, SOLID = your pick only, strike = taken; partly-free
-  and walk-in sets added to the fixture to design their overview look; C rows carry a chevron,
-  aria-expanded, a close control, scroll pinned to the tapped row and focus moved into it.
+  Answer kept here: the ROW LENS. Every row is a ≥44px-tall button drawn at overview scale; the
+  tapped row opens inline to 44px tiles while the rest of the beach stays in view. The two rejected
+  variants (overview → zoom, mini-map) are in this file's history at 4f53c65.
+  Open the file directly in a browser. ?theme=porcelain|riviera|dark (floating bar, or ←/→),
+  ?lens=<row>|none for the open row, ?sel=<code> for the pick, ?shot=1 hides the bar.
+  One vocabulary at both scales: tint + edge = free, strike = taken, SOLID = your pick only; partly
+  free is a half tint in the row's own hue. The open row's head is its band and carries the row
+  letter, so a 7-wide row fits at 44px with no pan. Rows in a shared band show their own free
+  count in the empty columns. The open row follows the pick, else the first row with a free set.
   Fixture: Miramar (frontend/e2e/support/miramar-map.ts): row A 13 wide, B–I 7, five price zones,
-  taken where (position + row) % 5 === 0. Colours are copied from src/tailwind.css's theme tokens.
-    A — Overview → zoom: whole beach small; tap a zone to zoom to 44px tiles, mini-map while zoomed.
-    B — Mini-map: today's 44px grid unchanged, plus a draggable whole-beach navigator above it.
-    C — Row lens: every row is a ≥44px-tall button at overview scale; the tapped row opens to 44px tiles.
-  Round 3 (C only): the open row's head IS its band (no repeat) and carries the row letter, so a
-  7-wide row fits at 44px with no pan; partly free is a half tint in the row's own hue, never the
-  pick's solid; rows in a shared band show their own free count in the empty columns; ?lens=none
-  is the whole beach with no row open; the open row follows the pick, else the first free row.
+  taken where (position + row) % 5 === 0; partly-free and walk-in sets added for the prototype.
+  Colours are copied from src/tailwind.css's theme tokens.
 -->
 <html lang="en">
   <head>
@@ -325,7 +323,7 @@
       }
       .tile:focus-visible,
       .lens:focus-visible,
-      .zonebtn:focus-visible {
+      .closebtn:focus-visible {
         outline: 3px solid var(--focus);
         outline-offset: 2px;
       }
@@ -478,105 +476,6 @@
         );
       }
 
-      /* A + B: mini-map */
-      .mini {
-        position: relative;
-        display: inline-grid;
-        grid-template-columns: repeat(13, 8px);
-        gap: 2px;
-        padding: 6px;
-        border-radius: 10px;
-        background: var(--chip-fill);
-        border: 1px solid var(--chip-border);
-        touch-action: none;
-        cursor: grab;
-      }
-      .mini i {
-        width: 8px;
-        height: 8px;
-        border-radius: 2px;
-        background: var(--av-ink);
-        display: block;
-      }
-      .mini i.pr {
-        background: var(--pr-ink);
-      }
-      .mini i.tk {
-        background: transparent;
-        box-shadow: inset 0 0 0 1px var(--tk-border);
-      }
-      .mini i.hole {
-        visibility: hidden;
-      }
-      .mini .vp {
-        position: absolute;
-        border: 2px solid var(--accent-ink);
-        border-radius: 4px;
-        background: rgba(15, 125, 140, 0.12);
-        pointer-events: none;
-      }
-      .mini-row {
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-        gap: 10px;
-        margin-bottom: 8px;
-      }
-      .mini-row small {
-        font-size: 12px;
-        color: var(--card-ink-soft);
-        max-width: 170px;
-      }
-      .gridbox {
-        max-height: 420px;
-        overflow: auto;
-        scrollbar-width: none;
-      }
-      .gridbox::-webkit-scrollbar {
-        display: none;
-      }
-      .zonebtn {
-        min-height: 44px;
-        border-radius: 12px;
-        border: 1px solid var(--chip-border);
-        background: var(--chip-fill);
-        color: var(--accent-ink);
-        font: 600 13px inherit;
-        font-family: inherit;
-        padding: 0 12px;
-        cursor: pointer;
-      }
-      .zonetap {
-        display: block;
-        width: 100%;
-        background: transparent;
-        border: 0;
-        padding: 0;
-        cursor: pointer;
-        font-family: inherit;
-        color: inherit;
-        text-align: left;
-        border-radius: 12px;
-      }
-      .zonetap:hover {
-        background: rgba(127, 127, 127, 0.08);
-      }
-      .zonetap .ovrow {
-        min-height: 22px;
-      }
-      .zonenav {
-        display: flex;
-        gap: 8px;
-        align-items: center;
-        margin-bottom: 8px;
-      }
-      .zonenav .grow {
-        flex: 1;
-        font-size: 13px;
-        font-weight: 700;
-        text-align: center;
-      }
-
       .bookbar {
         position: fixed;
         left: 50%;
@@ -720,10 +619,8 @@
       // ---- state ----
       const qs = new URLSearchParams(location.search);
       const state = {
-        variant: qs.get('variant') || 'A',
         theme: qs.get('theme') || 'porcelain',
-        zone: qs.has('zone') ? Number(qs.get('zone')) : null, // A: zoomed zone index
-        lens: qs.get('lens') || null, // C: open row label
+        lens: qs.get('lens') || null, // open row label
         sel: qs.get('sel') || null,
       };
       if (qs.has('shot')) document.body.classList.add('shot');
@@ -733,7 +630,7 @@
           rows.find((r) => r.sets.some((s) => !s.taken))
         ).label; // the pick's row, else the first row with a free set
       if (state.lens === 'none') state.lens = null;
-      else if (state.variant === 'C' && state.lens === null) state.lens = defaultLens();
+      else if (state.lens === null) state.lens = defaultLens();
 
       // ---- pieces ----
       const zoneBand = (z) => {
@@ -764,77 +661,19 @@
         }
         return `<div class="ov" aria-hidden="true">${h}</div>`;
       };
-      const miniMap = () => {
-        let h = '';
-        for (const r of rows)
-          for (let c = 1; c <= COLS; c++) {
-            const s = r.sets[c - 1];
-            h += `<i class="${!s ? 'hole' : s.taken ? 'tk' : s.premium ? 'pr' : ''}"></i>`;
-          }
-        return `<div class="mini" id="mini" aria-hidden="true">${h}<div class="vp" id="vp"></div></div>`;
-      };
-      const legend = (small) =>
-        small
-          ? `<div class="legend">
-              <span><i class="sw"></i>Free</span>
-              <span><i class="sw pr"></i>Front row</span>
-              <span><i class="sw pt"></i>Partly free</span>
-              <span><i class="sw wk"></i>Walk-in only</span>
-              <span><i class="sw tk"></i>Taken</span>
-              <span><i class="sw sel"></i>Your pick</span>
-            </div>`
-          : `<div class="legend">
-              <span><i class="sw" style="box-shadow:none;background:var(--av-fill);border:1.5px solid var(--av-border)"></i>Available</span>
-              <span><i class="sw" style="box-shadow:none;background:var(--pr-fill);border:1.5px solid var(--pr-border)"></i>Front row</span>
-              <span><i class="sw" style="box-shadow:none;background:none;border:1.5px dashed var(--tk-border)"></i>Taken</span>
-            </div>`;
+      const legend = () =>
+        `<div class="legend">
+          <span><i class="sw"></i>Free</span>
+          <span><i class="sw pr"></i>Front row</span>
+          <span><i class="sw pt"></i>Partly free</span>
+          <span><i class="sw wk"></i>Walk-in only</span>
+          <span><i class="sw tk"></i>Taken</span>
+          <span><i class="sw sel"></i>Your pick</span>
+        </div>`;
 
-      // ---- A: overview → zoom ----
-      function variantA() {
-        if (state.zone === null) {
-          let h = legend(true);
-          ZONES.forEach((z, i) => {
-            h += `<button class="zonetap" data-zone="${i}" aria-label="${z.name}, ${span(rowsOf(z).flatMap((r) => r.sets))}, ${freeIn(rowsOf(z))} free. Zoom in">`;
-            h += zoneBand(z);
-            for (const r of rowsOf(z))
-              h += `<div class="row ovrow"><span class="chip">${r.label}</span>${cells(r)}</div>`;
-            h += `</button>`;
-          });
-          h += `<p class="hint">Tap a price band to zoom in and pick a set.</p>`;
-          return h;
-        }
-        const z = ZONES[state.zone];
-        let h = `<div class="zonenav">
-            <button class="zonebtn" data-zone="out">← Whole beach</button>
-            <span class="grow">${z.name}</span>
-            <button class="zonebtn" data-zone="${Math.min(ZONES.length - 1, state.zone + 1)}" ${state.zone === ZONES.length - 1 ? 'disabled' : ''} aria-label="Next row back">↓</button>
-          </div>
-          <div class="mini-row">${miniMap()}<small>You're looking at the highlighted part of the beach.</small></div>`;
-        h += zoneBand(z);
-        h += `<div class="gridbox" id="gridbox"><div class="pan" id="pan">`;
-        for (const r of rowsOf(z))
-          h += `<div class="row"><span class="chip">${r.label}</span><div class="track">${r.sets.map(tile).join('')}</div></div>`;
-        h += `</div></div><p class="hint">Swipe sideways for the rest of the row.</p>`;
-        return h;
-      }
-
-      // ---- B: today's grid + mini-map navigator ----
-      function variantB() {
-        let h = legend(false);
-        h += `<div class="mini-row">${miniMap()}<small>Whole beach. Drag the box to move around.</small></div>`;
-        h += `<div class="gridbox" id="gridbox"><div class="pan" id="pan" style="overflow:visible;-webkit-mask:none;margin:0;padding:0">`;
-        for (const z of ZONES) {
-          h += zoneBand(z);
-          for (const r of rowsOf(z))
-            h += `<div class="row"><span class="chip">${r.label}</span><div class="track">${r.sets.map(tile).join('')}</div></div>`;
-        }
-        h += `</div></div><p class="hint">Drag or swipe to see the whole beach.</p>`;
-        return h;
-      }
-
-      // ---- C: row lens ----
-      function variantC() {
-        let h = legend(true);
+      // ---- row lens ----
+      function lensMap() {
+        let h = legend();
         for (const z of ZONES) {
           const zr = rowsOf(z);
           const solo = zr.length === 1;
@@ -862,7 +701,7 @@
 
       // the open row starts at position 1, unless no free set shows there
       function startPan() {
-        const pan = state.variant === 'C' && document.getElementById('pan');
+        const pan = document.getElementById('pan');
         const first = pan && pan.querySelector('.tile:not([aria-disabled])');
         if (first && first.offsetLeft + first.offsetWidth > pan.scrollLeft + pan.clientWidth)
           pan.scrollLeft = first.offsetLeft - 8;
@@ -873,13 +712,12 @@
       function render() {
         document.documentElement.dataset.theme = state.theme;
         const wash = document.getElementById('wash');
-        wash.innerHTML = { A: variantA, B: variantB, C: variantC }[state.variant]();
+        wash.innerHTML = lensMap();
         const s = rows.flatMap((r) => r.sets).find((x) => x.code === state.sel);
         const bar = document.getElementById('bookbar');
         bar.hidden = !s;
         if (s)
           bar.innerHTML = `<span><b>Set ${s.code}</b> · ${eur(s.minor)} · full day</span><button>Book this set</button>`;
-        wireMini();
         if (panFor !== state.lens) startPan();
         panFor = state.lens;
         renderSwitcher();
@@ -887,93 +725,23 @@
       }
       function syncUrl() {
         const p = new URLSearchParams();
-        p.set('variant', state.variant);
         p.set('theme', state.theme);
-        if (state.variant === 'A' && state.zone !== null) p.set('zone', state.zone);
-        if (state.variant === 'C') p.set('lens', state.lens || 'none');
+        p.set('lens', state.lens || 'none');
         if (state.sel) p.set('sel', state.sel);
         if (document.body.classList.contains('shot')) p.set('shot', '1');
         history.replaceState(null, '', '?' + p);
       }
+      const THEMES = ['porcelain', 'riviera', 'dark'];
       function renderSwitcher() {
-        const names = { A: 'A Overview→zoom', B: 'B Mini-map', C: 'C Row lens' };
-        document.getElementById('switcher').innerHTML =
-          Object.keys(names)
-            .map(
-              (k) =>
-                `<button data-v="${k}" class="${k === state.variant ? 'on' : ''}">${names[k]}</button>`,
-            )
-            .join('') +
-          ' | ' +
-          ['porcelain', 'riviera', 'dark']
-            .map(
-              (t) => `<button data-t="${t}" class="${t === state.theme ? 'on' : ''}">${t}</button>`,
-            )
-            .join('');
-      }
-
-      // mini-map: viewport box tracks the grid; dragging the box pans it
-      function wireMini() {
-        const mini = document.getElementById('mini');
-        const box = document.getElementById('gridbox');
-        if (!mini || !box) return;
-        const pitch = 10; // 8px dot + 2px gap
-        const tilePitch = 47;
-        const railPx = 32;
-        const rowPitch = 50; // approx row + gaps incl. bands
-        const visibleRows =
-          state.variant === 'A'
-            ? rowsOf(ZONES[state.zone]).map((r) => r.label)
-            : rows.map((r) => r.label);
-        const firstRow = rows.findIndex((r) => r.label === visibleRows[0]);
-        const vp = document.getElementById('vp');
-        const scroller = state.variant === 'A' ? document.getElementById('pan') : box;
-        const update = () => {
-          const left = scroller.scrollLeft,
-            width = scroller.clientWidth - railPx;
-          const c0 = Math.max(0, left / tilePitch);
-          const cN = Math.min(COLS, (left + width) / tilePitch);
-          let r0 = firstRow,
-            rN = firstRow + visibleRows.length;
-          if (state.variant === 'B') {
-            r0 = box.scrollTop / rowPitch;
-            rN = Math.min(rows.length, (box.scrollTop + box.clientHeight) / rowPitch);
-          }
-          vp.style.left = 6 + c0 * pitch - 2 + 'px';
-          vp.style.width = (cN - c0) * pitch + 2 + 'px';
-          vp.style.top = 6 + r0 * pitch - 2 + 'px';
-          vp.style.height = (rN - r0) * pitch + 2 + 'px';
-        };
-        scroller.addEventListener('scroll', update, { passive: true });
-        box.addEventListener('scroll', update, { passive: true });
-        let drag = false;
-        const move = (e) => {
-          const r = mini.getBoundingClientRect();
-          const c = (e.clientX - r.left - 6) / pitch;
-          const ro = (e.clientY - r.top - 6) / pitch;
-          scroller.scrollLeft = c * tilePitch - (scroller.clientWidth - railPx) / 2;
-          if (state.variant === 'B') box.scrollTop = ro * rowPitch - box.clientHeight / 2;
-        };
-        mini.addEventListener('pointerdown', (e) => {
-          drag = true;
-          mini.setPointerCapture(e.pointerId);
-          move(e);
-        });
-        mini.addEventListener('pointermove', (e) => drag && move(e));
-        mini.addEventListener('pointerup', () => (drag = false));
-        update();
+        document.getElementById('switcher').innerHTML = THEMES.map(
+          (t) => `<button data-t="${t}" class="${t === state.theme ? 'on' : ''}">${t}</button>`,
+        ).join('');
       }
 
       document.addEventListener('click', (e) => {
         const t = e.target.closest('button');
         if (!t) return;
-        if (t.dataset.v) {
-          state.variant = t.dataset.v;
-          state.zone = null;
-          state.lens = t.dataset.v === 'C' ? defaultLens() : null;
-        } else if (t.dataset.t) state.theme = t.dataset.t;
-        else if (t.dataset.zone)
-          state.zone = t.dataset.zone === 'out' ? null : Number(t.dataset.zone);
+        if (t.dataset.t) state.theme = t.dataset.t;
         else if (t.dataset.lens !== undefined) {
           const y = t.getBoundingClientRect().top;
           state.lens = t.dataset.lens || null;
@@ -991,12 +759,9 @@
       });
       document.addEventListener('keydown', (e) => {
         if (e.target.matches('input,textarea,[contenteditable]')) return;
-        const order = ['A', 'B', 'C'];
         if (e.key !== 'ArrowLeft' && e.key !== 'ArrowRight') return;
-        const i = order.indexOf(state.variant) + (e.key === 'ArrowRight' ? 1 : -1);
-        state.variant = order[(i + 3) % 3];
-        state.zone = null;
-        state.lens = state.variant === 'C' ? defaultLens() : null;
+        const i = THEMES.indexOf(state.theme) + (e.key === 'ArrowRight' ? 1 : -1);
+        state.theme = THEMES[(i + 3) % 3];
         render();
       });
       render();
