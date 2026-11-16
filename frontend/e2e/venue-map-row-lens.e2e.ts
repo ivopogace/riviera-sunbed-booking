@@ -132,14 +132,20 @@ for (const theme of THEMES) {
     await tile(page, 'B', 2).click();
 
     await expect(tile(page, 'B', 2)).toHaveAttribute('aria-pressed', 'true');
+    // The pointer still rests on the tile: its hover wash must not pale the pick's solid fill.
+    await tile(page, 'B', 2).hover();
+    await settle(page);
+    await expect(tile(page, 'B', 2)).toHaveCSS('background-color', 'rgba(0, 0, 0, 0)');
     const bar = page.getByTestId('pick-bar');
     await expect(bar).toContainText('B · spot 2 · €35');
     // The tick overhangs its tile; the pan viewport, which clips, has the headroom for all of it.
     const tick = (await page.getByTestId('pick-tick').boundingBox())!;
     const picked = (await tile(page, 'B', 2).boundingBox())!;
+    // Measured afresh: the hover above may have scrolled the page.
+    const view = (await pan.boundingBox())!;
     expect(tick.y).toBeLessThan(picked.y);
-    expect(tick.y).toBeGreaterThanOrEqual(panBox.y);
-    expect(tick.x + tick.width).toBeLessThanOrEqual(panBox.x + panBox.width);
+    expect(tick.y).toBeGreaterThanOrEqual(view.y);
+    expect(tick.x + tick.width).toBeLessThanOrEqual(view.x + view.width);
 
     await expectTouchTargets(page, `tourist row lens with a pick at 390px, ${theme}`);
     await expectNoSeriousAxeViolations(page, `tourist row lens with a pick at 390px, ${theme}`);

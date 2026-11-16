@@ -50,7 +50,7 @@ export interface TileView {
         appMapTile
         [state]="tile.state"
         [picked]="tile.picked"
-        class="set-tile relative snap-start h-full min-w-0 flex items-center justify-center rounded-[10px] border-[1.5px] font-bold text-[12.5px] [&.bookable]:p-0 [&.partly]:p-0 data-[state=partly]:border-2 [&.inplan]:shadow-[0_0_0_3px_var(--riv-plan-fill)]"
+        class="set-tile relative snap-start h-full min-w-0 flex items-center justify-center rounded-[10px] border-[1.5px] font-bold text-[12.5px] [&.bookable]:p-0 [&.partly]:p-0 data-[state=partly]:border-2 [&.inplan]:shadow-[0_0_0_3px_var(--riv-plan-fill)] [&.picked_.set-button:hover]:bg-transparent"
         data-testid="set-tile"
         [class.premium]="tile.state === 'premium'"
         [class.partly]="tile.state === 'partly'"

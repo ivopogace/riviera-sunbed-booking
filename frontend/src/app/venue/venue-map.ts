@@ -896,7 +896,7 @@ export class VenueMap {
   }
 
   /**
-   * After a map read: drop a pick that is no longer bookable, and seed the lens's open row when the
+   * After a map read: drop a pick the read does not show bookable, and seed the lens's open row when the
    * read was for a fresh venue or other days: the pick's row, else the first with a free set.
    */
   private settleLens(): void {

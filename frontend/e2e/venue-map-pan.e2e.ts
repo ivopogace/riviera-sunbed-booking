@@ -575,10 +575,8 @@ test('the legend leads the map card on mobile — decoded before the first tile 
   expect(legend.height).toBeGreaterThan(0);
 
   // R-3: the band's margins cancel the banner's and the wash's, so the wash starts where it ends.
-  const wash = (await page
-    .locator('[data-testid="beach-grid"] [data-riv-scroller]')
-    .first()
-    .boundingBox())!;
+  // At this width the wash is the row lens's (#1762).
+  const wash = (await page.getByTestId('row-lens').boundingBox())!;
   expect(wash.y).toBeCloseTo(legend.y + legend.height, 0);
 
   // One screen: reaching the grid is what reveals the legend, never scrolling past it.
