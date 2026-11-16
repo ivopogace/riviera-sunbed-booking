@@ -519,3 +519,30 @@ test.describe('how the overview states paint', () => {
     expect(new Set(shapes.values()).size).toBe(5);
   });
 });
+
+test.describe('with a finger', () => {
+  test.use({ hasTouch: true });
+
+  test('a sideways swipe on a closed row pans every row and does not open it', async ({ page }) => {
+    await openMap(page, wideBeachVenue('wide40'));
+    const row = closedRow(page, 'C');
+    await row.scrollIntoViewIfNeeded();
+    const box = (await row.locator('[data-lens-cells]').boundingBox())!;
+    const y = box.y + box.height / 2;
+    let x = box.x + box.width - 40;
+
+    // Raw touch points: the browser turns them into the native scroll a real swipe is.
+    const cdp = await page.context().newCDPSession(page);
+    await cdp.send('Input.dispatchTouchEvent', { type: 'touchStart', touchPoints: [{ x, y }] });
+    for (let step = 0; step < 15; step++) {
+      x -= 10;
+      await cdp.send('Input.dispatchTouchEvent', { type: 'touchMove', touchPoints: [{ x, y }] });
+    }
+    await cdp.send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] });
+
+    await expect.poll(async () => (await overviewOffsets(page))[0]).toBeGreaterThan(60);
+    await expect.poll(async () => new Set(await overviewOffsets(page)).size).toBe(1);
+    await expect(openRow(page, 'C')).toHaveCount(0);
+    await expect(openRow(page, 'A')).toBeVisible();
+  });
+});
