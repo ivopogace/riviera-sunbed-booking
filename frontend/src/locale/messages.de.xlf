@@ -7289,6 +7289,9 @@
         <context-group purpose="location">
           <context context-type="sourcefile">src/app/venue/venue-map.html</context>
         </context-group>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/venue/venue-map.html</context>
+        </context-group>
         <note priority="1" from="description">Accessible name of the map legend</note>
       </trans-unit>
       <trans-unit id="580101671126932384" datatype="html">
@@ -12378,6 +12381,21 @@
           <context context-type="sourcefile">src/app/shared/beach-map-canvas.html</context>
         </context-group>
       </trans-unit>
+      <trans-unit id="142759852506198943" datatype="html">
+        <source><x id="INTERPOLATION" equiv-text="{{ columnsInView().first }}"/>–<x id="INTERPOLATION_1" equiv-text="{{ columnsInView().last }}"/> of <x id="INTERPOLATION_2" equiv-text="{{ cols() }}"/></source>
+        <target state="translated"><x id="INTERPOLATION" equiv-text="{{ columnsInView().first }}"/>–<x id="INTERPOLATION_1" equiv-text="{{ columnsInView().last }}"/> von <x id="INTERPOLATION_2" equiv-text="{{ cols() }}"/></target>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/shared/beach-row-lens.html</context>
+        </context-group>
+        <note priority="1" from="description">Which beach-map columns are in view</note>
+      </trans-unit>
+      <trans-unit id="1580340369346372363" datatype="html">
+        <source> Swipe the rows sideways for the rest of the beach. </source>
+        <target state="translated"> Wischen Sie die Reihen seitwärts, um den Rest des Strands zu sehen. </target>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/shared/beach-row-lens.html</context>
+        </context-group>
+      </trans-unit>
       <trans-unit id="8352556128263048512" datatype="html">
         <source><x id="count" equiv-text="days"/> day</source>
         <target state="translated"><x id="count" equiv-text="days"/> Tag</target>
@@ -13095,6 +13113,14 @@
         </context-group>
         <note priority="1" from="description">Tile state inside a beach-map spot&apos;s accessible name</note>
       </trans-unit>
+      <trans-unit id="5186197999628700907" datatype="html">
+        <source>Your pick</source>
+        <target state="translated">Ihre Wahl</target>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/venue/map-tile.ts</context>
+        </context-group>
+        <note priority="1" from="description">Map legend swatch for the set the visitor picked</note>
+      </trans-unit>
       <trans-unit id="3549142081053161388" datatype="html">
         <source> The longest this spot can host you is <x id="INTERPOLATION" equiv-text="{{ runLabel() }}"/>. </source>
         <target state="translated"> Dieser Platz steht Ihnen höchstens für <x id="INTERPOLATION" equiv-text="{{ runLabel() }}"/> zur Verfügung. </target>
@@ -13515,17 +13541,10 @@
           <context context-type="sourcefile">src/app/venue/venue-map.html</context>
         </context-group>
       </trans-unit>
-      <trans-unit id="8618891608486908399" datatype="html">
-        <source>Beach map — <x id="INTERPOLATION" equiv-text="{{ v.name }}"/></source>
-        <target state="translated">Strandplan – <x id="INTERPOLATION" equiv-text="{{ v.name }}"/></target>
-        <context-group purpose="location">
-          <context context-type="sourcefile">src/app/venue/venue-map.html</context>
-        </context-group>
-      </trans-unit>
       <trans-unit id="7457994693274882019" datatype="html">
         <source>Pick a set to request it — you pay only once <x id="VENUE" equiv-text="{{
-                v.name // i18n(ph=&quot;venue&quot;)
-              }}"/> accepts, and nothing is held until then.<x id="LINE_BREAK" ctype="lb" equiv-text="&lt;br /&gt;"/> Prices are per set, full day; a stay is one request, answered whole.</source>
+              v.name // i18n(ph=&quot;venue&quot;)
+            }}"/> accepts, and nothing is held until then.<x id="LINE_BREAK" ctype="lb" equiv-text="&lt;br /&gt;"/> Prices are per set, full day; a stay is one request, answered whole.</source>
         <target state="translated">Wählen Sie ein Set, um es anzufragen – Sie bezahlen erst, wenn <x id="VENUE" equiv-text="{{
                 v.name // i18n(ph=&quot;venue&quot;)
               }}"/> die Anfrage annimmt, und bis dahin wird nichts blockiert.<x id="LINE_BREAK" ctype="lb" equiv-text="&lt;br /&gt;"/> Preise gelten pro Set und ganzen Tag; ein Aufenthalt ist eine Anfrage und wird als Ganzes beantwortet.</target>
@@ -13560,6 +13579,37 @@
         <context-group purpose="location">
           <context context-type="sourcefile">src/app/venue/venue-map.html</context>
         </context-group>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/venue/venue-map.html</context>
+        </context-group>
+      </trans-unit>
+      <trans-unit id="8618891608486908399" datatype="html">
+        <source>Beach map — <x id="INTERPOLATION" equiv-text="{{ v.name }}"/></source>
+        <target state="translated">Strandplan – <x id="INTERPOLATION" equiv-text="{{ v.name }}"/></target>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/venue/venue-map.html</context>
+        </context-group>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/venue/venue-map.html</context>
+        </context-group>
+      </trans-unit>
+      <trans-unit id="1979771905114912484" datatype="html">
+        <source>Tap a row to open it and pick a set.</source>
+        <target state="translated">Tippen Sie auf eine Reihe, um sie zu öffnen und ein Set zu wählen.</target>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/venue/venue-map.html</context>
+        </context-group>
+      </trans-unit>
+      <trans-unit id="4510179003057858136" datatype="html">
+        <source>Request this set</source>
+        <target state="translated">Dieses Set anfragen</target>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/venue/venue-map.html</context>
+        </context-group>
+      </trans-unit>
+      <trans-unit id="154337644227969335" datatype="html">
+        <source>Book this set</source>
+        <target state="translated">Dieses Set buchen</target>
         <context-group purpose="location">
           <context context-type="sourcefile">src/app/venue/venue-map.html</context>
         </context-group>
@@ -13649,6 +13699,38 @@
           <context context-type="sourcefile">src/app/venue/venue-map.ts</context>
         </context-group>
       </trans-unit>
+      <trans-unit id="8586349609532745273" datatype="html">
+        <source><x id="count" equiv-text="free"/> free</source>
+        <target state="translated"><x id="count" equiv-text="free"/> frei</target>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/venue/venue-map.ts</context>
+        </context-group>
+        <note priority="1" from="description">A beach-map row&apos;s free sets</note>
+      </trans-unit>
+      <trans-unit id="8156760659632038737" datatype="html">
+        <source>Row <x id="row" equiv-text="label"/>, <x id="price" equiv-text="price"/>, <x id="free" equiv-text="count"/></source>
+        <target state="translated">Reihe <x id="row" equiv-text="label"/>, <x id="price" equiv-text="price"/>, <x id="free" equiv-text="count"/></target>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/venue/venue-map.ts</context>
+        </context-group>
+        <note priority="1" from="description">Accessible name of a beach-map row</note>
+      </trans-unit>
+      <trans-unit id="1748699440545267709" datatype="html">
+        <source>Close row <x id="row" equiv-text="label"/></source>
+        <target state="translated">Reihe <x id="row" equiv-text="label"/> schließen</target>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/venue/venue-map.ts</context>
+        </context-group>
+        <note priority="1" from="description">Accessible name of the control that closes an open beach-map row</note>
+      </trans-unit>
+      <trans-unit id="3573555021964404664" datatype="html">
+        <source><x id="spot" equiv-text="pick.spot"/> picked, <x id="price" equiv-text="pick.price"/>. The button to continue is at the bottom of the screen.</source>
+        <target state="translated"><x id="spot" equiv-text="pick.spot"/> gewählt, <x id="price" equiv-text="pick.price"/>. Die Schaltfläche zum Fortfahren ist unten auf dem Bildschirm.</target>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/venue/venue-map.ts</context>
+        </context-group>
+        <note priority="1" from="description">Screen-reader announcement when a set is picked on the phone beach map</note>
+      </trans-unit>
       <trans-unit id="3825947165089033091" datatype="html">
         <source><x id="venue" equiv-text="view.name"/>, <x id="beach" equiv-text="view.beach"/> — Riviera</source>
         <target state="translated"><x id="venue" equiv-text="view.name"/>, <x id="beach" equiv-text="view.beach"/> — Riviera</target>
@@ -13704,6 +13786,14 @@
         <context-group purpose="location">
           <context context-type="sourcefile">src/app/venue/venue-map.ts</context>
         </context-group>
+      </trans-unit>
+      <trans-unit id="823747963269970654" datatype="html">
+        <source><x id="free" equiv-text="free"/> of <x id="total" equiv-text="total"/> free</source>
+        <target state="translated"><x id="free" equiv-text="free"/> von <x id="total" equiv-text="total"/> frei</target>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/venue/venue-map.ts</context>
+        </context-group>
+        <note priority="1" from="description">Free sets against all sets in a beach-map zone or row</note>
       </trans-unit>
       <trans-unit id="7014177484207317753" datatype="html">
         <source> Guest reviews </source>
