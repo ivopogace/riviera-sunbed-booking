@@ -262,6 +262,8 @@ test('an open row starts at its first free set when none shows from position 1, 
   await closedRow(page, 'A').click();
   await expect(tile(page, 'A', 13)).toHaveAttribute('aria-pressed', 'true');
   expect(await inView(tile(page, 'A', 13))).toBe(true);
+  // Focus lands on the tile in view, not on the first free tile scrolled out of it.
+  await expect(tile(page, 'A', 13)).toBeFocused();
 });
 
 test('a closed row is named with its row, price and free count; what it draws is hidden from a screen reader', async ({
@@ -402,6 +404,23 @@ test('a 40-column beach keeps 12px cells and pans every closed row as one block'
   const offsets = await overviewOffsets(page);
   expect(new Set(offsets).size).toBe(1);
   expect(offsets[0]).toBeGreaterThan(182);
+});
+
+test('on a beach that pans, Tab walks the row buttons and nothing hidden; axe is clean', async ({
+  page,
+}) => {
+  await openMap(page, wideBeachVenue('wide40'));
+  await openRow(page, 'A').getByTestId('lens-close').click();
+  await expect(closedRow(page, 'A')).toBeFocused();
+
+  // Each closed row holds a scroller that overflows: none of them may take a tab stop.
+  for (const code of ['B', 'C', 'D']) {
+    await page.keyboard.press('Tab');
+    await expect(closedRow(page, code)).toBeFocused();
+  }
+
+  await expectNoSeriousAxeViolations(page, 'tourist row lens, 40 columns, no row open');
+  await expectTouchTargets(page, 'tourist row lens, 40 columns, no row open');
 });
 
 test('a 26-row beach scrolls with the page: the lens has no vertical scroller of its own', async ({

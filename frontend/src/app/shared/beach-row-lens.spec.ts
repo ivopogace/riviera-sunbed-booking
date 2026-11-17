@@ -268,6 +268,19 @@ describe('BeachRowLens', () => {
       expect(document.activeElement?.textContent?.trim()).toBe('2');
     });
 
+    it('focuses the tile the row pans to, which is the one in view', async () => {
+      fixture.componentInstance.rows.update((rows) => [
+        { ...rows[0], panTo: { index: 4, align: 'center' } },
+        ...rows.slice(1),
+      ]);
+      await settle();
+
+      closedRow('A').click();
+      await settle();
+
+      expect(document.activeElement?.textContent.trim()).toBe('5');
+    });
+
     it('opening another row closes the first', async () => {
       closedRow('B').click();
       await settle();
@@ -372,6 +385,58 @@ describe('BeachRowLens', () => {
     });
   });
 
+  describe('a row the surface opens again', () => {
+    it('pans afresh when the surface writes the open rows, and not when rows merely change', async () => {
+      const offsets = vi
+        .spyOn(HTMLElement.prototype, 'offsetLeft', 'get')
+        .mockImplementation(function (this: HTMLElement) {
+          return this.tagName === 'LI' ? [...this.parentElement!.children].indexOf(this) * 50 : 0;
+        });
+      const widths = vi
+        .spyOn(HTMLElement.prototype, 'offsetWidth', 'get')
+        .mockImplementation(function (this: HTMLElement) {
+          return this.tagName === 'LI' ? 44 : 0;
+        });
+      const clients = vi
+        .spyOn(HTMLElement.prototype, 'clientWidth', 'get')
+        .mockImplementation(function (this: HTMLElement) {
+          return this.dataset['lensPan'] === undefined ? 0 : 200;
+        });
+      const withPanTo = (index: number): void =>
+        fixture.componentInstance.rows.update((rows) => [
+          { ...rows[0], panTo: { index, align: 'start' } },
+          ...rows.slice(1),
+        ]);
+      const pan = (): HTMLElement => openRow('A')!.querySelector<HTMLElement>('[data-lens-pan]')!;
+      try {
+        withPanTo(4);
+        fixture.componentInstance.open.set(['A']);
+        await settle();
+        expect(pan().scrollLeft).toBe(200);
+
+        // The same row object list with a new target, the row still open: a pick toggling.
+        withPanTo(5);
+        await settle();
+        expect(pan().scrollLeft).toBe(200);
+
+        // The surface opens the same row again (a read for other days): it pans to the new target.
+        fixture.componentInstance.open.set(['A']);
+        await settle();
+        expect(pan().scrollLeft).toBe(250);
+
+        // And back to position 1 when the new target shows from there.
+        withPanTo(1);
+        fixture.componentInstance.open.set(['A']);
+        await settle();
+        expect(pan().scrollLeft).toBe(0);
+      } finally {
+        offsets.mockRestore();
+        widths.mockRestore();
+        clients.mockRestore();
+      }
+    });
+  });
+
   describe('a beach wider than the overview', () => {
     /** Every closed row 280px wide over 560px of columns: 14 of the 28 "columns" in view. */
     async function overflow(): Promise<HTMLElement[]> {
@@ -419,6 +484,28 @@ describe('BeachRowLens', () => {
       expect(scrollers.map((s) => s.scrollLeft)).toEqual([140, 140, 140]);
       expect(all('lens-position-text')[0].textContent.trim()).toBe('8–21 of 28');
       expect(all('lens-position-thumb')[0].style.left).toBe('25%');
+    });
+
+    it('takes a moved row’s own scroll event for an echo, not for the finger', async () => {
+      const scrollers = await overflow();
+      scrollers[1].scrollLeft = 140;
+      scrollers[1].dispatchEvent(new Event('scroll'));
+
+      // The finger moves on before row A's echo of 140 is delivered.
+      scrollers[1].scrollLeft = 160;
+      scrollers[0].dispatchEvent(new Event('scroll'));
+
+      expect(scrollers[1].scrollLeft).toBe(160);
+
+      // A real scroll of row A still drives every row.
+      scrollers[0].scrollLeft = 90;
+      scrollers[0].dispatchEvent(new Event('scroll'));
+      expect(scrollers.map((s) => s.scrollLeft)).toEqual([90, 90, 90]);
+    });
+
+    it('keeps the hidden overview scrollers out of the tab order', async () => {
+      const scrollers = await overflow();
+      expect(scrollers.map((s) => s.getAttribute('tabindex'))).toEqual(['-1', '-1', '-1']);
     });
 
     it('the overview follows the open row’s pan', async () => {

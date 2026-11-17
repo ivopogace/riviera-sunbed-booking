@@ -17,7 +17,7 @@ import { MAP_OVERVIEW_LOOKS, MAP_TILE_STATES } from './map-tile';
  * WCAG 1.4.11 guard for the phone row lens (#1762): every overview state, the pick, the plan ring,
  * the chevron and the position bar clear 3:1 against what they sit on, in each of the three themes.
  * Closed rows sit on the sea→sand wash, so each is measured over all three wash stops; the open
- * row's own surface is the chip fill composited over those stops.
+ * row's own surface is `--riv-map-open-row-fill` composited over those stops.
  *
  * Token values are read from `src/tailwind.css` as text, per theme, so a retune moves these numbers
  * with it; the looks' class strings are pinned to the tokens measured, so the two cannot part. The
@@ -82,7 +82,7 @@ const ratio = (a: Rgb, b: Rgb): number => contrastRatio(rgbToHex(a), rgbToHex(b)
 describe.each(THEMES)('Row lens non-text contrast, $name theme', ({ name, token }) => {
   const wash = ['--riv-map-sea', '--riv-map-mid', '--riv-map-sand'].map((t) => token(t).color);
   /** The open row's card: the chip fill over each wash stop. */
-  const openSurface = wash.map((stop) => over(token('--riv-map-chip-fill'), stop));
+  const openSurface = wash.map((stop) => over(token('--riv-map-open-row-fill'), stop));
 
   function expectOver(grounds: readonly Rgb[], what: string, paint: Paint, floor = NON_TEXT): void {
     for (const ground of grounds) {
@@ -149,6 +149,23 @@ describe.each(THEMES)('Row lens non-text contrast, $name theme', ({ name, token 
       expect(ratio(fill, ink)).toBeGreaterThanOrEqual(NON_TEXT);
     });
 
+    // `venue-map.contrast.spec.ts` proves these inks with the tile straight on the wash; here the
+    // open row's surface is under the tile, which in dark is what decides the ratio.
+    it.each([
+      ['available', '--riv-tile-available-ink', '--riv-tile-available-fill'],
+      ['front row', '--riv-tile-premium-ink', '--riv-tile-premium-fill'],
+      ['walk-in', '--riv-tile-walkin-ink', '--riv-tile-walkin-fill'],
+      ['taken', '--riv-tile-taken-ink', '--riv-tile-taken-fill'],
+    ])('the %s tile’s number reads at AA on its fill over the open row', (what, ink, fill) => {
+      for (const ground of openSurface) {
+        const tile = over(token(fill), ground);
+        expect(
+          ratio(token(ink).color, tile),
+          `${what} ${rgbToHex(token(ink).color)} on ${rgbToHex(tile)} in ${name}`,
+        ).toBeGreaterThanOrEqual(AA_NORMAL);
+      }
+    });
+
     it('the head’s summary and the band’s count read at AA', () => {
       expectOver(openSurface, 'the soft card ink', token('--riv-card-ink-soft'), AA_NORMAL);
     });
@@ -203,7 +220,7 @@ describe('Row lens looks are drawn in the tokens measured above', () => {
     expect(lens).toContain('place-items-center rounded-xl text-riv-accent-ink');
     expect(lens).toContain('border-t-4 border-riv-accent-ink');
     expect(lens).toContain('bg-riv-map-chip-border');
-    expect(lens).toContain('bg-riv-map-chip-fill');
+    expect(lens).toContain('bg-riv-map-open-row-fill');
   });
 
   it('the picked tile wears the pick tokens, tick included', () => {

@@ -347,18 +347,44 @@ describe('VenueMap on a phone: the row lens (#1762)', () => {
       expect((dialog.componentInstance as BookingDialog).set()?.id).toBe(3);
     });
 
+    /** Dismiss the open dialog; the map re-reads, answered with `venue`. */
+    async function dismissDialog(venue: VenueMapView): Promise<void> {
+      const dialog = fixture.debugElement.query(By.directive(BookingDialog));
+      (dialog.componentInstance as BookingDialog).dismissed.emit();
+      fixture.detectChanges();
+      venueReq().flush(venue);
+      await settle();
+    }
+
     it('dismissing the dialog keeps the pick and returns focus to the bar’s action', async () => {
       await load();
       await tap(tile(3));
       await tap(one('pick-book')!);
 
-      const dialog = fixture.debugElement.query(By.directive(BookingDialog));
-      (dialog.componentInstance as BookingDialog).dismissed.emit();
-      await settle();
+      await dismissDialog(beach());
 
       expect(fixture.debugElement.query(By.directive(BookingDialog))).toBeNull();
       expect(tile(3).getAttribute('aria-pressed')).toBe('true');
       expect(document.activeElement).toBe(one('pick-book'));
+    });
+
+    it('dismissing re-reads the map, and a pick someone else just booked is dropped with its bar', async () => {
+      await load();
+      await tap(tile(3));
+      await tap(one('pick-book')!);
+
+      const taken = beach();
+      await dismissDialog({
+        ...taken,
+        sets: taken.sets.map((set) => (set.id === 3 ? { ...set, availability: 'TAKEN' } : set)),
+      });
+
+      expect(one('pick-bar')).toBeNull();
+      expect(one('pick-status')!.textContent.trim()).toBe('');
+      expect(all('lens-cell').filter((cell) => cell.dataset['state'] === 'pick')).toHaveLength(0);
+      // The row stays open on the fresh map, and focus is not left on <body> with the bar gone.
+      expect(openCodes()).toEqual(['A']);
+      expect(document.activeElement).toBe(one('beach-grid'));
     });
 
     it('words the action as a request at a Request-to-Book venue', async () => {
@@ -399,24 +425,6 @@ describe('VenueMap on a phone: the row lens (#1762)', () => {
       expect(openCodes()).toEqual(['A']);
       await tap(rowButton('B'));
       expect(tile(7).getAttribute('aria-pressed')).toBe('false');
-    });
-
-    it('is cleared when a re-read of the same days finds the set no longer bookable', async () => {
-      await load();
-      await tap(tile(2));
-
-      // Any same-days re-read; the retry handler is the one this spec can reach without a plan dialog.
-      (fixture.componentInstance as unknown as { retry(): void }).retry();
-      const taken = beach();
-      venueReq().flush({
-        ...taken,
-        sets: taken.sets.map((set) => (set.id === 2 ? { ...set, availability: 'TAKEN' } : set)),
-      });
-      await settle();
-
-      expect(one('pick-bar')).toBeNull();
-      expect(openCodes()).toEqual(['A']);
-      expect(all('lens-cell').filter((cell) => cell.dataset['state'] === 'pick')).toHaveLength(0);
     });
 
     it('is cleared when the booking goes through', async () => {

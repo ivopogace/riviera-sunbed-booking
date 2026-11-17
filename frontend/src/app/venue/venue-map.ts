@@ -47,7 +47,7 @@ import {
 } from './map-tile';
 import { rowPriceLabel, rowZoneKey } from './row-price-label';
 import { TileView, VenueMapRow } from './venue-map-row';
-import { formatMoney, formatMoneyRange, MoneyView } from '../shared/money';
+import { formatMoney, MoneyView } from '../shared/money';
 import { focusMover } from '../shared/focus-after-render';
 import { formatBookingDate, formatStay } from '../shared/booking-date-label';
 import { PanelGlass } from '../shared/panel-glass';
@@ -212,6 +212,8 @@ export class VenueMap {
   private readonly title = inject(Title);
   /** WCAG 2.4.3: a re-fetch failure tears down the map (which may hold focus) — move it (RV-FE-9). */
   private readonly moveFocus = focusMover();
+  /** Moves focus only when a render took the element that held it (the pick bar's action). */
+  private readonly restoreLostFocus = focusMover({ onlyIfLost: true, preventScroll: true });
 
   protected readonly venue = signal<VenueMapView | undefined>(undefined);
   /** What the way back to other beaches carries: the day, or the stay's first and last day. */
@@ -453,7 +455,7 @@ export class VenueMap {
     const starts = entries.map((_, index) => index === 0 || zones[index] !== zones[index - 1]);
     const tiles = entries.map(([, sets]) => sets.map((set) => this.toTile(set)));
     return entries.map(([label, sets], index) => {
-      // The zone this row sits in: from its start row up to the next start.
+      // The zone this row sits in: from its start row up to the next start. Its rows share one price label.
       let from = index;
       while (!starts[from]) {
         from--;
@@ -462,10 +464,8 @@ export class VenueMap {
       while (to < entries.length && !starts[to]) {
         to++;
       }
-      const zoneSets = entries.slice(from, to).flatMap(([, s]) => s);
       const zoneTiles = tiles.slice(from, to).flat();
       const price = rowPriceLabel(sets);
-      const zonePrice = formatMoneyRange(zoneSets.map((s) => s.price));
       const free = freeCountOf(tiles[index]);
       const count = freeOfLabel(free, sets.length);
       const picked = tiles[index].findIndex((tile) => tile.picked);
@@ -477,14 +477,14 @@ export class VenueMap {
         tileCount: sets.length,
         tiles: tiles[index],
         band: starts[index]
-          ? { title: zonePrice, note: freeOfLabel(freeCountOf(zoneTiles), zoneTiles.length) }
+          ? { title: price, note: freeOfLabel(freeCountOf(zoneTiles), zoneTiles.length) }
           : null,
         cells: tiles[index].map((tile) => ({
           state: tile.picked ? 'pick' : mapOverviewKey(tile.set),
           ring: tile.planRing,
         })),
         note: to - from > 1 ? $localize`:A beach-map row's free sets:${free}:count: free` : null,
-        summary: price === zonePrice ? count : `${price} · ${count}`,
+        summary: count,
         label: $localize`:Accessible name of a beach-map row:Row ${label}:row:, ${price}:price:, ${count}:free:`,
         closeLabel: $localize`:Accessible name of the control that closes an open beach-map row:Close row ${label}:row:`,
         panTo:
@@ -900,8 +900,12 @@ export class VenueMap {
    * read was for a fresh venue or other days: the pick's row, else the first with a free set.
    */
   private settleLens(): void {
-    if (this.pick() === undefined) {
+    if (this.pickId() !== undefined && this.pick() === undefined) {
       this.pickId.set(undefined);
+      // The bar goes with the pick, and may have held focus: land on the map, never on <body>.
+      if (this.phone()) {
+        this.restoreLostFocus('beach-grid');
+      }
     }
     const rows = this.rows();
     if (this.lensUnseeded) {
@@ -911,7 +915,12 @@ export class VenueMap {
         rows.find((row) => freeCountOf(row.tiles) > 0);
       this.lensOpen.set(home === undefined ? [] : [home.code]);
     } else {
-      this.lensOpen.update((open) => open.filter((code) => rows.some((row) => row.code === code)));
+      // Same array when nothing left: a new one tells the lens the rows were opened afresh.
+      this.lensOpen.update((open) =>
+        open.every((code) => rows.some((row) => row.code === code))
+          ? open
+          : open.filter((code) => rows.some((row) => row.code === code)),
+      );
     }
   }
 
@@ -980,6 +989,9 @@ export class VenueMap {
     // Return focus to what opened the dialog (modal a11y): the bar's action for the pick, else the tile.
     if (set !== undefined && this.pick()?.set.id === set.id) {
       this.moveFocus('pick-book');
+      // The dialog may have closed on "someone just booked this set": re-read, so a pick that is
+      // gone is dropped (invariant #2 is the server's; this only stops offering it).
+      this.load();
     } else {
       this.focusTile(this.lastTriggerId);
     }

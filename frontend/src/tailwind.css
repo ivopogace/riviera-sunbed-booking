@@ -139,6 +139,7 @@
   --color-riv-map-rail-ink: var(--riv-map-rail-ink);
   --color-riv-map-chip-fill: var(--riv-map-chip-fill);
   --color-riv-map-chip-border: var(--riv-map-chip-border);
+  --color-riv-map-open-row-fill: var(--riv-map-open-row-fill);
   --color-riv-map-frame-border: var(--riv-map-frame-border);
   --color-riv-map-zoom-selected-fill: var(--riv-map-zoom-selected-fill);
   --color-riv-map-zoom-selected-border: var(--riv-map-zoom-selected-border);
@@ -787,6 +788,10 @@
   --riv-map-rail-ink: #0a4f5e;
   --riv-map-chip-fill: rgba(255, 255, 255, 0.8);
   --riv-map-chip-border: #cfe3df;
+  /** The phone lens's open row, the ground its 44px tiles sit on (#1762). Not the chip fill: in
+      dark that lightens the ground until the tile numbers fall under AA, so dark barely lifts it.
+      Proof: venue/venue-map-lens.contrast.spec.ts. */
+  --riv-map-open-row-fill: rgba(255, 255, 255, 0.8);
   --riv-map-frame-border: rgba(12, 42, 51, 0.25);
   /** The Fit/100% zoom toggle's pair (class F): per-theme, like the rail/chip pairs above —
       not theme-invariant, because it is this WASH that themes, not a fixed fill. AA proof:
@@ -1052,6 +1057,7 @@
   --riv-map-rail-ink: #9adde8;
   --riv-map-chip-fill: rgba(255, 255, 255, 0.12);
   --riv-map-chip-border: rgba(255, 255, 255, 0.25);
+  --riv-map-open-row-fill: rgba(255, 255, 255, 0.04);
   --riv-map-frame-border: rgba(255, 255, 255, 0.22);
   --riv-map-zoom-selected-fill: rgba(255, 255, 255, 0.16);
   --riv-map-zoom-selected-border: #8fd6e2;

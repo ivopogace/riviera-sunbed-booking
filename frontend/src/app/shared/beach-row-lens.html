@@ -37,7 +37,7 @@
         }
         @if (item.open) {
           <div
-            class="-mx-1 my-1 animate-[riv-lens-open_0.18s_ease-out] rounded-[14px] border border-riv-map-chip-border bg-riv-map-chip-fill p-2 motion-reduce:animate-none"
+            class="-mx-1 my-1 animate-[riv-lens-open_0.18s_ease-out] rounded-[14px] border border-riv-map-chip-border bg-riv-map-open-row-fill p-2 motion-reduce:animate-none"
             role="group"
             data-testid="lens-open"
             [attr.data-lens-open]="row.code"
@@ -105,11 +105,12 @@
               aria-hidden="true"
               >{{ row.code }}</span
             >
-            <!-- Padded and pulled back by the same 2px, so a cell's ring is not clipped by the scroller. The grid is at least as wide as all its columns, a narrow row's empty ones included, or that row could not pan as far as the widest. -->
+            <!-- tabindex -1: a browser makes a scroller with nothing focusable in it a tab stop, and this one is hidden from assistive technology inside a button. Padded and pulled back by the same 2px, so a cell's ring is not clipped by the scroller. The grid is at least as wide as all its columns, a narrow row's empty ones included, or that row could not pan as far as the widest. -->
             <span
               class="-m-0.5 block min-w-0 flex-1 scrollbar-none overflow-x-auto overflow-y-hidden p-0.5"
               [class]="fadeClass(overviewFade())"
               aria-hidden="true"
+              tabindex="-1"
               data-lens-cells
               (scroll)="onOverviewScroll($event)"
             >

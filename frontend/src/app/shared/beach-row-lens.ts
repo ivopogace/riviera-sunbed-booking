@@ -190,7 +190,7 @@ export class BeachRowLens {
   readonly open = model<readonly string[]>([]);
   /** Let several rows stay open at once; off, opening a row closes the other. */
   readonly multiOpen = input<boolean>(false);
-  /** Which of a row's tiles takes focus when the user opens it; else its close control. */
+  /** Which tile takes focus when the user opens a row with no `panTo` tile; else its close control. */
   readonly focusOnOpen = input<string>('button');
 
   protected readonly rowsDef = contentChild.required<BeachRowLensTilesDef>(BeachRowLensTilesDef);
@@ -266,6 +266,12 @@ export class BeachRowLens {
 
   /** Rows whose opening pan has been applied; a row leaves when it closes. */
   private readonly panned = new Set<string>();
+  /** The last {@link open} value seen, and the last one the lens wrote itself: any other value is
+   *  the surface opening rows afresh (other days, say), so every open row pans again. */
+  private seenOpen: readonly string[] | null = null;
+  private ownOpen: readonly string[] | null = null;
+  /** Offsets the lens wrote to closed rows, whose scroll events are echoes, not a finger. */
+  private readonly echoes = new WeakMap<HTMLElement, number>();
 
   constructor() {
     afterRenderEffect({
@@ -281,7 +287,6 @@ export class BeachRowLens {
 
     // A resize changes the fit without changing rows, which the render effect cannot see.
     effect((onCleanup) => {
-      this.rows();
       // jsdom has no ResizeObserver; the spec stubs the geometry and the e2e drives the real one.
       if (typeof ResizeObserver === 'undefined') {
         return;
@@ -328,6 +333,13 @@ export class BeachRowLens {
 
   /** Bring a freshly opened row's {@link BeachRowLensRow.panTo} tile into view, once per opening. */
   private startPans(): void {
+    const codes = this.open();
+    if (codes !== this.seenOpen) {
+      if (codes !== this.ownOpen) {
+        this.panned.clear();
+      }
+      this.seenOpen = codes;
+    }
     const open = this.view().filter((v) => v.open);
     for (const code of [...this.panned]) {
       if (!open.some((v) => v.row.code === code)) {
@@ -349,16 +361,20 @@ export class BeachRowLens {
           row.panTo.align === 'center'
             ? tile.offsetLeft - (pan.clientWidth - tile.offsetWidth) / 2
             : tile.offsetLeft;
+      } else if (pan.scrollLeft !== 0) {
+        // A row the surface re-opened in place keeps its old scroll: position 1 shows the tile.
+        pan.scrollLeft = 0;
       }
       this.follow(pan, row);
     }
   }
 
-  /** Move every closed row to one offset. Only a scroller that differs is written, so the scroll
-   *  events this raises settle instead of chasing each other. */
-  private syncOverview(offset: number): void {
+  /** Move every closed row to one offset. Only a scroller that differs is written, and each write
+   *  is remembered so its scroll event is not taken for the user's. */
+  private syncOverview(offset: number, source?: HTMLElement): void {
     for (const scroller of this.overviewScrollers()) {
-      if (Math.abs(scroller.scrollLeft - offset) > 1) {
+      if (scroller !== source && Math.abs(scroller.scrollLeft - offset) > 1) {
+        this.echoes.set(scroller, offset);
         scroller.scrollLeft = offset;
       }
     }
@@ -366,9 +382,16 @@ export class BeachRowLens {
 
   protected onOverviewScroll(event: Event): void {
     const scroller = event.currentTarget as HTMLElement;
+    const echo = this.echoes.get(scroller);
+    this.echoes.delete(scroller);
+    // A row the lens just moved reports the offset it was given: acting on it could pull the row
+    // under the finger back to where it was a frame ago.
+    if (echo !== undefined && Math.abs(scroller.scrollLeft - echo) <= 1) {
+      return;
+    }
     this.offset.set(scroller.scrollLeft);
     this.overviewFade.set(fadeOf(scroller));
-    this.syncOverview(scroller.scrollLeft);
+    this.syncOverview(scroller.scrollLeft, scroller);
   }
 
   protected onOpenPan(event: Event, row: BeachRowLensRow): void {
@@ -395,6 +418,7 @@ export class BeachRowLens {
   protected openRow(code: string, button: EventTarget | null): void {
     const top = button instanceof HTMLElement ? button.getBoundingClientRect().top : null;
     this.open.update((open) => (this.multiOpen() ? [...open, code] : [code]));
+    this.ownOpen = this.open();
     afterNextRender(
       {
         write: () => {
@@ -406,7 +430,13 @@ export class BeachRowLens {
           if (Math.abs(moved) >= 1) {
             globalThis.scrollBy(0, moved);
           }
+          // The tile the row pans to is the one in view: focus there, not on a tile scrolled away.
+          const panTo = this.rows().find((r) => r.code === code)?.panTo;
+          const tile = panTo
+            ? row.querySelector('[data-lens-pan]')?.firstElementChild?.children[panTo.index]
+            : undefined;
           const target =
+            tile?.querySelector<HTMLElement>('button') ??
             row.querySelector<HTMLElement>(`[data-lens-pan] :is(${this.focusOnOpen()})`) ??
             row.querySelector<HTMLElement>('[data-lens-close]');
           target?.focus({ preventScroll: true });
@@ -419,6 +449,7 @@ export class BeachRowLens {
   /** Close a row and hand focus back to its button (WCAG 2.4.3: the close control is destroyed). */
   protected closeRow(code: string): void {
     this.open.update((open) => open.filter((c) => c !== code));
+    this.ownOpen = this.open();
     afterNextRender(
       {
         write: () => {
