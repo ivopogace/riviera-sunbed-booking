@@ -9,20 +9,22 @@
       data-testid="row-lens"
     >
       @if (overflowing()) {
-        <!-- The thumb is a border, not a fill: forced colours drop backgrounds. -->
         <div
           class="mr-[22px] mb-1 ml-[30px] flex items-center gap-2 text-[12px] text-riv-card-ink-soft"
           aria-hidden="true"
           data-testid="lens-position"
         >
-          <span class="relative h-1 flex-1 rounded-full bg-riv-map-chip-border">
-            <span
-              class="absolute top-0 h-0 rounded-full border-t-4 border-riv-accent-ink"
-              data-testid="lens-position-thumb"
-              [style.left.%]="thumbLeft()"
-              [style.width.%]="thumbWidth()"
-            ></span>
-          </span>
+          <ng-container
+            *ngTemplateOutlet="
+              thumb;
+              context: {
+                left: thumbLeft(),
+                width: thumbWidth(),
+                frame: 'flex-1',
+                testid: 'lens-position-thumb',
+              }
+            "
+          />
           <span data-testid="lens-position-text" i18n="Which beach-map columns are in view"
             >{{ columnsInView().first }}–{{ columnsInView().last }} of {{ cols() }}</span
           >
@@ -75,7 +77,7 @@
             </div>
             <!-- The scroller clips, and a badge overhangs its tile upward and sideways: headroom on the viewport, room below for a focus ring, side room on the track, so both ends of the pan keep it. The track is as wide as its tiles, which is their content unless the surface gives them a width. No edge fade: at some widths it would lie over a whole tile. -->
             <div
-              class="relative -mx-2 -mt-[9px] -mb-[5px] scrollbar-none scroll-px-2 overflow-x-auto overflow-y-hidden pt-[9px] pb-[5px]"
+              class="relative -mx-2 -mt-[9px] -mb-[5px] scrollbar-none overflow-x-auto overflow-y-hidden pt-[9px] pb-[5px]"
               data-testid="lens-pan"
               [attr.data-lens-pan]="row.code"
               (scroll)="onOpenPan($event, row)"
@@ -89,20 +91,19 @@
                 />
               </div>
             </div>
-            <!-- A row cut at a tile's edge shows no cut tile, so the thumb says it pans. A border, not a fill: forced colours drop backgrounds. -->
+            <!-- A row cut at a tile's edge shows no cut tile, so the thumb says it pans. -->
             @if (openSpan(row.code); as span) {
-              <span
-                class="relative mt-[11px] block h-1 rounded-full bg-riv-map-chip-border"
-                aria-hidden="true"
-                data-testid="lens-open-position"
-              >
-                <span
-                  class="absolute top-0 h-0 rounded-full border-t-4 border-riv-accent-ink"
-                  data-testid="lens-open-thumb"
-                  [style.left.%]="span.left"
-                  [style.width.%]="span.width"
-                ></span>
-              </span>
+              <ng-container
+                *ngTemplateOutlet="
+                  thumb;
+                  context: {
+                    left: span.left,
+                    width: span.width,
+                    frame: 'mt-[11px] block',
+                    testid: 'lens-open-thumb',
+                  }
+                "
+              />
             }
           </div>
         } @else {
@@ -188,3 +189,15 @@
     <ng-content select="[lensEmpty]" />
   }
 </app-beach-grid-frame>
+
+<!-- Which part of a sideways scroller is in view. The thumb is a border, not a fill: forced colours drop backgrounds. -->
+<ng-template #thumb let-left="left" let-width="width" let-frame="frame" let-testid="testid">
+  <span class="relative h-1 rounded-full bg-riv-map-chip-border" [class]="frame" aria-hidden="true">
+    <span
+      class="absolute top-0 h-0 rounded-full border-t-4 border-riv-accent-ink"
+      [attr.data-testid]="testid"
+      [style.left.%]="left"
+      [style.width.%]="width"
+    ></span>
+  </span>
+</ng-template>

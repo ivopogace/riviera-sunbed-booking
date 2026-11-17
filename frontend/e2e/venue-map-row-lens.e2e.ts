@@ -344,14 +344,16 @@ test('the open row has no edge fade, and a picked tile and its tick are never cu
   await inside(pan.getByTestId('pick-tick'), `the tick on tile ${cut}`);
   await tile(page, 'A', cut).click();
 
-  // A narrower viewport cuts a pick that was whole: it is brought in again.
-  await page.setViewportSize({ width: 412, height: 844 });
+  // A narrower viewport cuts a pick that was whole, or pushes it out: it is brought in again.
+  await page.setViewportSize({ width: 430, height: 844 });
   await pan.evaluate((el) => (el.scrollLeft = 0));
   await settle(page);
   const wide = await lastWhole();
   await tile(page, 'A', wide).click();
-  await page.setViewportSize({ width: 360, height: 844 });
+  const wideBox = (await tile(page, 'A', wide).boundingBox())!;
+  await page.setViewportSize({ width: 320, height: 844 });
   await settle(page);
+  expect(wideBox.x, 'the pick would be wholly out of the narrow viewport').toBeGreaterThan(320);
   expect(await lastWhole()).toBeLessThan(13);
   await inside(tile(page, 'A', wide), `picked tile ${wide} after the viewport narrowed`);
   await inside(pan.getByTestId('pick-tick'), 'the tick after the viewport narrowed');
@@ -365,7 +367,7 @@ test('the open row has no edge fade, and a picked tile and its tick are never cu
   await settle(page);
   const thumb = openRow(page, 'A').getByTestId('lens-open-thumb');
   const span = async (): Promise<{ left: number; width: number }> => {
-    const track = (await openRow(page, 'A').getByTestId('lens-open-position').boundingBox())!;
+    const track = (await thumb.locator('xpath=..').boundingBox())!;
     const box = (await thumb.boundingBox())!;
     return { left: (box.x - track.x) / track.width, width: box.width / track.width };
   };
@@ -815,7 +817,7 @@ test.describe('how the overview states paint', () => {
             },
             { shot: shot.toString('base64'), wash: wash.toString('base64') },
           );
-          // The cell alone is 24 device pixels at 2x: 27 is a ring on both sides, 26 or less a side cut off.
+          // The cell is 24 device pixels at 2x and the ring paints 2 a side, 28 in all: a side cut off is 26.
           expect(
             painted.width,
             `plan set ${index + 1} in ${theme}: ring left to right`,

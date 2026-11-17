@@ -57,9 +57,9 @@ export interface BeachRowLensRow {
   readonly closeLabel: string;
   /** The tile the open row must show when it opens; the lens pans only if it is out of view. */
   readonly panTo: { readonly index: number; readonly align: 'start' | 'center' } | null;
-  /** The index of a tile wearing a badge that overhangs it. When it changes to a tile, and on a
-   *  resize, the open row scrolls by the least that shows it whole with room for the badge; on
-   *  opening that is after the pan to `panTo`, so name the same tile or one beside it. */
+  /** The index of a tile wearing a badge that overhangs it. When it changes to a tile, and when a
+   *  resize cuts it, the open row scrolls by the least that shows it whole with room for the badge;
+   *  on opening that is after the pan to `panTo`, so name the same tile or one beside it. */
   readonly keepWhole?: number | null;
 }
 
@@ -151,6 +151,22 @@ function fadeOf(el: HTMLElement): Fade {
 interface OpenSpan {
   readonly left: number;
   readonly width: number;
+}
+
+/** A scroller's span, or none when it fits. An overscrolled pan, as iOS rubber-bands, is clamped. */
+function spanOf(pan: HTMLElement): OpenSpan | undefined {
+  const max = pan.scrollWidth - pan.clientWidth;
+  if (max <= 1) {
+    return undefined;
+  }
+  return {
+    left: (Math.max(0, Math.min(max, pan.scrollLeft)) / pan.scrollWidth) * 100,
+    width: (pan.clientWidth / pan.scrollWidth) * 100,
+  };
+}
+
+function same(a: OpenSpan | undefined, b: OpenSpan | undefined): boolean {
+  return a?.left === b?.left && a?.width === b?.width;
 }
 
 /** A lens row as rendered: the surface's row plus what the template would otherwise recompute. */
@@ -281,6 +297,8 @@ export class BeachRowLens {
 
   /** Rows whose opening pan has been applied, with the `keepWhole` last seen; a row leaves when it closes. */
   private readonly panned = new Map<string, number | null>();
+  /** Open rows whose `keepWhole` tile was at least partly in view when last looked at. */
+  private readonly keptInView = new Set<string>();
   /** The {@link panAgain} value the open rows were last panned for. */
   private pannedFor = 0;
   /** Offsets the lens wrote to closed rows, whose scroll events are echoes, not a finger. */
@@ -343,16 +361,12 @@ export class BeachRowLens {
     }
     const spans = new Map<string, OpenSpan>();
     for (const pan of this.host.nativeElement.querySelectorAll<HTMLElement>('[data-lens-pan]')) {
-      if (pan.scrollWidth > pan.clientWidth + 1) {
-        spans.set(pan.dataset['lensPan'] ?? '', {
-          left: (pan.scrollLeft / pan.scrollWidth) * 100,
-          width: (pan.clientWidth / pan.scrollWidth) * 100,
-        });
+      const span = spanOf(pan);
+      if (span) {
+        spans.set(pan.dataset['lensPan'] ?? '', span);
       }
     }
     const before = this.openSpans();
-    const same = (a: OpenSpan | undefined, b: OpenSpan): boolean =>
-      a?.left === b.left && a.width === b.width;
     if (spans.size !== before.size || [...spans].some(([code, s]) => !same(before.get(code), s))) {
       this.openSpans.set(spans);
     }
@@ -369,6 +383,7 @@ export class BeachRowLens {
     for (const code of [...this.panned.keys()]) {
       if (!open.some((v) => v.row.code === code)) {
         this.panned.delete(code);
+        this.keptInView.delete(code);
       }
     }
     for (const { row } of open) {
@@ -396,6 +411,7 @@ export class BeachRowLens {
         }
       }
       this.bringIn(pan, row);
+      this.noteKept(pan, row);
       // The overview is the user's to pan while the open row stands still.
       if (fresh || pan.scrollLeft !== before) {
         this.follow(pan, row);
@@ -423,18 +439,24 @@ export class BeachRowLens {
     return first instanceof HTMLElement ? first.offsetLeft : 0;
   }
 
-  /** A change of width can cut a named tile that was whole: one still partly in view is brought
-   *  in again, and one the user panned away from is left there. */
+  /** A change of width can push a named tile out: one that was in view before it is brought in
+   *  again, and one the user had panned away from is left there. */
   private keepWholeTiles(): void {
     for (const { row, open } of this.view()) {
       const pan = open && this.openRowEl(row.code)?.querySelector<HTMLElement>('[data-lens-pan]');
-      const tile = pan && typeof row.keepWhole === 'number' && this.tiles(pan)[row.keepWhole];
-      if (pan && tile) {
-        const left = tile.offsetLeft - pan.scrollLeft;
-        if (left < pan.clientWidth && left + tile.offsetWidth > 0) {
-          this.bringIn(pan, row);
-        }
+      if (pan && this.keptInView.has(row.code)) {
+        this.bringIn(pan, row);
       }
+    }
+  }
+
+  private noteKept(pan: HTMLElement, row: BeachRowLensRow): void {
+    const tile = typeof row.keepWhole === 'number' ? this.tiles(pan)[row.keepWhole] : undefined;
+    const left = tile ? tile.offsetLeft - pan.scrollLeft : 0;
+    if (tile && left < pan.clientWidth && left + tile.offsetWidth > 0) {
+      this.keptInView.add(row.code);
+    } else {
+      this.keptInView.delete(row.code);
     }
   }
 
@@ -496,7 +518,17 @@ export class BeachRowLens {
   protected onOpenPan(event: Event, row: BeachRowLensRow): void {
     const pan = event.currentTarget as HTMLElement;
     this.follow(pan, row);
-    this.measure();
+    this.noteKept(pan, row);
+    const span = spanOf(pan);
+    if (!same(this.openSpans().get(row.code), span)) {
+      const spans = new Map(this.openSpans());
+      if (span) {
+        spans.set(row.code, span);
+      } else {
+        spans.delete(row.code);
+      }
+      this.openSpans.set(spans);
+    }
   }
 
   /** The panned overview follows the open row, so the columns being picked from stay in view. */
@@ -517,6 +549,7 @@ export class BeachRowLens {
     const offset = Math.max(0, Math.min(max, column * columnPitch - scroller.clientWidth / 2));
     this.offset.set(offset);
     this.syncOverview(offset);
+    this.overviewFade.set(fadeOf(scroller));
   }
 
   /** Open a row where it stands: the page is scrolled back by whatever the change moved it. */
