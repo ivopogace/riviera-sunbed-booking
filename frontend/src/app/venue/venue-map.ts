@@ -497,11 +497,17 @@ export class VenueMap {
     });
   });
 
-  /** The pick, while it is still a bookable set on a phone-width map. */
-  protected readonly pick = computed<PickView | undefined>(() => {
+  /** The picked set's tile while the map shows it bookable, at any width: the pick's one validity test. */
+  private readonly pickedTile = computed(() => {
+    const id = this.pickId();
     const tile = this.rows()
       .flatMap((row) => row.tiles)
-      .find((t) => t.picked);
+      .find((t) => t.set.id === id);
+    return tile?.bookable ? tile : undefined;
+  });
+  /** The pick as shown: phone widths only, where the bar and the solid tile are. */
+  protected readonly pick = computed<PickView | undefined>(() => {
+    const tile = this.phone() ? this.pickedTile() : undefined;
     return tile === undefined
       ? undefined
       : {
@@ -527,13 +533,14 @@ export class VenueMap {
       }
     });
     // Crossing `sm` swaps the lens and the canvas and takes the bar: focus held there follows its tile, else lands on the map.
-    let mounted = false;
+    let wasPhone = this.phone();
     effect(() => {
-      this.phone();
-      if (mounted && untracked(() => this.venue() !== undefined)) {
+      const phone = this.phone();
+      // Compared, not assumed: two flips before a flush re-run this with nothing swapped.
+      if (phone !== wasPhone && untracked(() => this.venue() !== undefined)) {
         untracked(() => this.carryFocusAcrossLayouts());
       }
-      mounted = true;
+      wasPhone = phone;
     });
     // In-place route changes only: skip runs matching the last route key (fresh mount loads below).
     let current = this.routeKey();
@@ -906,7 +913,9 @@ export class VenueMap {
     if (!inMap && !this.pickBarHoldsFocus()) {
       return;
     }
-    const setId = Number(held?.getAttribute('data-set-id'));
+    const setId = held?.hasAttribute('data-set-id')
+      ? Number(held.getAttribute('data-set-id'))
+      : null;
     const row = this.rows().find((r) => r.tiles.some((tile) => tile.set.id === setId));
     if (row === undefined) {
       this.moveFocus('beach-grid');
@@ -918,12 +927,7 @@ export class VenueMap {
     afterNextRender(
       {
         write: () => {
-          const tile = document.querySelector<HTMLElement>(`[data-set-id="${setId}"]`);
-          if (tile) {
-            tile.focus();
-          } else {
-            this.moveFocus('beach-grid');
-          }
+          document.querySelector<HTMLElement>(`[data-set-id="${setId}"]`)?.focus();
         },
       },
       { injector: this.injector },
@@ -953,9 +957,8 @@ export class VenueMap {
    */
   private settleLens(): void {
     const rows = this.rows();
-    // By id, not by the phone-only pick(): a read at canvas width must keep a pick the phone made.
-    const picked = rows.flatMap((row) => row.tiles).find((tile) => tile.set.id === this.pickId());
-    if (this.pickId() !== undefined && picked?.bookable !== true) {
+    // Judged at any width: a read at canvas width must keep a pick the phone made, and drop a taken one.
+    if (this.pickId() !== undefined && this.pickedTile() === undefined) {
       // The bar goes with the pick: focus it held lands on the open row, which names itself.
       if (this.pickBarHoldsFocus()) {
         this.moveFocus('lens-open', 'beach-grid');

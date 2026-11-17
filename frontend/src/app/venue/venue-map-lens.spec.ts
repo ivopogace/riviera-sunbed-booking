@@ -463,6 +463,25 @@ describe('VenueMap on a phone: the row lens (#1762)', () => {
       expect(one('pick-summary')!.textContent).toContain('A · spot 3');
     });
 
+    it('a re-read at canvas width drops a pick it shows taken, so a later read cannot bring it back', async () => {
+      await load();
+      await tap(tile(3));
+
+      crossSm(false);
+      await settle();
+      const taken = beach();
+      await reread({
+        ...taken,
+        sets: taken.sets.map((set) => (set.id === 3 ? { ...set, availability: 'TAKEN' } : set)),
+      });
+      await reread(beach());
+      crossSm(true);
+      await settle();
+
+      expect(one('pick-bar')).toBeNull();
+      expect(tile(3).getAttribute('aria-pressed')).toBe('false');
+    });
+
     it('unpicking while the bar’s action holds focus hands focus to the tile', async () => {
       await load();
       await tap(tile(3));
