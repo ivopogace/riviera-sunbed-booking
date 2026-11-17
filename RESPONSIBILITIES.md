@@ -1555,7 +1555,7 @@ The SPA rules whose TSDoc points here; structure is `riviera-frontend`'s, stylin
   follows the open row's pan. A 20-column beach fits a 390px phone only because the map card (and
   its skeleton) sits in a 12px gutter there. Rows scroll with the page, never inside the lens.
   An open row wider than its viewport shows a thumb, never an edge fade, and keeps the tile its row
-  names (`keepWhole`, the pick here) whole with its badge: on a pick, a keyboard focus and a resize.
+  names (`keepWhole`, the pick here) whole with its badge, as it does a tile focused from the keyboard.
 - **The rails' label ellipsis and `rowName()`'s non-letter branch stay, defensive only** (#1626): the
   rails render active sets only (`active_set_position`, `JdbcVenueCatalog`), so no live map reaches a
   long label; the unit specs keep the classes, `loading-skeletons.e2e.ts` the capped rail's width under
