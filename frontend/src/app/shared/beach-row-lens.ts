@@ -355,7 +355,14 @@ export class BeachRowLens {
         continue;
       }
       const tile = this.panTile(pan, row);
-      if (tile && row.panTo && tile.offsetLeft + tile.offsetWidth > pan.clientWidth) {
+      if (!tile || !row.panTo) {
+        // No target: a row panned again in place returns to position 1, and nothing else moves.
+        if (pan.scrollLeft !== 0) {
+          pan.scrollLeft = 0;
+        }
+        continue;
+      }
+      if (tile.offsetLeft + tile.offsetWidth > pan.clientWidth) {
         pan.scrollLeft =
           row.panTo.align === 'center'
             ? tile.offsetLeft - (pan.clientWidth - tile.offsetWidth) / 2
@@ -387,22 +394,21 @@ export class BeachRowLens {
 
   protected onOverviewScroll(event: Event): void {
     const scroller = event.currentTarget as HTMLElement;
+    this.overviewFade.set(fadeOf(scroller));
     const echo = this.echoes.get(scroller);
     this.echoes.delete(scroller);
     // An echo of the lens's own write: acting on it could pull the row under the finger back a frame.
     if (echo !== undefined && Math.abs(scroller.scrollLeft - echo) <= 1) {
-      this.overviewFade.set(fadeOf(scroller));
       return;
     }
     this.offset.set(scroller.scrollLeft);
-    this.overviewFade.set(fadeOf(scroller));
     this.syncOverview(scroller.scrollLeft, scroller);
   }
 
   protected onOpenPan(event: Event, row: BeachRowLensRow): void {
     const pan = event.currentTarget as HTMLElement;
-    this.measure();
     this.follow(pan, row);
+    this.measure();
   }
 
   /** The panned overview follows the open row, so the columns being picked from stay in view. */

@@ -22,6 +22,7 @@ import { BookingDialog } from '../booking/booking-dialog';
 import { BookingConfirmation } from '../booking/booking.model';
 import { ProofOfWork } from '../core/proof-of-work';
 import { addDays, defaultBookingDate } from '../shared/booking-date';
+import { BeachRowLens } from '../shared/beach-row-lens';
 import { BELOW_SM } from '../shared/phone-viewport';
 import { ItineraryView, SetView, VenueMapView } from '../shared/venue-views';
 import { PartlyFreeSheet } from './partly-free-sheet';
@@ -294,6 +295,15 @@ describe('VenueMap on a phone: the row lens (#1762)', () => {
   });
 
   describe('the pick', () => {
+    /** Dismiss the open dialog; the map re-reads, answered with `venue`. */
+    async function dismissDialog(venue: VenueMapView): Promise<void> {
+      const dialog = fixture.debugElement.query(By.directive(BookingDialog));
+      (dialog.componentInstance as BookingDialog).dismissed.emit();
+      fixture.detectChanges();
+      venueReq().flush(venue);
+      await settle();
+    }
+
     it('a tap picks the set and shows the bar; a second tap clears both', async () => {
       await load();
       expect(tile(2).getAttribute('aria-pressed')).toBe('false');
@@ -346,15 +356,6 @@ describe('VenueMap on a phone: the row lens (#1762)', () => {
       const dialog = fixture.debugElement.query(By.directive(BookingDialog));
       expect((dialog.componentInstance as BookingDialog).set()?.id).toBe(3);
     });
-
-    /** Dismiss the open dialog; the map re-reads, answered with `venue`. */
-    async function dismissDialog(venue: VenueMapView): Promise<void> {
-      const dialog = fixture.debugElement.query(By.directive(BookingDialog));
-      (dialog.componentInstance as BookingDialog).dismissed.emit();
-      fixture.detectChanges();
-      venueReq().flush(venue);
-      await settle();
-    }
 
     it('dismissing the dialog keeps the pick and returns focus to the bar’s action', async () => {
       await load();
@@ -442,6 +443,28 @@ describe('VenueMap on a phone: the row lens (#1762)', () => {
       expect(openCodes()).toEqual(['A']);
       await tap(rowButton('B'));
       expect(tile(7).getAttribute('aria-pressed')).toBe('false');
+    });
+
+    it('asks the lens to pan its open row again for each freshly seeded map, and not for a refresh', async () => {
+      await load();
+      const panAgain = (): number =>
+        (
+          fixture.debugElement.query(By.directive(BeachRowLens)).componentInstance as BeachRowLens
+        ).panAgain();
+      const first = panAgain();
+
+      queryParams$.next(convertToParamMap({ date: addDays(defaultBookingDate(new Date()), 3) }));
+      fixture.detectChanges();
+      venueReq().flush(beach());
+      await settle();
+      // Row A is open again, as before: only this tells the lens its target may have moved.
+      expect(openCodes()).toEqual(['A']);
+      expect(panAgain()).toBe(first + 1);
+
+      await tap(tile(3));
+      await tap(one('pick-book')!);
+      await dismissDialog(beach());
+      expect(panAgain()).toBe(first + 1);
     });
 
     it('is cleared when the booking goes through', async () => {

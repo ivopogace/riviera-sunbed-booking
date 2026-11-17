@@ -297,6 +297,8 @@ export class VenueMap {
   protected readonly planAnchorSet = signal<SetView | undefined>(undefined);
   /** The plan the tourist chose to book, for the booking dialog's plan mode. */
   protected readonly selectedPlan = signal<PlanView | undefined>(undefined);
+  /** True while the latest map read is unanswered. */
+  private reading = false;
   /** Bumped per itinerary dispatch, so a superseded answer is dropped. */
   private planEpoch = 0;
   /** Whether the latest itinerary read failed, so the open panel can say so instead of staying blank. */
@@ -715,10 +717,15 @@ export class VenueMap {
     }
   }
 
-  /** Fetch the map for the currently selected days. */
-  private load(): void {
+  /**
+   * Fetch the map for the currently selected days. A `quiet` read refreshes a map already on
+   * screen: its failure changes nothing, and it yields to a read already in flight, whose answer
+   * is as fresh and whose failure must still show.
+   */
+  private load(options?: { readonly quiet: boolean }): void {
     const id = this.venueId();
-    if (id === undefined) {
+    const quiet = options?.quiet === true;
+    if (id === undefined || (quiet && this.reading)) {
       return;
     }
     // A fresh attempt clears any prior failure so a recovered load renders the map.
@@ -726,9 +733,11 @@ export class VenueMap {
     this.notFound.set(false);
     // The per-dispatch generation: any later dispatch or reset supersedes this response.
     const epoch = ++this.epoch;
+    this.reading = true;
     this.venues.getVenueMap(id, this.selectedDate(), this.selectedLastDate()).subscribe({
       next: (venue) => {
         if (this.epoch === epoch) {
+          this.reading = false;
           this.venue.set(venue);
           this.settleLens();
           this.openPendingSelection(venue);
@@ -739,6 +748,10 @@ export class VenueMap {
       },
       error: (error: unknown) => {
         if (this.epoch !== epoch) {
+          return;
+        }
+        this.reading = false;
+        if (quiet) {
           return;
         }
         this.pendingSelectSetId = undefined;
@@ -889,28 +902,6 @@ export class VenueMap {
     this.pickId.update((id) => (id === set.id ? undefined : set.id));
   }
 
-  /**
-   * After the pick's dialog is dismissed: a quiet same-days re-read, because the dialog may have
-   * closed on a set someone just booked and the bar must not go on offering it. A failed or
-   * superseded read changes nothing: the map on screen stays.
-   */
-  private refreshPick(setId: number): void {
-    const id = this.venueId();
-    if (id === undefined) {
-      return;
-    }
-    const epoch = this.epoch;
-    this.venues.getVenueMap(id, this.selectedDate(), this.selectedLastDate()).subscribe({
-      next: (venue) => {
-        if (this.epoch === epoch && this.pickId() === setId) {
-          this.venue.set(venue);
-          this.settleLens();
-        }
-      },
-      error: () => undefined,
-    });
-  }
-
   /** The bar's action: today's dialog, for the pick. */
   protected bookPick(): void {
     const pick = this.pick();
@@ -1009,7 +1000,8 @@ export class VenueMap {
     // Return focus to what opened the dialog (modal a11y): the bar's action for the pick, else the tile.
     if (set !== undefined && this.pick()?.set.id === set.id) {
       this.moveFocus('pick-book');
-      this.refreshPick(set.id);
+      // The dialog may have closed on a set someone just booked: re-read, so a pick that is gone is dropped.
+      this.load({ quiet: true });
     } else {
       this.focusTile(this.lastTriggerId);
     }
