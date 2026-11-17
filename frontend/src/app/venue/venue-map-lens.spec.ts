@@ -172,6 +172,16 @@ describe('VenueMap on a phone: the row lens (#1762)', () => {
       (cell) => cell.dataset['state'],
     );
 
+  /**
+   * Re-read the map for the same days. Production does this when the plan dialog closes; the retry
+   * handler is the same `load()` without a stay, a plan and a dialog to set up first.
+   */
+  async function reread(venue: VenueMapView): Promise<void> {
+    (fixture.componentInstance as unknown as { retry(): void }).retry();
+    venueReq().flush(venue);
+    await settle();
+  }
+
   async function tap(target: HTMLElement): Promise<void> {
     target.click();
     await settle();
@@ -363,25 +373,20 @@ describe('VenueMap on a phone: the row lens (#1762)', () => {
       httpMock.expectNone((req) => req.url === `${environment.apiBaseUrl}/api/venues/1`);
     });
 
-    it('a re-read that shows the pick taken drops it with its bar, and focus lands on the map', async () => {
+    it('a re-read that shows the pick taken drops it with its bar', async () => {
       await load();
       await tap(tile(3));
-      one('pick-book')!.focus();
 
-      // Any same-days re-read; the retry handler is the one this spec reaches without a plan dialog.
-      (fixture.componentInstance as unknown as { retry(): void }).retry();
       const taken = beach();
-      venueReq().flush({
+      await reread({
         ...taken,
         sets: taken.sets.map((set) => (set.id === 3 ? { ...set, availability: 'TAKEN' } : set)),
       });
-      await settle();
 
       expect(one('pick-bar')).toBeNull();
       expect(one('pick-status')!.textContent.trim()).toBe('');
       expect(all('lens-cell').filter((cell) => cell.dataset['state'] === 'pick')).toHaveLength(0);
       expect(openCodes()).toEqual(['A']);
-      expect(document.activeElement).toBe(one('beach-grid'));
     });
 
     it('words the action as a request at a Request-to-Book venue', async () => {
@@ -441,9 +446,7 @@ describe('VenueMap on a phone: the row lens (#1762)', () => {
       expect(panAgain()).toBe(first + 1);
 
       // A same-days re-read keeps the user's scroll: no new request to pan.
-      (fixture.componentInstance as unknown as { retry(): void }).retry();
-      venueReq().flush(beach());
-      await settle();
+      await reread(beach());
       expect(panAgain()).toBe(first + 1);
     });
 

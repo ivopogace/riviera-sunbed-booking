@@ -523,6 +523,22 @@ describe('BeachRowLens', () => {
       expect(scrollers.map((s) => s.getAttribute('tabindex'))).toEqual(['-1', '-1', '-1']);
     });
 
+    it('leaves the overview where it is while an open row has no measured width', async () => {
+      const scrollers = await overflow();
+      scrollers[0].scrollLeft = 140;
+      scrollers[0].dispatchEvent(new Event('scroll'));
+
+      // jsdom gives the open row's pan no scroll width: there is no tile pitch to follow by.
+      fixture.componentInstance.open.set(['A']);
+      await settle();
+      openRow('A')!
+        .querySelector<HTMLElement>('[data-lens-pan]')!
+        .dispatchEvent(new Event('scroll'));
+      await settle();
+
+      expect(all('lens-position-text')[0].textContent.trim()).toBe('8–21 of 28');
+    });
+
     it('the overview follows the open row’s pan', async () => {
       await overflow();
       fixture.componentInstance.open.set(['A']);
