@@ -523,21 +523,40 @@ describe('BeachRowLens', () => {
       expect(scrollers.map((s) => s.getAttribute('tabindex'))).toEqual(['-1', '-1', '-1']);
     });
 
-    it('leaves the overview where it is while an open row has no measured width', async () => {
-      const scrollers = await overflow();
-      scrollers[0].scrollLeft = 140;
-      scrollers[0].dispatchEvent(new Event('scroll'));
+    it.each([
+      ['has no measured width', 300, 0, false],
+      ['has no cells', 300, 1400, true],
+    ])(
+      'leaves the overview where it is while the open row %s',
+      async (_what, client, scroll, empty) => {
+        const scrollers = await overflow();
+        scrollers[0].scrollLeft = 140;
+        scrollers[0].dispatchEvent(new Event('scroll'));
+        if (empty) {
+          fixture.componentInstance.rows.update((rows) => [
+            { ...rows[0], cells: [] },
+            ...rows.slice(1),
+          ]);
+        }
+        fixture.componentInstance.open.set(['A']);
+        await settle();
+        for (const scroller of host.querySelectorAll<HTMLElement>('[data-lens-cells]')) {
+          geometry(scroller, 280, 560);
+          scroller.scrollLeft = 140;
+        }
 
-      // jsdom gives the open row's pan no scroll width: there is no tile pitch to follow by.
-      fixture.componentInstance.open.set(['A']);
-      await settle();
-      openRow('A')!
-        .querySelector<HTMLElement>('[data-lens-pan]')!
-        .dispatchEvent(new Event('scroll'));
-      await settle();
+        const pan = openRow('A')!.querySelector<HTMLElement>('[data-lens-pan]')!;
+        geometry(pan, client, scroll);
+        pan.dispatchEvent(new Event('scroll'));
+        await settle();
 
-      expect(all('lens-position-text')[0].textContent.trim()).toBe('8–21 of 28');
-    });
+        // No tile pitch to follow by: neither NaN nor a snap back to column 1.
+        expect(all('lens-position-text')[0].textContent.trim()).toBe('8–21 of 28');
+        expect(
+          [...host.querySelectorAll<HTMLElement>('[data-lens-cells]')].map((s) => s.scrollLeft),
+        ).toEqual([140, 140]);
+      },
+    );
 
     it('the overview follows the open row’s pan', async () => {
       await overflow();

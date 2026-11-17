@@ -373,9 +373,10 @@ describe('VenueMap on a phone: the row lens (#1762)', () => {
       httpMock.expectNone((req) => req.url === `${environment.apiBaseUrl}/api/venues/1`);
     });
 
-    it('a re-read that shows the pick taken drops it with its bar', async () => {
+    it('a re-read that shows the pick taken drops it with its bar, and focus the bar held lands on the map', async () => {
       await load();
       await tap(tile(3));
+      one('pick-book')!.focus();
 
       const taken = beach();
       await reread({
@@ -387,6 +388,7 @@ describe('VenueMap on a phone: the row lens (#1762)', () => {
       expect(one('pick-status')!.textContent.trim()).toBe('');
       expect(all('lens-cell').filter((cell) => cell.dataset['state'] === 'pick')).toHaveLength(0);
       expect(openCodes()).toEqual(['A']);
+      expect(document.activeElement).toBe(one('beach-grid'));
     });
 
     it('words the action as a request at a Request-to-Book venue', async () => {
