@@ -384,8 +384,7 @@ export class BeachRowLens {
     const scroller = event.currentTarget as HTMLElement;
     const echo = this.echoes.get(scroller);
     this.echoes.delete(scroller);
-    // A row the lens just moved reports the offset it was given: acting on it could pull the row
-    // under the finger back to where it was a frame ago.
+    // An echo of the lens's own write: acting on it could pull the row under the finger back a frame.
     if (echo !== undefined && Math.abs(scroller.scrollLeft - echo) <= 1) {
       return;
     }

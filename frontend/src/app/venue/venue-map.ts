@@ -989,8 +989,7 @@ export class VenueMap {
     // Return focus to what opened the dialog (modal a11y): the bar's action for the pick, else the tile.
     if (set !== undefined && this.pick()?.set.id === set.id) {
       this.moveFocus('pick-book');
-      // The dialog may have closed on "someone just booked this set": re-read, so a pick that is
-      // gone is dropped (invariant #2 is the server's; this only stops offering it).
+      // The dialog may have closed on a set someone just booked: re-read, so a pick that is gone is dropped.
       this.load();
     } else {
       this.focusTile(this.lastTriggerId);
