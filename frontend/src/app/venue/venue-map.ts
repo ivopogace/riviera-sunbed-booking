@@ -497,7 +497,7 @@ export class VenueMap {
     });
   });
 
-  /** The picked set's tile while the map shows it bookable, at any width: the pick's one validity test. */
+  /** The picked set's tile while the map shows it bookable, at any width; `TileView.picked` is this on a phone. */
   private readonly pickedTile = computed(() => {
     const id = this.pickId();
     const tile = this.rows()
@@ -968,8 +968,9 @@ export class VenueMap {
     if (this.lensUnseeded) {
       this.lensUnseeded = false;
       this.lensSeed.update((seed) => seed + 1);
+      const pickedId = this.pickedTile()?.set.id;
       const home =
-        rows.find((row) => row.tiles.some((tile) => tile.picked)) ??
+        rows.find((row) => row.tiles.some((tile) => tile.set.id === pickedId)) ??
         rows.find((row) => freeCountOf(row.tiles) > 0);
       this.lensOpen.set(home === undefined ? [] : [home.code]);
     } else {

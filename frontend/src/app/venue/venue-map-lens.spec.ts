@@ -469,17 +469,26 @@ describe('VenueMap on a phone: the row lens (#1762)', () => {
 
       crossSm(false);
       await settle();
-      const taken = beach();
-      await reread({
-        ...taken,
-        sets: taken.sets.map((set) => (set.id === 3 ? { ...set, availability: 'TAKEN' } : set)),
-      });
+      await reread(beach(['taken', 'free', 'taken', 'free', 'free', 'free']));
       await reread(beach());
       crossSm(true);
       await settle();
 
       expect(one('pick-bar')).toBeNull();
       expect(tile(3).getAttribute('aria-pressed')).toBe('false');
+    });
+
+    it('a width that flips and flips back before a render swaps nothing and takes no focus', async () => {
+      await load();
+      const close = one('lens-close')!;
+      close.focus();
+
+      crossSm(false);
+      crossSm(true);
+      await settle();
+
+      expect(one('lens-close')).toBe(close);
+      expect(document.activeElement).toBe(close);
     });
 
     it('unpicking while the bar’s action holds focus hands focus to the tile', async () => {
