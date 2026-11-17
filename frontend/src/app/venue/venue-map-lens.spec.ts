@@ -21,7 +21,7 @@ import { environment } from '../../environments/environment';
 import { BookingDialog } from '../booking/booking-dialog';
 import { BookingConfirmation } from '../booking/booking.model';
 import { ProofOfWork } from '../core/proof-of-work';
-import { addDays, defaultBookingDate } from '../shared/booking-date';
+import { addDays, DateRange, defaultBookingDate } from '../shared/booking-date';
 import { BeachRowLens } from '../shared/beach-row-lens';
 import { BELOW_SM } from '../shared/phone-viewport';
 import { ItineraryView, SetView, VenueMapView } from '../shared/venue-views';
@@ -392,11 +392,7 @@ describe('VenueMap on a phone: the row lens (#1762)', () => {
       await tap(tile(3));
       one('pick-book')!.focus();
 
-      const taken = beach();
-      await reread({
-        ...taken,
-        sets: taken.sets.map((set) => (set.id === 3 ? { ...set, availability: 'TAKEN' } : set)),
-      });
+      await reread(beach(['taken', 'free', 'taken', 'free', 'free', 'free']));
 
       expect(one('pick-bar')).toBeNull();
       expect(one('pick-status')!.textContent.trim()).toBe('');
@@ -582,6 +578,25 @@ describe('VenueMap on a phone: the row lens (#1762)', () => {
       // A same-days re-read keeps the user's scroll: no new request to pan.
       await reread(beach());
       expect(panAgain()).toBe(first + 1);
+    });
+
+    it('a set tapped while other days are still loading is not carried into them', async () => {
+      await load();
+      const first = addDays(defaultBookingDate(new Date()), 3);
+      (
+        fixture.componentInstance as unknown as { onDatesChange(days: DateRange): void }
+      ).onDatesChange({ first, last: first });
+      fixture.detectChanges();
+      // The old days' map is still on screen and tappable until the read answers.
+      await tap(rowButton('B'));
+      await tap(tile(7));
+      expect(one('pick-bar')).not.toBeNull();
+
+      venueReq().flush(beach());
+      await settle();
+
+      expect(one('pick-bar')).toBeNull();
+      expect(openCodes()).toEqual(['A']);
     });
 
     it('is cleared when the booking goes through', async () => {

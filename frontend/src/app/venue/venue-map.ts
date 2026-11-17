@@ -497,7 +497,7 @@ export class VenueMap {
     });
   });
 
-  /** The picked set's tile while the map shows it bookable, at any width; `TileView.picked` is this on a phone. */
+  /** The picked set's tile while the map shows it bookable, at any width. Logic reads this; `TileView.picked` only draws it. */
   private readonly pickedTile = computed(() => {
     const id = this.pickId();
     const tile = this.rows()
@@ -952,13 +952,14 @@ export class VenueMap {
   }
 
   /**
-   * After a map read: drop a pick the read does not show bookable, and seed the lens's open row when the
-   * read was for a fresh venue or other days: the pick's row, else the first with a free set.
+   * After a map read: drop a pick the read does not show bookable, or any pick when the read is for
+   * a fresh venue or other days, and then seed the lens's open row: the first with a free set.
    */
   private settleLens(): void {
     const rows = this.rows();
-    // Judged at any width: a read at canvas width must keep a pick the phone made, and drop a taken one.
-    if (this.pickId() !== undefined && this.pickedTile() === undefined) {
+    // A pick belongs to the days it was made for: one tapped while those days were still loading goes too.
+    const stale = this.lensUnseeded || this.pickedTile() === undefined;
+    if (this.pickId() !== undefined && stale) {
       // The bar goes with the pick: focus it held lands on the open row, which names itself.
       if (this.pickBarHoldsFocus()) {
         this.moveFocus('lens-open', 'beach-grid');
@@ -968,10 +969,7 @@ export class VenueMap {
     if (this.lensUnseeded) {
       this.lensUnseeded = false;
       this.lensSeed.update((seed) => seed + 1);
-      const pickedId = this.pickedTile()?.set.id;
-      const home =
-        rows.find((row) => row.tiles.some((tile) => tile.set.id === pickedId)) ??
-        rows.find((row) => freeCountOf(row.tiles) > 0);
+      const home = rows.find((row) => freeCountOf(row.tiles) > 0);
       this.lensOpen.set(home === undefined ? [] : [home.code]);
     } else {
       this.lensOpen.update((open) => open.filter((code) => rows.some((row) => row.code === code)));
