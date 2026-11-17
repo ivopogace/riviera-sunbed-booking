@@ -433,19 +433,46 @@ describe('VenueMap on a phone: the row lens (#1762)', () => {
       expect(one('pick-summary')!.textContent).toContain('A · spot 3');
     });
 
-    it('the width crossing sm swaps the map under focus held on a tile, which lands on the map both ways', async () => {
+    it('the width crossing sm carries focus on a tile to the same set’s tile, both ways', async () => {
       await load();
       tile(3).focus();
 
       crossSm(false);
       await settle();
-      expect(document.activeElement).toBe(one('beach-grid'));
+      expect(dom().querySelector('app-beach-map-canvas')).not.toBeNull();
+      expect(document.activeElement).toBe(tile(3));
 
-      tile(3).focus();
+      // Row B's tile, with row A the one the lens has open: its row opens for it.
+      tile(7).focus();
       crossSm(true);
       await settle();
-      expect(dom().querySelector('app-beach-row-lens')).not.toBeNull();
-      expect(document.activeElement).toBe(one('beach-grid'));
+      expect(openCodes()).toEqual(['B']);
+      expect(document.activeElement).toBe(tile(7));
+    });
+
+    it('a re-read at canvas width keeps a pick the phone made', async () => {
+      await load();
+      await tap(tile(3));
+
+      crossSm(false);
+      await settle();
+      await reread(beach());
+      crossSm(true);
+      await settle();
+
+      expect(one('pick-summary')!.textContent).toContain('A · spot 3');
+    });
+
+    it('unpicking while the bar’s action holds focus hands focus to the tile', async () => {
+      await load();
+      await tap(tile(3));
+      one('pick-book')!.focus();
+
+      // An activation that does not move focus first, as voice control or switch access makes.
+      await tap(tile(3));
+
+      expect(one('pick-bar')).toBeNull();
+      expect(document.activeElement).toBe(tile(3));
     });
 
     it('the width crossing sm leaves focus held outside the map where it is', async () => {

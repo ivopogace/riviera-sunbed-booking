@@ -558,6 +558,24 @@ test.describe('how the overview states paint', () => {
   });
 });
 
+test('crossing sm swaps the lens and the grid, and focus on a tile follows its set', async ({
+  page,
+}) => {
+  await openMap(page, miramarMapVenue());
+  await tile(page, 'A', 2).focus();
+
+  await page.setViewportSize({ width: 800, height: 844 });
+  await expect(page.getByTestId('row-lens')).toHaveCount(0);
+  await expect(page.getByTestId('map-pan')).toBeVisible();
+  await expect(tile(page, 'A', 2)).toBeFocused();
+
+  // A tile of a row the lens does not have open: coming back opens that row for it.
+  await tile(page, 'F', 2).focus();
+  await page.setViewportSize({ width: 390, height: 844 });
+  await expect(openRow(page, 'F')).toBeVisible();
+  await expect(tile(page, 'F', 2)).toBeFocused();
+});
+
 test.describe('with a finger', () => {
   test.use({ hasTouch: true });
 

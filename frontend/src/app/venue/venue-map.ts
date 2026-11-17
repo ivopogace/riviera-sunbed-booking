@@ -526,18 +526,14 @@ export class VenueMap {
         this.title.setTitle($localize`${view.name}:venue:, ${view.beach}:beach: — Riviera`);
       }
     });
-    // Crossing `sm` swaps the lens and the canvas and takes the bar: focus held in any of them lands on the map.
-    let wasPhone = this.phone();
+    // Crossing `sm` swaps the lens and the canvas and takes the bar: focus held there follows its tile, else lands on the map.
+    let mounted = false;
     effect(() => {
-      const phone = this.phone();
-      if (
-        phone !== wasPhone &&
-        untracked(() => this.venue() !== undefined) &&
-        this.mapHoldsFocus()
-      ) {
-        this.moveFocus('beach-grid');
+      this.phone();
+      if (mounted && untracked(() => this.venue() !== undefined)) {
+        untracked(() => this.carryFocusAcrossLayouts());
       }
-      wasPhone = phone;
+      mounted = true;
     });
     // In-place route changes only: skip runs matching the last route key (fresh mount loads below).
     let current = this.routeKey();
@@ -895,16 +891,51 @@ export class VenueMap {
     this.selectedSet.set(set);
   }
 
-  /** Whether focus sits in the map card or the pick bar: what a layout swap or a dropped pick removes. */
-  private mapHoldsFocus(): boolean {
-    const held = document.activeElement?.closest(
-      '[data-testid="beach-grid"], [data-testid="pick-bar"]',
+  private pickBarHoldsFocus(): boolean {
+    return document.activeElement?.closest('[data-testid="pick-bar"]') != null;
+  }
+
+  /**
+   * Before a layout swap removes it: focus on a tile goes to the same set's tile in the other
+   * layout (its row opened on a phone), focus elsewhere in the map card or on the pick bar to the
+   * map card, and focus outside the map stays where it is.
+   */
+  private carryFocusAcrossLayouts(): void {
+    const held = document.activeElement;
+    const inMap = held?.closest('[data-testid="beach-grid"]') != null;
+    if (!inMap && !this.pickBarHoldsFocus()) {
+      return;
+    }
+    const setId = Number(held?.getAttribute('data-set-id'));
+    const row = this.rows().find((r) => r.tiles.some((tile) => tile.set.id === setId));
+    if (row === undefined) {
+      this.moveFocus('beach-grid');
+      return;
+    }
+    if (this.phone() && !this.lensOpen().includes(row.code)) {
+      this.lensOpen.set([row.code]);
+    }
+    afterNextRender(
+      {
+        write: () => {
+          const tile = document.querySelector<HTMLElement>(`[data-set-id="${setId}"]`);
+          if (tile) {
+            tile.focus();
+          } else {
+            this.moveFocus('beach-grid');
+          }
+        },
+      },
+      { injector: this.injector },
     );
-    return held != null;
   }
 
   /** A tap on a bookable tile of the phone lens: pick it, or unpick it on a second tap. */
   protected togglePick(set: SetView): void {
+    // Unpicked by an activation that left focus on the bar (voice, switch access): it goes with the bar.
+    if (this.pickId() === set.id && this.pickBarHoldsFocus()) {
+      this.focusTile(set.id);
+    }
     this.pickId.update((id) => (id === set.id ? undefined : set.id));
   }
 
@@ -921,14 +952,16 @@ export class VenueMap {
    * read was for a fresh venue or other days: the pick's row, else the first with a free set.
    */
   private settleLens(): void {
-    if (this.pickId() !== undefined && this.pick() === undefined) {
+    const rows = this.rows();
+    // By id, not by the phone-only pick(): a read at canvas width must keep a pick the phone made.
+    const picked = rows.flatMap((row) => row.tiles).find((tile) => tile.set.id === this.pickId());
+    if (this.pickId() !== undefined && picked?.bookable !== true) {
       // The bar goes with the pick: focus it held lands on the open row, which names itself.
-      if (document.activeElement?.closest('[data-testid="pick-bar"]')) {
+      if (this.pickBarHoldsFocus()) {
         this.moveFocus('lens-open', 'beach-grid');
       }
       this.pickId.set(undefined);
     }
-    const rows = this.rows();
     if (this.lensUnseeded) {
       this.lensUnseeded = false;
       this.lensSeed.update((seed) => seed + 1);
