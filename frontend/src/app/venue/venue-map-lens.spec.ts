@@ -103,7 +103,9 @@ describe('VenueMap on a phone: the row lens (#1762)', () => {
       return {
         matches: phone,
         addEventListener: (_type: string, listener: (event: { matches: boolean }) => void) => {
-          crossSm = (below) => listener({ matches: below });
+          if (media === BELOW_SM) {
+            crossSm = (below) => listener({ matches: below });
+          }
         },
         removeEventListener: vi.fn(),
       };
@@ -184,9 +186,13 @@ describe('VenueMap on a phone: the row lens (#1762)', () => {
    * Re-read the map for the same days. Production does this when the plan dialog closes; the retry
    * handler is the same `load()` without a stay, a plan and a dialog to set up first.
    */
-  async function reread(venue: VenueMapView): Promise<void> {
+  async function reread(venue: VenueMapView | 'fails'): Promise<void> {
     (fixture.componentInstance as unknown as { retry(): void }).retry();
-    venueReq().flush(venue);
+    if (venue === 'fails') {
+      venueReq().flush('down', { status: 503, statusText: 'Service Unavailable' });
+    } else {
+      venueReq().flush(venue);
+    }
     await settle();
   }
 
@@ -406,9 +412,7 @@ describe('VenueMap on a phone: the row lens (#1762)', () => {
       await tap(tile(3));
       one('pick-book')!.focus();
 
-      (fixture.componentInstance as unknown as { retry(): void }).retry();
-      venueReq().flush('down', { status: 503, statusText: 'Service Unavailable' });
-      await settle();
+      await reread('fails');
 
       expect(document.activeElement).toBe(one('map-error'));
     });
@@ -427,6 +431,31 @@ describe('VenueMap on a phone: the row lens (#1762)', () => {
       crossSm(true);
       await settle();
       expect(one('pick-summary')!.textContent).toContain('A · spot 3');
+    });
+
+    it('the width crossing sm swaps the map under focus held on a tile, which lands on the map both ways', async () => {
+      await load();
+      tile(3).focus();
+
+      crossSm(false);
+      await settle();
+      expect(document.activeElement).toBe(one('beach-grid'));
+
+      tile(3).focus();
+      crossSm(true);
+      await settle();
+      expect(dom().querySelector('app-beach-row-lens')).not.toBeNull();
+      expect(document.activeElement).toBe(one('beach-grid'));
+    });
+
+    it('the width crossing sm leaves focus held outside the map where it is', async () => {
+      await load();
+      one('map-date')!.focus();
+
+      crossSm(false);
+      await settle();
+
+      expect(document.activeElement).toBe(one('map-date'));
     });
 
     it('unpicking by a second tap leaves focus on the tile', async () => {

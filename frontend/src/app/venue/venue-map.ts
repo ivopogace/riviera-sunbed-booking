@@ -526,16 +526,18 @@ export class VenueMap {
         this.title.setTitle($localize`${view.name}:venue:, ${view.beach}:beach: — Riviera`);
       }
     });
-    // With the map still shown, the bar goes with the pick (a re-read, the width): focus it held lands on the open row.
-    let hadPick = false;
+    // Crossing `sm` swaps the lens and the canvas and takes the bar: focus held in any of them lands on the map.
+    let wasPhone = this.phone();
     effect(() => {
-      const hasPick = this.pick() !== undefined;
-      // A teardown (failed read, route reset) moves focus itself: this must not answer over it.
-      const mapShown = untracked(() => this.venue() !== undefined);
-      if (hadPick && !hasPick && mapShown && this.pickBarHoldsFocus()) {
-        this.moveFocus('lens-open', 'beach-grid');
+      const phone = this.phone();
+      if (
+        phone !== wasPhone &&
+        untracked(() => this.venue() !== undefined) &&
+        this.mapHoldsFocus()
+      ) {
+        this.moveFocus('beach-grid');
       }
-      hadPick = hasPick;
+      wasPhone = phone;
     });
     // In-place route changes only: skip runs matching the last route key (fresh mount loads below).
     let current = this.routeKey();
@@ -582,12 +584,9 @@ export class VenueMap {
     this.selectedSet.set(undefined);
     this.pickId.set(undefined);
     this.lensUnseeded = true;
-    // The reset takes any focus-trapped modal AND its trigger, and the pick bar: move focus deliberately (RV-FE-9).
+    // The reset takes any focus-trapped modal AND its trigger, so move focus deliberately (RV-FE-9).
     const modalWasOpen =
-      this.pickerOpen() ||
-      this.lightboxIndex() !== undefined ||
-      this.partlySet() !== undefined ||
-      this.pickBarHoldsFocus();
+      this.pickerOpen() || this.lightboxIndex() !== undefined || this.partlySet() !== undefined;
     this.pickerOpen.set(false);
     this.lightboxIndex.set(undefined);
     this.partlySet.set(undefined);
@@ -896,8 +895,12 @@ export class VenueMap {
     this.selectedSet.set(set);
   }
 
-  private pickBarHoldsFocus(): boolean {
-    return document.activeElement?.closest('[data-testid="pick-bar"]') != null;
+  /** Whether focus sits in the map card or the pick bar: what a layout swap or a dropped pick removes. */
+  private mapHoldsFocus(): boolean {
+    const held = document.activeElement?.closest(
+      '[data-testid="beach-grid"], [data-testid="pick-bar"]',
+    );
+    return held != null;
   }
 
   /** A tap on a bookable tile of the phone lens: pick it, or unpick it on a second tap. */
@@ -918,7 +921,11 @@ export class VenueMap {
    * read was for a fresh venue or other days: the pick's row, else the first with a free set.
    */
   private settleLens(): void {
-    if (this.pick() === undefined) {
+    if (this.pickId() !== undefined && this.pick() === undefined) {
+      // The bar goes with the pick: focus it held lands on the open row, which names itself.
+      if (document.activeElement?.closest('[data-testid="pick-bar"]')) {
+        this.moveFocus('lens-open', 'beach-grid');
+      }
       this.pickId.set(undefined);
     }
     const rows = this.rows();
