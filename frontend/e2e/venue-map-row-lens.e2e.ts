@@ -334,11 +334,30 @@ test('the open row has no edge fade, and a picked tile and its tick are never cu
 
   // A tile cut by the far edge is brought in whole when it is picked.
   const cut = (await lastWhole()) + 1;
+  const cutBox = (await tile(page, 'A', cut).boundingBox())!;
+  const edge = await pan.boundingBox().then((view) => view!.x + view!.width);
+  expect(cutBox.x + 4, 'the tile shows enough to tap').toBeLessThan(edge);
+  expect(cutBox.x + cutBox.width, 'the tile is cut').toBeGreaterThan(edge);
   await tile(page, 'A', cut).click({ position: { x: 4, y: 22 } });
   await expect(tile(page, 'A', cut)).toHaveAttribute('aria-pressed', 'true');
   await inside(tile(page, 'A', cut), `picked tile ${cut}, cut before the tap`);
   await inside(pan.getByTestId('pick-tick'), `the tick on tile ${cut}`);
   await tile(page, 'A', cut).click();
+
+  // A narrower viewport cuts a pick that was whole: it is brought in again.
+  await page.setViewportSize({ width: 412, height: 844 });
+  await pan.evaluate((el) => (el.scrollLeft = 0));
+  await settle(page);
+  const wide = await lastWhole();
+  await tile(page, 'A', wide).click();
+  await page.setViewportSize({ width: 360, height: 844 });
+  await settle(page);
+  expect(await lastWhole()).toBeLessThan(13);
+  await inside(tile(page, 'A', wide), `picked tile ${wide} after the viewport narrowed`);
+  await inside(pan.getByTestId('pick-tick'), 'the tick after the viewport narrowed');
+  await tile(page, 'A', wide).click();
+  await page.setViewportSize({ width: 390, height: 844 });
+  await settle(page);
 
   // After the pan start: the row reopens on its last set, at the far end of the pan.
   await pan.evaluate((el) => (el.scrollLeft = el.scrollWidth));

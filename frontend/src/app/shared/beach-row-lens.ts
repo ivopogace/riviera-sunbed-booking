@@ -57,8 +57,9 @@ export interface BeachRowLensRow {
   readonly closeLabel: string;
   /** The tile the open row must show when it opens; the lens pans only if it is out of view. */
   readonly panTo: { readonly index: number; readonly align: 'start' | 'center' } | null;
-  /** A tile wearing a badge that overhangs it. When this names a tile, or another one, the open
-   *  row scrolls by the least that shows it whole with room for the badge. */
+  /** The index of a tile wearing a badge that overhangs it. When it changes to a tile, and on a
+   *  resize, the open row scrolls by the least that shows it whole with room for the badge; on
+   *  opening that is after the pan to `panTo`, so name the same tile or one beside it. */
   readonly keepWhole?: number | null;
 }
 
@@ -71,7 +72,7 @@ export interface BeachRowLensContext<R extends BeachRowLensRow> {
 /**
  * Declares the open row's tile template and carries the rows the lens renders:
  * `<ng-template [appBeachRowLensTiles]="rows()" let-row>`. The template renders ONE root element
- * whose children are the row's tiles in cell order; {@link BeachRowLensRow.panTo} indexes them.
+ * whose children are the row's tiles in cell order; `panTo` and `keepWhole` index them.
  */
 @Directive({ selector: 'ng-template[appBeachRowLensTiles]' })
 export class BeachRowLensTilesDef<R extends BeachRowLensRow = BeachRowLensRow> {
@@ -290,7 +291,13 @@ export class BeachRowLens {
       if (typeof ResizeObserver === 'undefined') {
         return;
       }
-      const observer = new ResizeObserver(() => {
+      let width = -1;
+      const observer = new ResizeObserver(([entry]) => {
+        // Only a change of width can cut a tile; opening a row changes the height alone.
+        if (entry.contentRect.width !== width) {
+          width = entry.contentRect.width;
+          this.keepWholeTiles();
+        }
         this.measure();
         this.syncOverview(this.offset());
       });
@@ -346,10 +353,9 @@ export class BeachRowLens {
       if (!pan) {
         continue;
       }
-      const tiles = this.tiles(pan);
       const before = pan.scrollLeft;
       if (fresh) {
-        const tile = row.panTo ? tiles[row.panTo.index] : undefined;
+        const tile = this.panTile(pan, row);
         if (tile && row.panTo && tile.offsetLeft + tile.offsetWidth > pan.clientWidth) {
           pan.scrollLeft =
             row.panTo.align === 'center'
@@ -360,10 +366,7 @@ export class BeachRowLens {
           pan.scrollLeft = 0;
         }
       }
-      const kept = whole === null ? undefined : tiles[whole];
-      if (kept) {
-        this.bringIn(pan, kept);
-      }
+      this.bringIn(pan, row);
       // The overview is the user's to pan while the open row stands still.
       if (fresh || pan.scrollLeft !== before) {
         this.follow(pan, row);
@@ -391,8 +394,23 @@ export class BeachRowLens {
     return first instanceof HTMLElement ? first.offsetLeft : 0;
   }
 
-  /** Scroll by the least that shows a tile whole, the track's side room beside it for its badge. */
-  private bringIn(pan: HTMLElement, tile: HTMLElement): void {
+  /** A resize can cut a tile that was whole: every open row's named tile is brought in again. */
+  private keepWholeTiles(): void {
+    for (const { row, open } of this.view()) {
+      const pan = open && this.openRowEl(row.code)?.querySelector<HTMLElement>('[data-lens-pan]');
+      if (pan) {
+        this.bringIn(pan, row);
+      }
+    }
+  }
+
+  /** Scroll by the least that shows a row's {@link BeachRowLensRow.keepWhole} tile whole, the
+   *  track's side room beside it for its badge. */
+  private bringIn(pan: HTMLElement, row: BeachRowLensRow): void {
+    const tile = typeof row.keepWhole === 'number' ? this.tiles(pan)[row.keepWhole] : undefined;
+    if (!tile) {
+      return;
+    }
     const room = this.sideRoom(pan);
     const left = tile.offsetLeft - pan.scrollLeft;
     const over = left + tile.offsetWidth - (pan.clientWidth - room);

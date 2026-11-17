@@ -387,7 +387,7 @@ describe('BeachRowLens', () => {
     });
   });
 
-  describe('a tile whole in the open row, nearer the edge than the track’s side room', () => {
+  describe('the tile a row says to keep whole', () => {
     /** Tiles of 44px every 50px after 8px of side room: the fourth spans 158–202px. */
     function stubTiles(client: number): () => void {
       const spies = [
@@ -417,17 +417,16 @@ describe('BeachRowLens', () => {
         ...rows.slice(1),
       ]);
     const pan = (): HTMLElement => openRow('A')!.querySelector<HTMLElement>('[data-lens-pan]')!;
-    const openOn = async (keepWhole: number | null, panTo = 0): Promise<() => void> => {
-      const restore = stubTiles(204);
+    const openOn = async (keepWhole: number | null, panTo = 0): Promise<void> => {
       name(keepWhole, panTo);
       fixture.componentInstance.open.set(['A']);
       await settle();
-      return restore;
     };
 
     it('is brought in by the shortfall when the surface names it, the row’s own target included', async () => {
-      const restore = await openOn(null, 3);
+      const restore = stubTiles(204);
       try {
+        await openOn(null, 3);
         // Tile 4 spans 158–202px of 204: in view, so the opening pan leaves the row at position 1.
         expect(pan().scrollLeft).toBe(0);
 
@@ -442,8 +441,9 @@ describe('BeachRowLens', () => {
     });
 
     it('is brought in when it is cut by the far edge, and back from the near edge', async () => {
-      const restore = await openOn(null);
+      const restore = stubTiles(204);
       try {
+        await openOn(null);
         // Tile 5 spans 208–252px: cut by the 204px edge.
         name(4);
         await settle();
@@ -459,8 +459,9 @@ describe('BeachRowLens', () => {
     });
 
     it('leaves the row where the user scrolled it when the name is dropped or the target moves', async () => {
-      const restore = await openOn(3);
+      const restore = stubTiles(204);
       try {
+        await openOn(3);
         expect(pan().scrollLeft).toBe(6);
         pan().scrollLeft = 3;
 
@@ -480,8 +481,9 @@ describe('BeachRowLens', () => {
       const wide = Array.from({ length: 28 }, (): DeckState => 'idle');
       fixture.componentInstance.rows.set(['A', 'B', 'C'].map((code) => deckRow(code, wide)));
       await settle();
-      const restore = await openOn(null);
+      const restore = stubTiles(204);
       try {
+        await openOn(null);
         const scrollers = [...host.querySelectorAll<HTMLElement>('[data-lens-cells]')];
         for (const scroller of scrollers) {
           geometry(scroller, 280, 560);
@@ -500,7 +502,8 @@ describe('BeachRowLens', () => {
         name(4);
         await settle();
         expect(pan().scrollLeft).toBe(56);
-        expect(scrollers.map((s) => s.scrollLeft)).not.toEqual([140, 140]);
+        // The open row's centre is now column 3: the overview follows it back to the start.
+        expect(scrollers.map((s) => s.scrollLeft)).toEqual([0, 0]);
       } finally {
         restore();
       }
