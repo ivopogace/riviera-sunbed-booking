@@ -496,6 +496,7 @@ export class VenueMap {
             : firstFree >= 0
               ? { index: firstFree, align: 'start' as const }
               : null,
+        keepWhole: picked >= 0 ? picked : null,
       };
     });
   });

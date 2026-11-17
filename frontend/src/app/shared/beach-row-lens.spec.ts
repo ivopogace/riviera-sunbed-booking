@@ -411,61 +411,96 @@ describe('BeachRowLens', () => {
       ];
       return () => spies.forEach((spy) => spy.mockRestore());
     }
-    const target = (index: number): void =>
+    const name = (keepWhole: number | null, panTo = 0): void =>
       fixture.componentInstance.rows.update((rows) => [
-        { ...rows[0], panTo: { index, align: 'start' } },
+        { ...rows[0], panTo: { index: panTo, align: 'start' }, keepWhole },
         ...rows.slice(1),
       ]);
     const pan = (): HTMLElement => openRow('A')!.querySelector<HTMLElement>('[data-lens-pan]')!;
-
-    it('is nudged in by the shortfall when the row opens on it, not panned to', async () => {
+    const openOn = async (keepWhole: number | null, panTo = 0): Promise<() => void> => {
       const restore = stubTiles(204);
-      try {
-        target(3);
-        fixture.componentInstance.open.set(['A']);
-        await settle();
+      name(keepWhole, panTo);
+      fixture.componentInstance.open.set(['A']);
+      await settle();
+      return restore;
+    };
 
-        // 202px of 204 is in view; 196 leaves the 8px of room: 6px, not the 150 of a pan to it.
-        expect(pan().scrollLeft).toBe(6);
-      } finally {
-        restore();
-      }
-    });
-
-    it('is nudged when it becomes the target while the row is open; a cut tile is left alone', async () => {
-      const restore = stubTiles(204);
+    it('is brought in by the shortfall when the surface names it, the row’s own target included', async () => {
+      const restore = await openOn(null, 3);
       try {
-        target(0);
-        fixture.componentInstance.open.set(['A']);
-        await settle();
+        // Tile 4 spans 158–202px of 204: in view, so the opening pan leaves the row at position 1.
         expect(pan().scrollLeft).toBe(0);
 
-        target(3);
+        name(3, 3);
         await settle();
-        expect(pan().scrollLeft).toBe(6);
 
-        // The fifth tile spans 208–252px, cut by the 204px edge even after the nudge.
-        target(4);
-        await settle();
+        // 196px leaves the 8px of room: 6px, not the 150 of a pan to it.
         expect(pan().scrollLeft).toBe(6);
       } finally {
         restore();
       }
     });
 
-    it('is nudged back from the near edge', async () => {
-      const restore = stubTiles(204);
+    it('is brought in when it is cut by the far edge, and back from the near edge', async () => {
+      const restore = await openOn(null);
       try {
-        target(0);
-        fixture.componentInstance.open.set(['A']);
+        // Tile 5 spans 208–252px: cut by the 204px edge.
+        name(4);
         await settle();
-        // The second tile spans 58–102px: at 55px of scroll it is whole, 3px from the near edge.
-        pan().scrollLeft = 55;
+        expect(pan().scrollLeft).toBe(56);
 
-        target(1);
+        // Tile 2 spans 58–102px: 2px past the near edge at 56px of scroll.
+        name(1);
         await settle();
-
         expect(pan().scrollLeft).toBe(50);
+      } finally {
+        restore();
+      }
+    });
+
+    it('leaves the row where the user scrolled it when the name is dropped or the target moves', async () => {
+      const restore = await openOn(3);
+      try {
+        expect(pan().scrollLeft).toBe(6);
+        pan().scrollLeft = 3;
+
+        name(null);
+        await settle();
+        expect(pan().scrollLeft).toBe(3);
+
+        name(null, 4);
+        await settle();
+        expect(pan().scrollLeft).toBe(3);
+      } finally {
+        restore();
+      }
+    });
+
+    it('moves the overview only when it moved the row', async () => {
+      const wide = Array.from({ length: 28 }, (): DeckState => 'idle');
+      fixture.componentInstance.rows.set(['A', 'B', 'C'].map((code) => deckRow(code, wide)));
+      await settle();
+      const restore = await openOn(null);
+      try {
+        const scrollers = [...host.querySelectorAll<HTMLElement>('[data-lens-cells]')];
+        for (const scroller of scrollers) {
+          geometry(scroller, 280, 560);
+        }
+        geometry(pan(), 204, 1400);
+        // The user pans the overview away from the open row's columns.
+        scrollers[0].scrollLeft = 140;
+        scrollers[0].dispatchEvent(new Event('scroll'));
+        await settle();
+
+        // Tile 2 spans 58–102px, well inside: named, and nothing moves.
+        name(1);
+        await settle();
+        expect(scrollers.map((s) => s.scrollLeft)).toEqual([140, 140]);
+
+        name(4);
+        await settle();
+        expect(pan().scrollLeft).toBe(56);
+        expect(scrollers.map((s) => s.scrollLeft)).not.toEqual([140, 140]);
       } finally {
         restore();
       }

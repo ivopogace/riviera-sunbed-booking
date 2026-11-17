@@ -57,6 +57,9 @@ export interface BeachRowLensRow {
   readonly closeLabel: string;
   /** The tile the open row must show when it opens; the lens pans only if it is out of view. */
   readonly panTo: { readonly index: number; readonly align: 'start' | 'center' } | null;
+  /** A tile wearing a badge that overhangs it. When this names a tile, or another one, the open
+   *  row scrolls by the least that shows it whole with room for the badge. */
+  readonly keepWhole?: number | null;
 }
 
 /** The projected tile template's context: the surface's own row object plus its index. */
@@ -261,7 +264,7 @@ export class BeachRowLens {
     return FADE_CLASS[fade];
   }
 
-  /** Rows whose opening pan has been applied, with the `panTo` index last seen; a row leaves when it closes. */
+  /** Rows whose opening pan has been applied, with the `keepWhole` last seen; a row leaves when it closes. */
   private readonly panned = new Map<string, number | null>();
   /** The {@link panAgain} value the open rows were last panned for. */
   private pannedFor = 0;
@@ -319,7 +322,8 @@ export class BeachRowLens {
     }
   }
 
-  /** Bring a freshly opened row's {@link BeachRowLensRow.panTo} tile into view, once per opening. */
+  /** Pan a freshly opened row to its {@link BeachRowLensRow.panTo} tile, once per opening, and
+   *  bring a newly named {@link BeachRowLensRow.keepWhole} tile in; nothing else moves an open row. */
   private startPans(): void {
     if (this.panAgain() !== this.pannedFor) {
       this.pannedFor = this.panAgain();
@@ -332,18 +336,20 @@ export class BeachRowLens {
       }
     }
     for (const { row } of open) {
-      const target = row.panTo?.index ?? null;
       const fresh = !this.panned.has(row.code);
-      if (!fresh && this.panned.get(row.code) === target) {
+      const whole = row.keepWhole ?? null;
+      if (!fresh && this.panned.get(row.code) === whole) {
         continue;
       }
-      this.panned.set(row.code, target);
+      this.panned.set(row.code, whole);
       const pan = this.openRowEl(row.code)?.querySelector<HTMLElement>('[data-lens-pan]');
       if (!pan) {
         continue;
       }
-      const tile = this.panTile(pan, row);
+      const tiles = this.tiles(pan);
+      const before = pan.scrollLeft;
       if (fresh) {
+        const tile = row.panTo ? tiles[row.panTo.index] : undefined;
         if (tile && row.panTo && tile.offsetLeft + tile.offsetWidth > pan.clientWidth) {
           pan.scrollLeft =
             row.panTo.align === 'center'
@@ -354,11 +360,14 @@ export class BeachRowLens {
           pan.scrollLeft = 0;
         }
       }
-      // A row that stays open is not panned to a new target, a pick toggling: that tile only gets its room.
-      if (tile) {
-        this.giveRoom(pan, tile);
+      const kept = whole === null ? undefined : tiles[whole];
+      if (kept) {
+        this.bringIn(pan, kept);
       }
-      this.follow(pan, row);
+      // The overview is the user's to pan while the open row stands still.
+      if (fresh || pan.scrollLeft !== before) {
+        this.follow(pan, row);
+      }
     }
   }
 
@@ -382,16 +391,13 @@ export class BeachRowLens {
     return first instanceof HTMLElement ? first.offsetLeft : 0;
   }
 
-  /** Nudge a tile that is wholly in view, yet nearer an edge than the side room, in by the shortfall: a badge it wears is then whole too. A cut tile is left under the finger that may be on it. */
-  private giveRoom(pan: HTMLElement, tile: HTMLElement): void {
+  /** Scroll by the least that shows a tile whole, the track's side room beside it for its badge. */
+  private bringIn(pan: HTMLElement, tile: HTMLElement): void {
     const room = this.sideRoom(pan);
     const left = tile.offsetLeft - pan.scrollLeft;
-    const right = left + tile.offsetWidth;
-    if (left < 0 || right > pan.clientWidth) {
-      return;
-    }
-    if (right > pan.clientWidth - room) {
-      pan.scrollLeft += right - (pan.clientWidth - room);
+    const over = left + tile.offsetWidth - (pan.clientWidth - room);
+    if (over > 0) {
+      pan.scrollLeft += over;
     } else if (left < room) {
       pan.scrollLeft -= room - left;
     }

@@ -329,7 +329,16 @@ test('the open row has no edge fade, and a picked tile and its tick are never cu
     await expect(pan.getByTestId('pick-tick')).toHaveCount(0);
   }
   await page.setViewportSize({ width: 390, height: 844 });
+  await pan.evaluate((el) => (el.scrollLeft = 0));
   await settle(page);
+
+  // A tile cut by the far edge is brought in whole when it is picked.
+  const cut = (await lastWhole()) + 1;
+  await tile(page, 'A', cut).click({ position: { x: 4, y: 22 } });
+  await expect(tile(page, 'A', cut)).toHaveAttribute('aria-pressed', 'true');
+  await inside(tile(page, 'A', cut), `picked tile ${cut}, cut before the tap`);
+  await inside(pan.getByTestId('pick-tick'), `the tick on tile ${cut}`);
+  await tile(page, 'A', cut).click();
 
   // After the pan start: the row reopens on its last set, at the far end of the pan.
   await pan.evaluate((el) => (el.scrollLeft = el.scrollWidth));
