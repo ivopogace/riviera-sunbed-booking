@@ -93,12 +93,20 @@ describe('VenueMap on a phone: the row lens (#1762)', () => {
   let httpMock: HttpTestingController;
   let queryParams$: BehaviorSubject<ParamMap>;
   let queries: string[];
+  /** Flip the stubbed viewport across `sm`, as a rotation or a zoom step would. */
+  let crossSm: (below: boolean) => void;
 
   async function mount(query: Record<string, string> = {}, phone = true): Promise<void> {
     queries = [];
     vi.stubGlobal('matchMedia', (media: string) => {
       queries.push(media);
-      return { matches: phone, addEventListener: vi.fn(), removeEventListener: vi.fn() };
+      return {
+        matches: phone,
+        addEventListener: (_type: string, listener: (event: { matches: boolean }) => void) => {
+          crossSm = (below) => listener({ matches: below });
+        },
+        removeEventListener: vi.fn(),
+      };
     });
     const params$ = new BehaviorSubject(convertToParamMap({ id: '1' }));
     queryParams$ = new BehaviorSubject(convertToParamMap(query));
@@ -391,6 +399,34 @@ describe('VenueMap on a phone: the row lens (#1762)', () => {
       // The open row names itself with the fresh count, so the landing says what changed.
       expect(document.activeElement).toBe(one('lens-open'));
       expect(one('lens-open')!.getAttribute('aria-label')).toBe('Row A, €45, 4 of 6 free');
+    });
+
+    it('a failed re-read tears the map down and focus goes to the failure, not to a row that is gone', async () => {
+      await load();
+      await tap(tile(3));
+      one('pick-book')!.focus();
+
+      (fixture.componentInstance as unknown as { retry(): void }).retry();
+      venueReq().flush('down', { status: 503, statusText: 'Service Unavailable' });
+      await settle();
+
+      expect(document.activeElement).toBe(one('map-error'));
+    });
+
+    it('the width reaching sm takes the bar: focus it held lands on the map, and the pick returns with the width', async () => {
+      await load();
+      await tap(tile(3));
+      one('pick-book')!.focus();
+
+      crossSm(false);
+      await settle();
+      expect(one('pick-bar')).toBeNull();
+      expect(dom().querySelector('app-beach-map-canvas')).not.toBeNull();
+      expect(document.activeElement).toBe(one('beach-grid'));
+
+      crossSm(true);
+      await settle();
+      expect(one('pick-summary')!.textContent).toContain('A · spot 3');
     });
 
     it('unpicking by a second tap leaves focus on the tile', async () => {
