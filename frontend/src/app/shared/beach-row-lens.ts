@@ -407,12 +407,14 @@ export class BeachRowLens {
   /** The panned overview follows the open row, so the columns being picked from stay in view. */
   private follow(pan: HTMLElement, row: BeachRowLensRow): void {
     const scroller = this.overviewScrollers()[0];
-    // Unmeasured (0 / n) or empty (n / 0), the open row has no tile pitch to read a column from.
-    const tilePitch = pan.scrollWidth / row.cells.length;
-    const measured = Number.isFinite(tilePitch) && tilePitch > 0;
-    if (!scroller || scroller.scrollWidth <= scroller.clientWidth + 1 || !measured) {
+    if (!scroller || scroller.scrollWidth <= scroller.clientWidth + 1) {
       return;
     }
+    // An unmeasured or empty open row has no tile pitch to read a column from.
+    if (pan.scrollWidth === 0 || row.cells.length === 0) {
+      return;
+    }
+    const tilePitch = pan.scrollWidth / row.cells.length;
     const column = (pan.scrollLeft + pan.clientWidth / 2) / tilePitch;
     const columnPitch = scroller.scrollWidth / this.cols();
     const max = scroller.scrollWidth - scroller.clientWidth;

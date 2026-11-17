@@ -212,8 +212,6 @@ export class VenueMap {
   private readonly title = inject(Title);
   /** WCAG 2.4.3: a re-fetch failure tears down the map (which may hold focus) — move it (RV-FE-9). */
   private readonly moveFocus = focusMover();
-  /** Moves focus only when a render took the element that held it (the pick bar's action). */
-  private readonly restoreLostFocus = focusMover({ onlyIfLost: true, preventScroll: true });
 
   protected readonly venue = signal<VenueMapView | undefined>(undefined);
   /** What the way back to other beaches carries: the day, or the stay's first and last day. */
@@ -527,6 +525,15 @@ export class VenueMap {
       if (view !== undefined) {
         this.title.setTitle($localize`${view.name}:venue:, ${view.beach}:beach: — Riviera`);
       }
+    });
+    // The bar goes with the pick (a re-read, the width): focus it held lands on the open row, else the map.
+    let hadPick = false;
+    effect(() => {
+      const hasPick = this.pick() !== undefined;
+      if (hadPick && !hasPick && document.activeElement?.closest('[data-testid="pick-bar"]')) {
+        this.moveFocus('lens-open', 'beach-grid');
+      }
+      hadPick = hasPick;
     });
     // In-place route changes only: skip runs matching the last route key (fresh mount loads below).
     let current = this.routeKey();
@@ -902,12 +909,8 @@ export class VenueMap {
    * read was for a fresh venue or other days: the pick's row, else the first with a free set.
    */
   private settleLens(): void {
-    if (this.pickId() !== undefined && this.pick() === undefined) {
+    if (this.pick() === undefined) {
       this.pickId.set(undefined);
-      // The bar goes with the pick and may hold focus (a plan dialog's re-read): land on the map.
-      if (this.phone()) {
-        this.restoreLostFocus('beach-grid');
-      }
     }
     const rows = this.rows();
     if (this.lensUnseeded) {
