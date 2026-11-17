@@ -387,38 +387,87 @@ describe('BeachRowLens', () => {
     });
   });
 
-  describe('a pressed tile at the edge of the open row', () => {
-    it.each([
-      // Tiles of 44px every 50px from 8px, in a 200px viewport: the fourth ends at 202px.
-      { index: 3, from: 6, to: 10, why: 'its far side clears the edge by the side room' },
-      { index: 1, from: 60, to: 50, why: 'its near side clears the edge by the side room' },
-      { index: 2, from: 6, to: 6, why: 'a tile with room on both sides stays put' },
-    ])('tile $index from $from px pans to $to px: $why', async ({ index, from, to }) => {
-      const offsets = vi
-        .spyOn(HTMLElement.prototype, 'offsetLeft', 'get')
-        .mockImplementation(function (this: HTMLElement) {
+  describe('a tile whole in the open row, nearer the edge than the track’s side room', () => {
+    /** Tiles of 44px every 50px after 8px of side room: the fourth spans 158–202px. */
+    function stubTiles(client: number): () => void {
+      const spies = [
+        vi.spyOn(HTMLElement.prototype, 'offsetLeft', 'get').mockImplementation(function (
+          this: HTMLElement,
+        ) {
           return this.tagName === 'LI'
             ? 8 + [...this.parentElement!.children].indexOf(this) * 50
             : 0;
-        });
-      const widths = vi
-        .spyOn(HTMLElement.prototype, 'offsetWidth', 'get')
-        .mockImplementation(function (this: HTMLElement) {
+        }),
+        vi.spyOn(HTMLElement.prototype, 'offsetWidth', 'get').mockImplementation(function (
+          this: HTMLElement,
+        ) {
           return this.tagName === 'LI' ? 44 : 0;
-        });
+        }),
+        vi.spyOn(HTMLElement.prototype, 'clientWidth', 'get').mockImplementation(function (
+          this: HTMLElement,
+        ) {
+          return this.dataset['lensPan'] === undefined ? 0 : client;
+        }),
+      ];
+      return () => spies.forEach((spy) => spy.mockRestore());
+    }
+    const target = (index: number): void =>
+      fixture.componentInstance.rows.update((rows) => [
+        { ...rows[0], panTo: { index, align: 'start' } },
+        ...rows.slice(1),
+      ]);
+    const pan = (): HTMLElement => openRow('A')!.querySelector<HTMLElement>('[data-lens-pan]')!;
+
+    it('is nudged in by the shortfall when the row opens on it, not panned to', async () => {
+      const restore = stubTiles(204);
       try {
+        target(3);
         fixture.componentInstance.open.set(['A']);
         await settle();
-        const pan = openRow('A')!.querySelector<HTMLElement>('[data-lens-pan]')!;
-        geometry(pan, 200, 400);
-        pan.scrollLeft = from;
 
-        pan.querySelectorAll<HTMLElement>('li')[index].click();
-
-        expect(pan.scrollLeft).toBe(to);
+        // 202px of 204 is in view; 196 leaves the 8px of room: 6px, not the 150 of a pan to it.
+        expect(pan().scrollLeft).toBe(6);
       } finally {
-        offsets.mockRestore();
-        widths.mockRestore();
+        restore();
+      }
+    });
+
+    it('is nudged when it becomes the target while the row is open; a cut tile is left alone', async () => {
+      const restore = stubTiles(204);
+      try {
+        target(0);
+        fixture.componentInstance.open.set(['A']);
+        await settle();
+        expect(pan().scrollLeft).toBe(0);
+
+        target(3);
+        await settle();
+        expect(pan().scrollLeft).toBe(6);
+
+        // The fifth tile spans 208–252px, cut by the 204px edge even after the nudge.
+        target(4);
+        await settle();
+        expect(pan().scrollLeft).toBe(6);
+      } finally {
+        restore();
+      }
+    });
+
+    it('is nudged back from the near edge', async () => {
+      const restore = stubTiles(204);
+      try {
+        target(0);
+        fixture.componentInstance.open.set(['A']);
+        await settle();
+        // The second tile spans 58–102px: at 55px of scroll it is whole, 3px from the near edge.
+        pan().scrollLeft = 55;
+
+        target(1);
+        await settle();
+
+        expect(pan().scrollLeft).toBe(50);
+      } finally {
+        restore();
       }
     });
   });

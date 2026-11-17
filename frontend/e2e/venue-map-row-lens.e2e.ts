@@ -199,7 +199,7 @@ test('the pick stays solid on the overview while its row is closed, and every ro
   expect(solid.fill).toBeGreaterThanOrEqual(solid.inner - 0.5);
   expect(solid.sameInk).toBe(true);
 
-  // The page's content ends where the spacer starts: scrolled to the end, that is above the bar.
+  // The page's content ends where the spacer starts: scrolled to the end, the bar covers none of it.
   const contentEnd = async (): Promise<number> => {
     await page.evaluate(() => window.scrollTo(0, document.documentElement.scrollHeight));
     return (await page.getByTestId('pick-bar-spacer').boundingBox())!.y;

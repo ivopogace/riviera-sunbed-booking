@@ -634,7 +634,7 @@
     <!-- Outside the @if on purpose: a region inserted already holding its text reads as silence (#741). -->
     <output class="sr-only" data-testid="pick-status">{{ pickAnnouncement() }}</output>
     @if (pick(); as picked) {
-      <!-- The spacer lets the last row scroll clear of the bar, its summary wrapped to three lines included; the bar sits above the phone tab bar and under every modal. -->
+      <!-- The spacer lets the last row scroll clear of the bar; the bar sits above the phone tab bar and under every modal. -->
       <div class="h-[76px]" aria-hidden="true" data-testid="pick-bar-spacer"></div>
       <div
         class="fixed inset-x-3 bottom-[calc(76px+env(safe-area-inset-bottom))] z-10 flex items-center justify-between gap-2.5 rounded-[18px] border border-riv-pop-border bg-riv-pop-surface py-2.5 pr-2.5 pl-4 text-[14px] text-riv-pop-ink shadow-riv-pop backdrop-blur-[28px] backdrop-saturate-[1.8]"

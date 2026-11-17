@@ -171,8 +171,7 @@ interface LensRowView<R extends BeachRowLensRow> {
     TouchTarget,
   ],
   templateUrl: './beach-row-lens.html',
-  // On the host, not the scroller: the press is the tile's own, and the lens only follows it.
-  host: { class: 'block', '(click)': 'onPress($event)' },
+  host: { class: 'block' },
 })
 export class BeachRowLens {
   /** Columns from which the overview packs tighter: a 2px gap and a smaller radius. */
@@ -219,7 +218,6 @@ export class BeachRowLens {
   private readonly overviewWidth = signal(0);
   private readonly overviewContent = signal(0);
   protected readonly overviewFade = signal<Fade>('none');
-  /** Each open row's own edge fade, by row code. */
 
   protected readonly view = computed<readonly LensRowView<BeachRowLensRow>[]>(() => {
     const rows = this.rows();
@@ -263,8 +261,8 @@ export class BeachRowLens {
     return FADE_CLASS[fade];
   }
 
-  /** Rows whose opening pan has been applied; a row leaves when it closes. */
-  private readonly panned = new Set<string>();
+  /** Rows whose opening pan has been applied, with the `panTo` index last seen; a row leaves when it closes. */
+  private readonly panned = new Map<string, number | null>();
   /** The {@link panAgain} value the open rows were last panned for. */
   private pannedFor = 0;
   /** Offsets the lens wrote to closed rows, whose scroll events are echoes, not a finger. */
@@ -328,31 +326,37 @@ export class BeachRowLens {
       this.panned.clear();
     }
     const open = this.view().filter((v) => v.open);
-    for (const code of [...this.panned]) {
+    for (const code of [...this.panned.keys()]) {
       if (!open.some((v) => v.row.code === code)) {
         this.panned.delete(code);
       }
     }
     for (const { row } of open) {
-      if (this.panned.has(row.code)) {
+      const target = row.panTo?.index ?? null;
+      const fresh = !this.panned.has(row.code);
+      if (!fresh && this.panned.get(row.code) === target) {
         continue;
       }
-      this.panned.add(row.code);
+      this.panned.set(row.code, target);
       const pan = this.openRowEl(row.code)?.querySelector<HTMLElement>('[data-lens-pan]');
       if (!pan) {
         continue;
       }
       const tile = this.panTile(pan, row);
-      // In view means with its badge room: a tile flush with the far edge has its badge cut.
-      const room = this.sideRoom(pan);
-      if (tile && row.panTo && tile.offsetLeft + tile.offsetWidth > pan.clientWidth - room) {
-        pan.scrollLeft =
-          row.panTo.align === 'center'
-            ? tile.offsetLeft - (pan.clientWidth - tile.offsetWidth) / 2
-            : tile.offsetLeft - room;
-      } else if (pan.scrollLeft !== 0) {
-        // A row panned again in place keeps its old scroll: position 1 shows its tile, or it has none.
-        pan.scrollLeft = 0;
+      if (fresh) {
+        if (tile && row.panTo && tile.offsetLeft + tile.offsetWidth > pan.clientWidth) {
+          pan.scrollLeft =
+            row.panTo.align === 'center'
+              ? tile.offsetLeft - (pan.clientWidth - tile.offsetWidth) / 2
+              : tile.offsetLeft - this.sideRoom(pan);
+        } else if (pan.scrollLeft !== 0) {
+          // A row panned again in place keeps its old scroll: position 1 shows its tile, or it has none.
+          pan.scrollLeft = 0;
+        }
+      }
+      // A row that stays open is not panned to a new target, a pick toggling: that tile only gets its room.
+      if (tile) {
+        this.giveRoom(pan, tile);
       }
       this.follow(pan, row);
     }
@@ -365,29 +369,29 @@ export class BeachRowLens {
 
   /** The surface's tiles in a pan viewport: the children of the one list its template renders. */
   private tiles(pan: Element): HTMLElement[] {
-    const list = pan.querySelector('[data-lens-track]')?.firstElementChild;
-    return [...(list?.children ?? [])].filter((el) => el instanceof HTMLElement);
+    return [...(this.list(pan)?.children ?? [])].filter((el) => el instanceof HTMLElement);
+  }
+
+  private list(pan: Element): Element | null {
+    return pan.querySelector('[data-lens-track]')?.firstElementChild ?? null;
   }
 
   /** The track's room for a badge at each end: where its first tile starts. */
   private sideRoom(pan: Element): number {
-    const first = pan.querySelector('[data-lens-track]')?.firstElementChild?.firstElementChild;
+    const first = this.list(pan)?.firstElementChild;
     return first instanceof HTMLElement ? first.offsetLeft : 0;
   }
 
-  /** A pressed tile at the viewport's edge is nudged in by the side room, so a badge it gains is not cut. */
-  protected onPress(event: Event): void {
-    const pressed = event.target instanceof Element ? event.target : null;
-    const pan = pressed?.closest<HTMLElement>('[data-lens-pan]');
-    const tile = pan ? this.tiles(pan).find((t) => t.contains(pressed)) : undefined;
-    if (!pan || !tile) {
-      return;
-    }
+  /** Nudge a tile that is wholly in view, yet nearer an edge than the side room, in by the shortfall: a badge it wears is then whole too. A cut tile is left under the finger that may be on it. */
+  private giveRoom(pan: HTMLElement, tile: HTMLElement): void {
     const room = this.sideRoom(pan);
     const left = tile.offsetLeft - pan.scrollLeft;
-    const over = left + tile.offsetWidth - (pan.clientWidth - room);
-    if (over > 0) {
-      pan.scrollLeft += over;
+    const right = left + tile.offsetWidth;
+    if (left < 0 || right > pan.clientWidth) {
+      return;
+    }
+    if (right > pan.clientWidth - room) {
+      pan.scrollLeft += right - (pan.clientWidth - room);
     } else if (left < room) {
       pan.scrollLeft -= room - left;
     }
