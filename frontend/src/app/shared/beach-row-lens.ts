@@ -417,7 +417,7 @@ export class BeachRowLens {
       }
       const before = pan.scrollLeft;
       if (fresh) {
-        this.openingPan(pan, row);
+        this.panToOpening(pan, row);
       }
       this.bringIn(pan, row);
       this.panWidths.set(row.code, pan.clientWidth);
@@ -428,8 +428,8 @@ export class BeachRowLens {
     }
   }
 
-  /** Where a row starts when it opens: on its {@link BeachRowLensRow.panTo} tile if that is out of view, else at position 1. */
-  private openingPan(pan: HTMLElement, row: BeachRowLensRow): void {
+  /** Start a row, on opening and on each `panAgain`: on its {@link BeachRowLensRow.panTo} tile if position 1 does not show it, else at position 1. */
+  private panToOpening(pan: HTMLElement, row: BeachRowLensRow): void {
     const tile = this.panTile(pan, row);
     if (tile && row.panTo && tile.offsetLeft + tile.offsetWidth > pan.clientWidth) {
       pan.scrollLeft =
