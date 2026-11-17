@@ -580,6 +580,7 @@ describe('BeachRowLens', () => {
       let resizes: Resize[];
       let client: number;
       let restore: () => void;
+      let native: unknown;
       const resizeTo = (width: number): void => {
         client = width;
         resizes.at(-1)!([{ contentRect: { width } }]);
@@ -587,13 +588,14 @@ describe('BeachRowLens', () => {
 
       beforeEach(async () => {
         resizes = [];
-        // jsdom has no ResizeObserver: this one hands the spec the lens's callback, and is removed after.
+        // jsdom has no ResizeObserver: this one hands the spec the lens's callback, and is put back after.
+        native = (globalThis as Record<string, unknown>)['ResizeObserver'];
         (globalThis as Record<string, unknown>)['ResizeObserver'] = class {
           constructor(callback: Resize) {
             resizes.push(callback);
           }
           observe(): void {
-            resizes.at(-1)!([{ contentRect: { width: 300 } }]);
+            // The spec delivers every entry, the first included.
           }
           disconnect(): void {
             resizes = [];
@@ -601,14 +603,28 @@ describe('BeachRowLens', () => {
         };
         client = 300;
         restore = stubTiles(() => client);
+        // The outer fixture was made before the stub: this one's lens is the observed one.
+        fixture.destroy();
         fixture = TestBed.createComponent(DeckHost);
         host = fixture.nativeElement as HTMLElement;
         await settle();
+        resizeTo(300);
       });
 
       afterEach(() => {
         restore();
-        delete (globalThis as Record<string, unknown>)['ResizeObserver'];
+        if (native === undefined) {
+          delete (globalThis as Record<string, unknown>)['ResizeObserver'];
+        } else {
+          (globalThis as Record<string, unknown>)['ResizeObserver'] = native;
+        }
+      });
+
+      it('observes once, however the rows change', async () => {
+        await openOn(4);
+        await openOn(2);
+
+        expect(resizes).toHaveLength(1);
       });
 
       it('a named tile the narrowing cuts, or pushes out, is brought in', async () => {

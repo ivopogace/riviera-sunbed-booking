@@ -303,13 +303,16 @@ test.describe('the open row’s edges', () => {
     );
     await settle(page);
   }
+  /** Polled: the lens moves the row a render, or a resize observer's turn, after the cause. */
   async function inside(pan: Locator, part: Locator, what: string): Promise<void> {
-    const box = (await part.boundingBox())!;
-    const view = (await pan.boundingBox())!;
-    expect(box.x, `${what}: inside the leading edge`).toBeGreaterThanOrEqual(view.x - 0.5);
-    expect(box.x + box.width, `${what}: inside the trailing edge`).toBeLessThanOrEqual(
-      view.x + view.width + 0.5,
-    );
+    await expect(async () => {
+      const box = (await part.boundingBox())!;
+      const view = (await pan.boundingBox())!;
+      expect(box.x, `${what}: inside the leading edge`).toBeGreaterThanOrEqual(view.x - 0.5);
+      expect(box.x + box.width, `${what}: inside the trailing edge`).toBeLessThanOrEqual(
+        view.x + view.width + 0.5,
+      );
+    }).toPass({ timeout: 5000 });
   }
   /** The last spot whose tile lies wholly inside the pan viewport. */
   function lastWhole(pan: Locator): Promise<number> {
@@ -324,6 +327,7 @@ test.describe('the open row’s edges', () => {
   }
   async function pick(page: Page, spot: number, options?: { position: { x: number; y: number } }) {
     await tile(page, 'A', spot).click(options);
+    await expect(tile(page, 'A', spot)).toHaveAttribute('aria-pressed', 'true');
     await settle(page);
   }
 
