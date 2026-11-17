@@ -295,15 +295,6 @@ describe('VenueMap on a phone: the row lens (#1762)', () => {
   });
 
   describe('the pick', () => {
-    /** Dismiss the open dialog; the map re-reads, answered with `venue`. */
-    async function dismissDialog(venue: VenueMapView): Promise<void> {
-      const dialog = fixture.debugElement.query(By.directive(BookingDialog));
-      (dialog.componentInstance as BookingDialog).dismissed.emit();
-      fixture.detectChanges();
-      venueReq().flush(venue);
-      await settle();
-    }
-
     it('a tap picks the set and shows the bar; a second tap clears both', async () => {
       await load();
       expect(tile(2).getAttribute('aria-pressed')).toBe('false');
@@ -357,80 +348,40 @@ describe('VenueMap on a phone: the row lens (#1762)', () => {
       expect((dialog.componentInstance as BookingDialog).set()?.id).toBe(3);
     });
 
-    it('dismissing the dialog keeps the pick and returns focus to the bar’s action', async () => {
-      await load();
-      await tap(tile(3));
-      await tap(one('pick-book')!);
-
-      await dismissDialog(beach());
-
-      expect(fixture.debugElement.query(By.directive(BookingDialog))).toBeNull();
-      expect(tile(3).getAttribute('aria-pressed')).toBe('true');
-      expect(document.activeElement).toBe(one('pick-book'));
-    });
-
-    it('dismissing re-reads the map, and a pick someone else just booked is dropped with its bar', async () => {
-      await load();
-      await tap(tile(3));
-      await tap(one('pick-book')!);
-
-      const taken = beach();
-      await dismissDialog({
-        ...taken,
-        sets: taken.sets.map((set) => (set.id === 3 ? { ...set, availability: 'TAKEN' } : set)),
-      });
-
-      expect(one('pick-bar')).toBeNull();
-      expect(one('pick-status')!.textContent.trim()).toBe('');
-      expect(all('lens-cell').filter((cell) => cell.dataset['state'] === 'pick')).toHaveLength(0);
-      // The row stays open on the fresh map, and focus is not left on <body> with the bar gone.
-      expect(openCodes()).toEqual(['A']);
-      expect(document.activeElement).toBe(one('beach-grid'));
-    });
-
-    it('a failed re-read after a dismiss leaves the map, the pick and the bar as they were', async () => {
+    it('dismissing the dialog keeps the pick, asks the server nothing and returns focus to the bar’s action', async () => {
       await load();
       await tap(tile(3));
       await tap(one('pick-book')!);
 
       const dialog = fixture.debugElement.query(By.directive(BookingDialog));
       (dialog.componentInstance as BookingDialog).dismissed.emit();
-      fixture.detectChanges();
-      venueReq().flush('down', { status: 503, statusText: 'Service Unavailable' });
       await settle();
 
-      expect(one('map-error')).toBeNull();
-      expect(one('row-lens')).not.toBeNull();
+      expect(fixture.debugElement.query(By.directive(BookingDialog))).toBeNull();
       expect(tile(3).getAttribute('aria-pressed')).toBe('true');
       expect(document.activeElement).toBe(one('pick-book'));
+      httpMock.expectNone((req) => req.url === `${environment.apiBaseUrl}/api/venues/1`);
     });
 
-    it('a second dismiss while the first re-read is unanswered still gets its own re-read', async () => {
+    it('a re-read that shows the pick taken drops it with its bar, and focus lands on the map', async () => {
       await load();
       await tap(tile(3));
-      const dismiss = (): void => {
-        const dialog = fixture.debugElement.query(By.directive(BookingDialog));
-        (dialog.componentInstance as BookingDialog).dismissed.emit();
-        fixture.detectChanges();
-      };
+      one('pick-book')!.focus();
 
-      await tap(one('pick-book')!);
-      dismiss();
-      const first = venueReq();
-      await tap(one('pick-book')!);
-      dismiss();
-      // One read in flight, the second waiting behind it: the first answer predates this dismiss.
-      first.flush(beach());
-      await settle();
-      expect(tile(3).getAttribute('aria-pressed')).toBe('true');
-
+      // Any same-days re-read; the retry handler is the one this spec reaches without a plan dialog.
+      (fixture.componentInstance as unknown as { retry(): void }).retry();
       const taken = beach();
       venueReq().flush({
         ...taken,
         sets: taken.sets.map((set) => (set.id === 3 ? { ...set, availability: 'TAKEN' } : set)),
       });
       await settle();
+
       expect(one('pick-bar')).toBeNull();
+      expect(one('pick-status')!.textContent.trim()).toBe('');
+      expect(all('lens-cell').filter((cell) => cell.dataset['state'] === 'pick')).toHaveLength(0);
+      expect(openCodes()).toEqual(['A']);
+      expect(document.activeElement).toBe(one('beach-grid'));
     });
 
     it('words the action as a request at a Request-to-Book venue', async () => {
@@ -489,9 +440,10 @@ describe('VenueMap on a phone: the row lens (#1762)', () => {
       expect(openCodes()).toEqual(['A']);
       expect(panAgain()).toBe(first + 1);
 
-      await tap(tile(3));
-      await tap(one('pick-book')!);
-      await dismissDialog(beach());
+      // A same-days re-read keeps the user's scroll: no new request to pan.
+      (fixture.componentInstance as unknown as { retry(): void }).retry();
+      venueReq().flush(beach());
+      await settle();
       expect(panAgain()).toBe(first + 1);
     });
 

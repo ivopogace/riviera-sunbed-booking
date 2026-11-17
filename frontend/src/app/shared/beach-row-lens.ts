@@ -407,7 +407,8 @@ export class BeachRowLens {
   /** The panned overview follows the open row, so the columns being picked from stay in view. */
   private follow(pan: HTMLElement, row: BeachRowLensRow): void {
     const scroller = this.overviewScrollers()[0];
-    if (!scroller || scroller.scrollWidth <= scroller.clientWidth + 1 || row.cells.length === 0) {
+    const unmeasured = pan.scrollWidth === 0 || row.cells.length === 0;
+    if (!scroller || scroller.scrollWidth <= scroller.clientWidth + 1 || unmeasured) {
       return;
     }
     const column = (pan.scrollLeft + pan.clientWidth / 2) / (pan.scrollWidth / row.cells.length);

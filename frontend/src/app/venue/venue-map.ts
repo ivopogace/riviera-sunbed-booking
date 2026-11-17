@@ -297,10 +297,6 @@ export class VenueMap {
   protected readonly planAnchorSet = signal<SetView | undefined>(undefined);
   /** The plan the tourist chose to book, for the booking dialog's plan mode. */
   protected readonly selectedPlan = signal<PlanView | undefined>(undefined);
-  /** True while the latest map read is unanswered. */
-  private reading = false;
-  /** A quiet read asked for while another was in flight: it runs when that one settles. */
-  private quietReadDue = false;
   /** Bumped per itinerary dispatch, so a superseded answer is dropped. */
   private planEpoch = 0;
   /** Whether the latest itinerary read failed, so the open panel can say so instead of staying blank. */
@@ -577,8 +573,6 @@ export class VenueMap {
     this.selectedSet.set(undefined);
     this.pickId.set(undefined);
     this.lensUnseeded = true;
-    this.quietReadDue = false;
-    this.reading = false;
     // The reset takes any focus-trapped modal AND its trigger, so move focus deliberately (RV-FE-9).
     const modalWasOpen =
       this.pickerOpen() || this.lightboxIndex() !== undefined || this.partlySet() !== undefined;
@@ -721,19 +715,10 @@ export class VenueMap {
     }
   }
 
-  /**
-   * Fetch the map for the currently selected days. A `quiet` read refreshes a map already on
-   * screen: its failure changes nothing, it leaves an open plan alone, and behind a read already
-   * in flight (whose failure must still show) it waits and then runs.
-   */
-  private load(options?: { readonly quiet: boolean }): void {
+  /** Fetch the map for the currently selected days. */
+  private load(): void {
     const id = this.venueId();
-    const quiet = options?.quiet === true;
     if (id === undefined) {
-      return;
-    }
-    if (quiet && this.reading) {
-      this.quietReadDue = true;
       return;
     }
     // A fresh attempt clears any prior failure so a recovered load renders the map.
@@ -741,31 +726,21 @@ export class VenueMap {
     this.notFound.set(false);
     // The per-dispatch generation: any later dispatch or reset supersedes this response.
     const epoch = ++this.epoch;
-    this.reading = true;
     this.venues.getVenueMap(id, this.selectedDate(), this.selectedLastDate()).subscribe({
       next: (venue) => {
         if (this.epoch === epoch) {
           this.venue.set(venue);
           this.settleLens();
           this.openPendingSelection(venue);
-          // A quiet read asks for a plan the banner newly needs, and never re-plans an open panel.
-          if (
-            quiet ? !this.planOpen() && this.noSetCovers() : this.planOpen() || this.noSetCovers()
-          ) {
+          if (this.planOpen() || this.noSetCovers()) {
             this.loadItinerary(this.planAnchorSet()?.id);
           }
-          this.readSettled();
         }
       },
       error: (error: unknown) => {
         if (this.epoch !== epoch) {
           return;
         }
-        if (quiet) {
-          this.readSettled();
-          return;
-        }
-        this.readSettled();
         this.pendingSelectSetId = undefined;
         // A stale map under a new date header misleads — the panel must win over the old view.
         const toreDownMap = this.venue() !== undefined;
@@ -787,15 +762,6 @@ export class VenueMap {
         }
       },
     });
-  }
-
-  /** The latest read answered: run the quiet read that waited behind it, if one did. */
-  private readSettled(): void {
-    this.reading = false;
-    if (this.quietReadDue) {
-      this.quietReadDue = false;
-      this.load({ quiet: true });
-    }
   }
 
   /** Retry after a load failure: re-fetch the current date's map. */
@@ -1021,8 +987,6 @@ export class VenueMap {
     // Return focus to what opened the dialog (modal a11y): the bar's action for the pick, else the tile.
     if (set !== undefined && this.pick()?.set.id === set.id) {
       this.moveFocus('pick-book');
-      // The dialog may have closed on a set someone just booked: re-read, so a pick that is gone is dropped.
-      this.load({ quiet: true });
     } else {
       this.focusTile(this.lastTriggerId);
     }
