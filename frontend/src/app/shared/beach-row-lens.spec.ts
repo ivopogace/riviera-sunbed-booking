@@ -387,6 +387,43 @@ describe('BeachRowLens', () => {
     });
   });
 
+  describe('the open row’s edge fade', () => {
+    it.each([
+      // Tiles of 44px every 50px: the fourth ends at 194px.
+      {
+        client: 200,
+        fade: 'none',
+        why: 'the fourth tile, whole in view, ends in the fade’s reach',
+      },
+      { client: 210, fade: 'end', why: 'only the fifth tile, cut by the edge, is under the fade' },
+    ])('at $client px is $fade: $why', async ({ client, fade }) => {
+      const offsets = vi
+        .spyOn(HTMLElement.prototype, 'offsetLeft', 'get')
+        .mockImplementation(function (this: HTMLElement) {
+          return this.tagName === 'LI' ? [...this.parentElement!.children].indexOf(this) * 50 : 0;
+        });
+      const widths = vi
+        .spyOn(HTMLElement.prototype, 'offsetWidth', 'get')
+        .mockImplementation(function (this: HTMLElement) {
+          return this.tagName === 'LI' ? 44 : 0;
+        });
+      try {
+        fixture.componentInstance.open.set(['A']);
+        await settle();
+        const pan = openRow('A')!.querySelector<HTMLElement>('[data-lens-pan]')!;
+        geometry(pan, client, 400);
+        pan.dispatchEvent(new Event('scroll'));
+        await settle();
+
+        expect(pan.dataset['fade']).toBe(fade);
+        expect(pan.className.includes('mask-image')).toBe(fade !== 'none');
+      } finally {
+        offsets.mockRestore();
+        widths.mockRestore();
+      }
+    });
+  });
+
   describe('a row the surface opens again', () => {
     it('pans afresh when the surface asks, and not when rows or the open list merely change', async () => {
       const offsets = vi
@@ -583,7 +620,9 @@ describe('BeachRowLens', () => {
       pan.dispatchEvent(new Event('scroll'));
       await settle();
       expect(scrollers.map((s) => s.scrollLeft)).toEqual([280, 280]);
-      expect(scrollers[0].className).toContain('linear-gradient(90deg,transparent,black_20px)]');
+      expect(scrollers[0].className).toContain(
+        'linear-gradient(90deg,transparent,black_var(--lens-fade,20px))]',
+      );
     });
   });
 });

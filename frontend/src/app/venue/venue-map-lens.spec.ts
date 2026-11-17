@@ -351,7 +351,7 @@ describe('VenueMap on a phone: the row lens (#1762)', () => {
       await tap(tile(2));
 
       expect(one('pick-summary')!.textContent.replace(/\s+/g, ' ').trim()).toBe(
-        'A · spot 2 · €45 · per day',
+        'A · spot 2 · €45 per day',
       );
     });
 
@@ -365,7 +365,7 @@ describe('VenueMap on a phone: the row lens (#1762)', () => {
 
       expect(one('pick-status')).toBe(region);
       expect(region.textContent.trim()).toBe(
-        'A · spot 2 picked, €45 full day. The button to continue is at the bottom of the screen.',
+        'A · spot 2 picked, €45 for the full day. The button to continue is at the bottom of the screen.',
       );
     });
 

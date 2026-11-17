@@ -539,7 +539,7 @@
               appVenueMapRow
               [tiles]="row.tiles"
               [pressable]="true"
-              class="set-row flex list-none gap-[3px] [&>li]:aspect-square [&>li]:h-auto [&>li]:max-w-14 [&>li]:flex-[1_0_44px]"
+              class="set-row flex list-none gap-[3px] [&>li]:aspect-square [&>li]:h-auto [&>li]:max-w-14 [&>li]:w-11 [&>li]:flex-[1_0_44px]"
               (chosen)="togglePick($event)"
               (days)="showDays($event)"
             ></ul>
@@ -640,8 +640,9 @@
         class="fixed inset-x-3 bottom-[calc(76px+env(safe-area-inset-bottom))] z-10 flex items-center justify-between gap-2.5 rounded-[18px] border border-riv-pop-border bg-riv-pop-surface py-2.5 pr-2.5 pl-4 text-[14px] text-riv-pop-ink shadow-riv-pop backdrop-blur-[28px] backdrop-saturate-[1.8]"
         data-testid="pick-bar"
       >
-        <span class="min-w-0" data-testid="pick-summary"
-          ><b>{{ picked.spot }}</b> · {{ picked.price }} · {{ picked.unit }}</span
+        <!-- Two lines at most: a third would grow the bar past the spacer that clears it. -->
+        <span class="line-clamp-2 min-w-0" data-testid="pick-summary"
+          ><b>{{ picked.spot }}</b> · {{ picked.priced }}</span
         >
         <button
           appPrimaryCta

@@ -73,20 +73,23 @@
                 <app-chevron-down-icon class="[&_svg]:size-[18px] [&_svg]:rotate-180" />
               </button>
             </div>
-            <!-- Padded on three sides and pulled back by as much: the scroller clips, and a badge overhangs its tile upward and sideways. -->
+            <!-- The scroller clips, and a badge overhangs its tile upward and sideways: headroom on the viewport, side room on the track, so both ends of the pan keep it. The track is as wide as its tiles, which is their content unless the surface gives them a width. -->
             <div
-              class="relative -mx-2 -mt-[9px] scrollbar-none overflow-x-auto overflow-y-hidden px-2 pt-[9px]"
-              [class]="openFadeClass(row.code)"
+              class="relative -mx-2 -mt-[9px] scrollbar-none overflow-x-auto overflow-y-hidden pt-[9px] [--lens-fade:3px]"
+              [class]="fadeClass(openFade(row.code))"
               data-testid="lens-pan"
               [attr.data-lens-pan]="row.code"
+              [attr.data-fade]="openFade(row.code)"
               (scroll)="onOpenPan($event, row)"
             >
-              <ng-container
-                *ngTemplateOutlet="
-                  rowsDef().template;
-                  context: { $implicit: row, index: item.index }
-                "
-              />
+              <div class="w-max min-w-full px-2" data-lens-track>
+                <ng-container
+                  *ngTemplateOutlet="
+                    rowsDef().template;
+                    context: { $implicit: row, index: item.index }
+                  "
+                />
+              </div>
             </div>
           </div>
         } @else {
@@ -105,7 +108,7 @@
               aria-hidden="true"
               >{{ row.code }}</span
             >
-            <!-- tabindex -1: a browser makes a scroller with nothing focusable in it a tab stop, and this one is hidden from assistive technology inside a button. Padded and pulled back by the same 2px, so a cell's ring is not clipped by the scroller. The grid is at least as wide as all its columns, a narrow row's empty ones included, or that row could not pan as far as the widest. -->
+            <!-- tabindex -1: a browser makes a scroller with nothing focusable in it a tab stop, and this one is hidden from assistive technology inside a button. Padded and pulled back by the same 2px, so a cell's ring or halo is not clipped by the scroller. The grid is at least as wide as all its columns, a narrow row's empty ones included, or that row could not pan as far as the widest. -->
             <span
               class="-m-0.5 block min-w-0 flex-1 scrollbar-none overflow-x-auto overflow-y-hidden p-0.5"
               [class]="fadeClass(overviewFade())"
@@ -128,6 +131,7 @@
                     [attr.data-state]="cell.state"
                     [attr.data-ring]="cell.ring ? '' : null"
                     [style.outline]="cell.ring ? '1.5px solid ' + cell.ring : null"
+                    [style.outline-offset]="cell.ring ? '0' : null"
                   ></span>
                 }
                 <!-- Cut to its own columns: a note that widened the scroller would read as panning, hide itself, fit again and reappear, without end. -->

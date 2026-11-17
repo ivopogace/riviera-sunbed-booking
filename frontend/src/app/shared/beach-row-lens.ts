@@ -124,20 +124,18 @@ export class BeachLensBand {
 /** Which edges of a sideways scroller still hide content. */
 type Fade = 'none' | 'end' | 'both' | 'start';
 
+/** 20px wide unless the scroller sets `--lens-fade`: the open row's is {@link OPEN_FADE}. */
 const FADE_CLASS: Record<Fade, string> = {
   none: '',
-  end: '[mask-image:linear-gradient(90deg,black_calc(100%-20px),transparent)]',
-  both: '[mask-image:linear-gradient(90deg,transparent,black_20px,black_calc(100%-20px),transparent)]',
-  start: '[mask-image:linear-gradient(90deg,transparent,black_20px)]',
+  end: '[mask-image:linear-gradient(90deg,black_calc(100%-var(--lens-fade,20px)),transparent)]',
+  both: '[mask-image:linear-gradient(90deg,transparent,black_var(--lens-fade,20px),black_calc(100%-var(--lens-fade,20px)),transparent)]',
+  start: '[mask-image:linear-gradient(90deg,transparent,black_var(--lens-fade,20px))]',
 };
 
-/** The open row's fade is a 3px hint: a wider one would wash out a whole tile at rest, and the pick's tick. */
-const OPEN_FADE_CLASS: Record<Fade, string> = {
-  none: '',
-  end: '[mask-image:linear-gradient(90deg,black_calc(100%-3px),transparent)]',
-  both: '[mask-image:linear-gradient(90deg,transparent,black_3px,black_calc(100%-3px),transparent)]',
-  start: '[mask-image:linear-gradient(90deg,transparent,black_3px)]',
-};
+/** The open row's fade in px, the template's `--lens-fade`: wider would wash out a whole tile. */
+const OPEN_FADE = 3;
+/** How far a tile's badge may overhang its side; a whole tile keeps that much clear of a fade. */
+const BADGE_OVERHANG = 6;
 
 function fadeOf(el: HTMLElement): Fade {
   const max = el.scrollWidth - el.clientWidth;
@@ -148,6 +146,26 @@ function fadeOf(el: HTMLElement): Fade {
     return 'end';
   }
   return el.scrollLeft >= max - 2 ? 'start' : 'both';
+}
+
+/** An open row's fade: an edge is not faded while a tile wholly in view, or its badge, lies under it. */
+function openFadeOf(pan: HTMLElement, tiles: readonly HTMLElement[]): Fade {
+  let start = pan.scrollLeft > 2;
+  let end = pan.scrollLeft < pan.scrollWidth - pan.clientWidth - 2;
+  const reach = OPEN_FADE + BADGE_OVERHANG;
+  for (const tile of tiles) {
+    const left = tile.offsetLeft - pan.scrollLeft;
+    const right = left + tile.offsetWidth;
+    if (left < 0 || right > pan.clientWidth) {
+      continue;
+    }
+    start &&= left >= reach;
+    end &&= right <= pan.clientWidth - reach;
+  }
+  if (start) {
+    return end ? 'both' : 'start';
+  }
+  return end ? 'end' : 'none';
 }
 
 /** A lens row as rendered: the surface's row plus what the template would otherwise recompute. */
@@ -271,8 +289,8 @@ export class BeachRowLens {
     return FADE_CLASS[fade];
   }
 
-  protected openFadeClass(code: string): string {
-    return OPEN_FADE_CLASS[this.openFades().get(code) ?? 'none'];
+  protected openFade(code: string): Fade {
+    return this.openFades().get(code) ?? 'none';
   }
 
   /** Rows whose opening pan has been applied; a row leaves when it closes. */
@@ -333,7 +351,7 @@ export class BeachRowLens {
     }
     const fades = new Map<string, Fade>();
     for (const el of this.host.nativeElement.querySelectorAll<HTMLElement>('[data-lens-pan]')) {
-      fades.set(el.dataset['lensPan'] ?? '', fadeOf(el));
+      fades.set(el.dataset['lensPan'] ?? '', openFadeOf(el, this.tiles(el)));
     }
     const before = this.openFades();
     if (fades.size !== before.size || [...fades].some(([code, f]) => before.get(code) !== f)) {
@@ -363,13 +381,11 @@ export class BeachRowLens {
         continue;
       }
       const tile = this.panTile(pan, row);
-      // The viewport is padded for the tiles' badges: a tile is in view inside that padding.
-      const pad = Number.parseFloat(getComputedStyle(pan).paddingLeft) || 0;
-      if (tile && row.panTo && tile.offsetLeft + tile.offsetWidth > pan.clientWidth - pad) {
+      if (tile && row.panTo && tile.offsetLeft + tile.offsetWidth > pan.clientWidth) {
         pan.scrollLeft =
           row.panTo.align === 'center'
             ? tile.offsetLeft - (pan.clientWidth - tile.offsetWidth) / 2
-            : tile.offsetLeft - pad;
+            : tile.offsetLeft - this.sideRoom(pan);
       } else if (pan.scrollLeft !== 0) {
         // A row panned again in place keeps its old scroll: position 1 shows its tile, or it has none.
         pan.scrollLeft = 0;
@@ -380,8 +396,18 @@ export class BeachRowLens {
 
   /** The tile element a row's {@link BeachRowLensRow.panTo} names, inside its pan viewport. */
   private panTile(pan: Element, row: BeachRowLensRow): HTMLElement | null {
-    const tile = row.panTo ? pan.firstElementChild?.children[row.panTo.index] : null;
-    return tile instanceof HTMLElement ? tile : null;
+    return row.panTo ? (this.tiles(pan)[row.panTo.index] ?? null) : null;
+  }
+
+  /** The surface's tiles in a pan viewport: the children of the one list its template renders. */
+  private tiles(pan: Element): HTMLElement[] {
+    const list = pan.querySelector('[data-lens-track]')?.firstElementChild;
+    return [...(list?.children ?? [])].filter((el) => el instanceof HTMLElement);
+  }
+
+  /** The track's room for a badge at each end: where its first tile starts. */
+  private sideRoom(pan: Element): number {
+    return this.tiles(pan)[0]?.offsetLeft ?? 0;
   }
 
   /** Move every closed row to one offset. Only a scroller that differs is written, and each write
@@ -424,8 +450,9 @@ export class BeachRowLens {
     if (pan.scrollWidth === 0 || row.cells.length === 0) {
       return;
     }
-    const tilePitch = pan.scrollWidth / row.cells.length;
-    const column = (pan.scrollLeft + pan.clientWidth / 2) / tilePitch;
+    const room = this.sideRoom(pan);
+    const tilePitch = (pan.scrollWidth - 2 * room) / row.cells.length;
+    const column = (pan.scrollLeft + pan.clientWidth / 2 - room) / tilePitch;
     const columnPitch = scroller.scrollWidth / this.cols();
     const max = scroller.scrollWidth - scroller.clientWidth;
     const offset = Math.max(0, Math.min(max, column * columnPitch - scroller.clientWidth / 2));

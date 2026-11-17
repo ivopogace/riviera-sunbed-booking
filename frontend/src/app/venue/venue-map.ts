@@ -92,9 +92,10 @@ interface MapRow extends BeachMapCanvasRow, BeachRowLensRow {
 interface PickView {
   readonly set: SetView;
   readonly spot: string;
-  readonly price: string;
-  /** What the price buys: the full day, or each day of a stay. A stay's bare price would read as its total. */
-  readonly unit: string;
+  /** The price with what it buys, the full day or each day of a stay: a stay's bare price would read as its total. */
+  readonly priced: string;
+  /** The bar's arrival, for the live region. */
+  readonly announcement: string;
 }
 
 /**
@@ -510,26 +511,27 @@ export class VenueMap {
   /** The pick as shown: phone widths only, where the bar and the solid tile are. */
   protected readonly pick = computed<PickView | undefined>(() => {
     const tile = this.phone() ? this.pickedTile() : undefined;
-    return tile === undefined
-      ? undefined
-      : {
-          set: tile.set,
-          spot: spotLabel(tile.set.rowLabel, tile.set.positionNo),
-          price: this.money(tile.set.price),
-          unit: this.isStay()
-            ? $localize`:What a set's price on the pick bar covers, on a stay of several days:per day`
-            : $localize`:What a set's price on the pick bar covers, on one day:full day`,
-        };
+    if (tile === undefined) {
+      return undefined;
+    }
+    const spot = spotLabel(tile.set.rowLabel, tile.set.positionNo);
+    const price = this.money(tile.set.price);
+    return {
+      set: tile.set,
+      spot,
+      ...(this.isStay()
+        ? {
+            priced: $localize`:A picked set's price on the phone beach map's bar, on a stay of several days:${price}:price: per day`,
+            announcement: $localize`:Screen-reader announcement when a set is picked on the phone beach map, on a stay of several days:${spot}:spot: picked, ${price}:price: per day. The button to continue is at the bottom of the screen.`,
+          }
+        : {
+            priced: $localize`:A picked set's price on the phone beach map's bar, on one day:${price}:price: · full day`,
+            announcement: $localize`:Screen-reader announcement when a set is picked on the phone beach map, on one day:${spot}:spot: picked, ${price}:price: for the full day. The button to continue is at the bottom of the screen.`,
+          }),
+    };
   });
   /** What the pick's live region says: the bar's arrival, and nothing once the pick is gone. */
-  protected readonly pickAnnouncement = computed(() => {
-    const pick = this.pick();
-    if (pick === undefined) {
-      return '';
-    }
-    const priced = `${pick.price} ${pick.unit}`;
-    return $localize`:Screen-reader announcement when a set is picked on the phone beach map:${pick.spot}:spot: picked, ${priced}:price:. The button to continue is at the bottom of the screen.`;
-  });
+  protected readonly pickAnnouncement = computed(() => this.pick()?.announcement ?? '');
 
   constructor() {
     // The route's static title stands while the read loads or fails; a loaded venue names the page.

@@ -13723,29 +13723,37 @@
         </context-group>
         <note priority="1" from="description">Accessible name of the control that closes an open beach-map row</note>
       </trans-unit>
-      <trans-unit id="5895809412846982273" datatype="html">
-        <source>per day</source>
-        <target state="translated">al giorno</target>
+      <trans-unit id="3815740052528764843" datatype="html">
+        <source><x id="price" equiv-text="price"/> per day</source>
+        <target state="translated"><x id="price" equiv-text="price"/> al giorno</target>
         <context-group purpose="location">
           <context context-type="sourcefile">src/app/venue/venue-map.ts</context>
         </context-group>
-        <note priority="1" from="description">What a set&apos;s price on the pick bar covers, on a stay of several days</note>
+        <note priority="1" from="description">A picked set&apos;s price on the phone beach map&apos;s bar, on a stay of several days</note>
       </trans-unit>
-      <trans-unit id="6526729166753064901" datatype="html">
-        <source>full day</source>
-        <target state="translated">giornata intera</target>
+      <trans-unit id="7816170463955739689" datatype="html">
+        <source><x id="spot" equiv-text="spot"/> picked, <x id="price" equiv-text="price"/> per day. The button to continue is at the bottom of the screen.</source>
+        <target state="translated"><x id="spot" equiv-text="spot"/> scelto, <x id="price" equiv-text="price"/> al giorno. Il pulsante per continuare è in fondo allo schermo.</target>
         <context-group purpose="location">
           <context context-type="sourcefile">src/app/venue/venue-map.ts</context>
         </context-group>
-        <note priority="1" from="description">What a set&apos;s price on the pick bar covers, on one day</note>
+        <note priority="1" from="description">Screen-reader announcement when a set is picked on the phone beach map, on a stay of several days</note>
       </trans-unit>
-      <trans-unit id="3573555021964404664" datatype="html">
-        <source><x id="spot" equiv-text="pick.spot"/> picked, <x id="price" equiv-text="priced"/>. The button to continue is at the bottom of the screen.</source>
-        <target state="translated"><x id="spot" equiv-text="pick.spot"/> scelto, <x id="price" equiv-text="pick.price"/>. Il pulsante per continuare è in fondo allo schermo.</target>
+      <trans-unit id="6344589351818942031" datatype="html">
+        <source><x id="price" equiv-text="price"/> · full day</source>
+        <target state="translated"><x id="price" equiv-text="price"/> · giornata intera</target>
         <context-group purpose="location">
           <context context-type="sourcefile">src/app/venue/venue-map.ts</context>
         </context-group>
-        <note priority="1" from="description">Screen-reader announcement when a set is picked on the phone beach map</note>
+        <note priority="1" from="description">A picked set&apos;s price on the phone beach map&apos;s bar, on one day</note>
+      </trans-unit>
+      <trans-unit id="3697007046352557086" datatype="html">
+        <source><x id="spot" equiv-text="spot"/> picked, <x id="price" equiv-text="price"/> for the full day. The button to continue is at the bottom of the screen.</source>
+        <target state="translated"><x id="spot" equiv-text="spot"/> scelto, <x id="price" equiv-text="price"/> per l’intera giornata. Il pulsante per continuare è in fondo allo schermo.</target>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/venue/venue-map.ts</context>
+        </context-group>
+        <note priority="1" from="description">Screen-reader announcement when a set is picked on the phone beach map, on one day</note>
       </trans-unit>
       <trans-unit id="3825947165089033091" datatype="html">
         <source><x id="venue" equiv-text="view.name"/>, <x id="beach" equiv-text="view.beach"/> — Riviera</source>
