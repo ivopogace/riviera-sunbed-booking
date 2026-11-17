@@ -283,7 +283,7 @@ export class VenueMap {
   protected readonly lensOpen = signal<readonly string[]>([]);
   /** Bumped per seeding, so the lens pans its open row for the new map even if it is the same row. */
   protected readonly lensSeed = signal(0);
-  /** True until the next map read has seeded {@link lensOpen}: a fresh venue or other days. */
+  /** True until the next map read lands for a fresh venue or other days: it seeds {@link lensOpen} and drops any pick. */
   private lensUnseeded = true;
   /** The partly-free set whose days are being shown, or undefined when the sheet is closed. */
   protected readonly partlySet = signal<SetView | undefined>(undefined);
@@ -957,7 +957,7 @@ export class VenueMap {
    */
   private settleLens(): void {
     const rows = this.rows();
-    // A pick belongs to the days it was made for: one tapped while those days were still loading goes too.
+    // A pick is for the days its map showed: one tapped on the old map while other days load is dropped too.
     const stale = this.lensUnseeded || this.pickedTile() === undefined;
     if (this.pickId() !== undefined && stale) {
       // The bar goes with the pick: focus it held lands on the open row, which names itself.
