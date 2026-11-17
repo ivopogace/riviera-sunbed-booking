@@ -387,6 +387,23 @@ describe('VenueMap on a phone: the row lens (#1762)', () => {
       expect(document.activeElement).toBe(one('beach-grid'));
     });
 
+    it('a failed re-read after a dismiss leaves the map, the pick and the bar as they were', async () => {
+      await load();
+      await tap(tile(3));
+      await tap(one('pick-book')!);
+
+      const dialog = fixture.debugElement.query(By.directive(BookingDialog));
+      (dialog.componentInstance as BookingDialog).dismissed.emit();
+      fixture.detectChanges();
+      venueReq().flush('down', { status: 503, statusText: 'Service Unavailable' });
+      await settle();
+
+      expect(one('map-error')).toBeNull();
+      expect(one('row-lens')).not.toBeNull();
+      expect(tile(3).getAttribute('aria-pressed')).toBe('true');
+      expect(document.activeElement).toBe(one('pick-book'));
+    });
+
     it('words the action as a request at a Request-to-Book venue', async () => {
       await load({ ...beach(), bookingMode: 'REQUEST' });
       await tap(tile(2));

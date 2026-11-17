@@ -81,7 +81,7 @@ const ratio = (a: Rgb, b: Rgb): number => contrastRatio(rgbToHex(a), rgbToHex(b)
 
 describe.each(THEMES)('Row lens non-text contrast, $name theme', ({ name, token }) => {
   const wash = ['--riv-map-sea', '--riv-map-mid', '--riv-map-sand'].map((t) => token(t).color);
-  /** The open row's card: the chip fill over each wash stop. */
+  /** The open row's card: its own fill token over each wash stop. */
   const openSurface = wash.map((stop) => over(token('--riv-map-open-row-fill'), stop));
 
   function expectOver(grounds: readonly Rgb[], what: string, paint: Paint, floor = NON_TEXT): void {

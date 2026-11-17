@@ -71,6 +71,7 @@ function deck(): DeckRow[] {
       [looks]="looks"
       [(open)]="open"
       [multiOpen]="multiOpen()"
+      [panAgain]="panAgain()"
       focusOnOpen="button:not([disabled])"
     >
       <ul lensLegend data-testid="deck-legend">
@@ -96,6 +97,7 @@ class DeckHost {
   readonly rows = signal<readonly DeckRow[]>(deck());
   readonly open = signal<readonly string[]>([]);
   readonly multiOpen = signal(false);
+  readonly panAgain = signal(0);
 }
 
 describe('BeachRowLens', () => {
@@ -386,7 +388,7 @@ describe('BeachRowLens', () => {
   });
 
   describe('a row the surface opens again', () => {
-    it('pans afresh when the surface writes the open rows, and not when rows merely change', async () => {
+    it('pans afresh when the surface asks, and not when rows or the open list merely change', async () => {
       const offsets = vi
         .spyOn(HTMLElement.prototype, 'offsetLeft', 'get')
         .mockImplementation(function (this: HTMLElement) {
@@ -419,14 +421,27 @@ describe('BeachRowLens', () => {
         await settle();
         expect(pan().scrollLeft).toBe(200);
 
-        // The surface opens the same row again (a read for other days): it pans to the new target.
+        // An equal list in a new array is no request either: the user's scroll stays.
         fixture.componentInstance.open.set(['A']);
+        await settle();
+        expect(pan().scrollLeft).toBe(200);
+
+        // The surface asks (a read for other days): the row pans to the new target.
+        fixture.componentInstance.panAgain.update((n) => n + 1);
         await settle();
         expect(pan().scrollLeft).toBe(250);
 
-        // And back to position 1 when the new target shows from there.
+        // Back to position 1 when the new target shows from there, or the row names none.
         withPanTo(1);
-        fixture.componentInstance.open.set(['A']);
+        fixture.componentInstance.panAgain.update((n) => n + 1);
+        await settle();
+        expect(pan().scrollLeft).toBe(0);
+        pan().scrollLeft = 120;
+        fixture.componentInstance.rows.update((rows) => [
+          { ...rows[0], panTo: null },
+          ...rows.slice(1),
+        ]);
+        fixture.componentInstance.panAgain.update((n) => n + 1);
         await settle();
         expect(pan().scrollLeft).toBe(0);
       } finally {
@@ -527,6 +542,16 @@ describe('BeachRowLens', () => {
       // Column 20 at a 20px pitch sits at 400px; centred in a 280px view, the offset is 260.
       expect(scrollers.map((s) => s.scrollLeft)).toEqual([260, 260]);
       expect(all('lens-position-text')[0].textContent.trim()).toBe('14–27 of 28');
+
+      // At the open row's far end the overview is at its own end: only the leading edge fades.
+      pan.scrollLeft = 1100;
+      pan.dispatchEvent(new Event('scroll'));
+      for (const scroller of scrollers) {
+        scroller.dispatchEvent(new Event('scroll'));
+      }
+      await settle();
+      expect(scrollers.map((s) => s.scrollLeft)).toEqual([280, 280]);
+      expect(scrollers[0].className).toContain('linear-gradient(90deg,transparent,black_20px)]');
     });
   });
 });

@@ -283,6 +283,8 @@ export class VenueMap {
   private readonly pickId = signal<number | undefined>(undefined);
   /** The rows the phone lens has open. Seeded per map read by {@link settleLens}. */
   protected readonly lensOpen = signal<readonly string[]>([]);
+  /** Bumped per seeding, so the lens pans its open row for the new map even if it is the same row. */
+  protected readonly lensSeed = signal(0);
   /** True until the next map read has seeded {@link lensOpen}: a fresh venue or other days. */
   private lensUnseeded = true;
   /** The partly-free set whose days are being shown, or undefined when the sheet is closed. */
@@ -887,6 +889,28 @@ export class VenueMap {
     this.pickId.update((id) => (id === set.id ? undefined : set.id));
   }
 
+  /**
+   * After the pick's dialog is dismissed: a quiet same-days re-read, because the dialog may have
+   * closed on a set someone just booked and the bar must not go on offering it. A failed or
+   * superseded read changes nothing: the map on screen stays.
+   */
+  private refreshPick(setId: number): void {
+    const id = this.venueId();
+    if (id === undefined) {
+      return;
+    }
+    const epoch = this.epoch;
+    this.venues.getVenueMap(id, this.selectedDate(), this.selectedLastDate()).subscribe({
+      next: (venue) => {
+        if (this.epoch === epoch && this.pickId() === setId) {
+          this.venue.set(venue);
+          this.settleLens();
+        }
+      },
+      error: () => undefined,
+    });
+  }
+
   /** The bar's action: today's dialog, for the pick. */
   protected bookPick(): void {
     const pick = this.pick();
@@ -910,17 +934,13 @@ export class VenueMap {
     const rows = this.rows();
     if (this.lensUnseeded) {
       this.lensUnseeded = false;
+      this.lensSeed.update((seed) => seed + 1);
       const home =
         rows.find((row) => row.tiles.some((tile) => tile.picked)) ??
         rows.find((row) => freeCountOf(row.tiles) > 0);
       this.lensOpen.set(home === undefined ? [] : [home.code]);
     } else {
-      // Same array when nothing left: a new one tells the lens the rows were opened afresh.
-      this.lensOpen.update((open) =>
-        open.every((code) => rows.some((row) => row.code === code))
-          ? open
-          : open.filter((code) => rows.some((row) => row.code === code)),
-      );
+      this.lensOpen.update((open) => open.filter((code) => rows.some((row) => row.code === code)));
     }
   }
 
@@ -989,8 +1009,7 @@ export class VenueMap {
     // Return focus to what opened the dialog (modal a11y): the bar's action for the pick, else the tile.
     if (set !== undefined && this.pick()?.set.id === set.id) {
       this.moveFocus('pick-book');
-      // The dialog may have closed on a set someone just booked: re-read, so a pick that is gone is dropped.
-      this.load();
+      this.refreshPick(set.id);
     } else {
       this.focusTile(this.lastTriggerId);
     }
