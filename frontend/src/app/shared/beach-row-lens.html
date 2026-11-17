@@ -73,13 +73,11 @@
                 <app-chevron-down-icon class="[&_svg]:size-[18px] [&_svg]:rotate-180" />
               </button>
             </div>
-            <!-- The scroller clips, and a badge overhangs its tile upward and sideways: headroom on the viewport, side room on the track, so both ends of the pan keep it. The track is as wide as its tiles, which is their content unless the surface gives them a width. -->
+            <!-- The scroller clips, and a badge overhangs its tile upward and sideways: headroom on the viewport, side room on the track, so both ends of the pan keep it. The track is as wide as its tiles, which is their content unless the surface gives them a width. No edge fade: at some widths it would lie over a whole tile, and a cut tile already says the row pans. -->
             <div
-              class="relative -mx-2 -mt-[9px] scrollbar-none overflow-x-auto overflow-y-hidden pt-[9px] [--lens-fade:3px]"
-              [class]="fadeClass(openFade(row.code))"
+              class="relative -mx-2 -mt-[9px] scrollbar-none overflow-x-auto overflow-y-hidden pt-[9px]"
               data-testid="lens-pan"
               [attr.data-lens-pan]="row.code"
-              [attr.data-fade]="openFade(row.code)"
               (scroll)="onOpenPan($event, row)"
             >
               <div class="w-max min-w-full px-2" data-lens-track>

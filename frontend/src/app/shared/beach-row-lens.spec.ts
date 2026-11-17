@@ -387,20 +387,19 @@ describe('BeachRowLens', () => {
     });
   });
 
-  describe('the open row’s edge fade', () => {
+  describe('a pressed tile at the edge of the open row', () => {
     it.each([
-      // Tiles of 44px every 50px: the fourth ends at 194px.
-      {
-        client: 200,
-        fade: 'none',
-        why: 'the fourth tile, whole in view, ends in the fade’s reach',
-      },
-      { client: 210, fade: 'end', why: 'only the fifth tile, cut by the edge, is under the fade' },
-    ])('at $client px is $fade: $why', async ({ client, fade }) => {
+      // Tiles of 44px every 50px from 8px, in a 200px viewport: the fourth ends at 202px.
+      { index: 3, from: 6, to: 10, why: 'its far side clears the edge by the side room' },
+      { index: 1, from: 60, to: 50, why: 'its near side clears the edge by the side room' },
+      { index: 2, from: 6, to: 6, why: 'a tile with room on both sides stays put' },
+    ])('tile $index from $from px pans to $to px: $why', async ({ index, from, to }) => {
       const offsets = vi
         .spyOn(HTMLElement.prototype, 'offsetLeft', 'get')
         .mockImplementation(function (this: HTMLElement) {
-          return this.tagName === 'LI' ? [...this.parentElement!.children].indexOf(this) * 50 : 0;
+          return this.tagName === 'LI'
+            ? 8 + [...this.parentElement!.children].indexOf(this) * 50
+            : 0;
         });
       const widths = vi
         .spyOn(HTMLElement.prototype, 'offsetWidth', 'get')
@@ -411,12 +410,12 @@ describe('BeachRowLens', () => {
         fixture.componentInstance.open.set(['A']);
         await settle();
         const pan = openRow('A')!.querySelector<HTMLElement>('[data-lens-pan]')!;
-        geometry(pan, client, 400);
-        pan.dispatchEvent(new Event('scroll'));
-        await settle();
+        geometry(pan, 200, 400);
+        pan.scrollLeft = from;
 
-        expect(pan.dataset['fade']).toBe(fade);
-        expect(pan.className.includes('mask-image')).toBe(fade !== 'none');
+        pan.querySelectorAll<HTMLElement>('li')[index].click();
+
+        expect(pan.scrollLeft).toBe(to);
       } finally {
         offsets.mockRestore();
         widths.mockRestore();
@@ -620,9 +619,7 @@ describe('BeachRowLens', () => {
       pan.dispatchEvent(new Event('scroll'));
       await settle();
       expect(scrollers.map((s) => s.scrollLeft)).toEqual([280, 280]);
-      expect(scrollers[0].className).toContain(
-        'linear-gradient(90deg,transparent,black_var(--lens-fade,20px))]',
-      );
+      expect(scrollers[0].className).toContain('linear-gradient(90deg,transparent,black_20px)]');
     });
   });
 });
