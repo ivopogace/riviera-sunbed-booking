@@ -402,12 +402,34 @@ describe('BeachRowLens', () => {
       const thumb = all('lens-open-thumb')[0];
       expect(thumb.style.left).toBe('50%');
       expect(thumb.style.width).toBe('25%');
-      expect(thumb.parentElement!.getAttribute('aria-hidden')).toBe('true');
+      expect(all('lens-open-track')[0].getAttribute('aria-hidden')).toBe('true');
+    });
+
+    it('keeps the thumb on its track when the pan is overscrolled, and drops it when the row fits again', async () => {
+      fixture.componentInstance.open.set(['A']);
+      await settle();
+      const pan = openRow('A')!.querySelector<HTMLElement>('[data-lens-pan]')!;
+      geometry(pan, 200, 800);
+      const at = async (scrollLeft: number): Promise<string> => {
+        Object.defineProperty(pan, 'scrollLeft', { configurable: true, value: scrollLeft });
+        pan.dispatchEvent(new Event('scroll'));
+        await settle();
+        return all('lens-open-thumb')[0].style.left;
+      };
+
+      // iOS reports a rubber-banded pan past either end.
+      expect(await at(-40)).toBe('0%');
+      expect(await at(640)).toBe('75%');
+
+      geometry(pan, 200, 200);
+      pan.dispatchEvent(new Event('scroll'));
+      await settle();
+      expect(all('lens-open-thumb')).toHaveLength(0);
     });
   });
 
   describe('the tile a row says to keep whole', () => {
-    /** Tiles of 44px every 50px after 8px of side room: the fourth spans 158–202px. */
+    /** Thirteen tiles' worth of track, 44px every 50px after 8px of side room: the fourth spans 158–202px. */
     function stubTiles(client: number): () => void {
       const spies = [
         vi.spyOn(HTMLElement.prototype, 'offsetLeft', 'get').mockImplementation(function (
@@ -426,6 +448,11 @@ describe('BeachRowLens', () => {
           this: HTMLElement,
         ) {
           return this.dataset['lensPan'] === undefined ? 0 : client;
+        }),
+        vi.spyOn(HTMLElement.prototype, 'scrollWidth', 'get').mockImplementation(function (
+          this: HTMLElement,
+        ) {
+          return this.dataset['lensPan'] === undefined ? 0 : 666;
         }),
       ];
       return () => spies.forEach((spy) => spy.mockRestore());

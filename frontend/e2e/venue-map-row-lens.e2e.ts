@@ -322,10 +322,12 @@ test('the open row has no edge fade, and a picked tile and its tick are never cu
     const spot = await lastWhole();
     expect(spot).toBeGreaterThanOrEqual(5);
     await tile(page, 'A', spot).click();
+    await settle(page);
     await expect(tile(page, 'A', spot)).toHaveAttribute('aria-pressed', 'true');
     await inside(tile(page, 'A', spot), `picked tile ${spot} at ${width}px`);
     await inside(pan.getByTestId('pick-tick'), `the tick on tile ${spot} at ${width}px`);
     await tile(page, 'A', spot).click();
+    await settle(page);
     await expect(pan.getByTestId('pick-tick')).toHaveCount(0);
   }
   await page.setViewportSize({ width: 390, height: 844 });
@@ -339,17 +341,22 @@ test('the open row has no edge fade, and a picked tile and its tick are never cu
   expect(cutBox.x + 4, 'the tile shows enough to tap').toBeLessThan(edge);
   expect(cutBox.x + cutBox.width, 'the tile is cut').toBeGreaterThan(edge);
   await tile(page, 'A', cut).click({ position: { x: 4, y: 22 } });
+  await settle(page);
   await expect(tile(page, 'A', cut)).toHaveAttribute('aria-pressed', 'true');
   await inside(tile(page, 'A', cut), `picked tile ${cut}, cut before the tap`);
   await inside(pan.getByTestId('pick-tick'), `the tick on tile ${cut}`);
   await tile(page, 'A', cut).click();
+  await settle(page);
 
   // A narrower viewport cuts a pick that was whole, or pushes it out: it is brought in again.
   await page.setViewportSize({ width: 430, height: 844 });
+  // Back to the top: a tile under the page's sticky header would have the click scroll to reach it.
+  await page.evaluate(() => window.scrollTo(0, 0));
   await pan.evaluate((el) => (el.scrollLeft = 0));
   await settle(page);
   const wide = await lastWhole();
   await tile(page, 'A', wide).click();
+  await settle(page);
   const wideBox = (await tile(page, 'A', wide).boundingBox())!;
   await page.setViewportSize({ width: 320, height: 844 });
   await settle(page);
@@ -358,6 +365,7 @@ test('the open row has no edge fade, and a picked tile and its tick are never cu
   await inside(tile(page, 'A', wide), `picked tile ${wide} after the viewport narrowed`);
   await inside(pan.getByTestId('pick-tick'), 'the tick after the viewport narrowed');
   await tile(page, 'A', wide).click();
+  await settle(page);
   await page.setViewportSize({ width: 390, height: 844 });
   await settle(page);
 
@@ -367,7 +375,7 @@ test('the open row has no edge fade, and a picked tile and its tick are never cu
   await settle(page);
   const thumb = openRow(page, 'A').getByTestId('lens-open-thumb');
   const span = async (): Promise<{ left: number; width: number }> => {
-    const track = (await thumb.locator('xpath=..').boundingBox())!;
+    const track = (await openRow(page, 'A').getByTestId('lens-open-track').boundingBox())!;
     const box = (await thumb.boundingBox())!;
     return { left: (box.x - track.x) / track.width, width: box.width / track.width };
   };
@@ -381,19 +389,28 @@ test('the open row has no edge fade, and a picked tile and its tick are never cu
   // A row the user panned away from its pick stays there when the width changes.
   await pan.evaluate((el) => (el.scrollLeft = 0));
   await tile(page, 'A', 2).click();
+  await settle(page);
   await pan.evaluate((el) => (el.scrollLeft = el.scrollWidth));
   const panned = await pan.evaluate((el) => el.scrollLeft);
   await page.setViewportSize({ width: 427, height: 844 });
   await settle(page);
   expect(await pan.evaluate((el) => el.scrollLeft)).toBeGreaterThanOrEqual(panned);
+  // A widening that brings the pick partly back shows it whole.
+  await page.setViewportSize({ width: 600, height: 844 });
+  await settle(page);
+  await inside(tile(page, 'A', 2), 'the pick a wider viewport brought back');
+  await page.setViewportSize({ width: 427, height: 844 });
+  await settle(page);
   await pan.evaluate((el) => (el.scrollLeft = 0));
   await tile(page, 'A', 2).click();
+  await settle(page);
   await page.setViewportSize({ width: 390, height: 844 });
   await settle(page);
 
   // After the pan start: the row reopens on its last set, at the far end of the pan.
   await pan.evaluate((el) => (el.scrollLeft = el.scrollWidth));
   await tile(page, 'A', 13).click();
+  await settle(page);
   await closedRow(page, 'B').click();
   await closedRow(page, 'A').click();
   await expect(openRow(page, 'A')).toBeVisible();
