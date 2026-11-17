@@ -24,6 +24,11 @@ export function stretchFillVar(index: number): string {
   return `var(--riv-stretch-${(index % STRETCH_FILL.length) + 1}-fill)`;
 }
 
+/** The same position's ring on an overview cell, which sits on the map wash, not on the card. */
+export function stretchRingVar(index: number): string {
+  return `var(--riv-stretch-${(index % STRETCH_FILL.length) + 1}-ring)`;
+}
+
 interface StripCell {
   readonly iso: string;
   readonly day: number;

@@ -466,139 +466,144 @@
       }
 
       <!-- Only the map card leaves the 780px shell, to 1100px; the margin derives from that width so a shell edit cannot drift it. The query is px to match: rem-based `xl` tracks the browser's default font size, firing at 960px on Chrome's "Small" setting. -->
-      <app-beach-map-canvas
-        class="mt-[18px] min-[1280px]:[margin-inline:calc((100%_-_1100px)/2)]"
-        label="Beach map — {{ v.name }}"
-        i18n-label
-        railCodes="capped-labels"
-        priceChips="capped-spans"
-      >
-        <!-- The legend leads the card (#701): the tourist decodes the colours BEFORE reading the tiles, so it is projected above the grid rather than trailing it. Swatches wear the SAME appMapTile appearance as the tiles they stand for AND sit on the wash's own first stop, so a translucent swatch composites over the same ground its tiles do — matching computed styles is not the same as looking alike. The canvas owns the band's vertical spacing. -->
-        <ul
-          canvasLegend
-          class="flex list-none flex-wrap items-center justify-center gap-x-[22px] gap-y-2 bg-riv-map-sea px-4 py-[9px] text-[12px] text-riv-card-ink-soft"
-          aria-label="Legend"
-          i18n-aria-label
-        >
-          @for (entry of legend; track entry.state) {
-            <li class="flex items-center gap-[7px]">
-              <span
-                appMapTile
-                [state]="entry.state"
-                class="h-[18px] w-[18px] rounded-[6px] border-[1.5px] data-[state=partly]:border-2"
-                aria-hidden="true"
-              ></span>
-              {{ entry.label }}
-            </li>
-          }
-        </ul>
-        <ng-template [appBeachMapRow]="rows()" let-row>
-          <ul
-            class="set-row list-none h-full grid grid-cols-[repeat(var(--riv-map-cols,1),var(--riv-tile))] gap-1.5"
+      <!-- Shared by the lens and the canvas: the copy and the empty card are the same at every width. -->
+      <ng-template #mapFooter>
+        @if (v.bookingMode === 'REQUEST') {
+          <ng-container i18n
+            >Pick a set to request it — you pay only once
+            {{
+              v.name // i18n(ph="venue")
+            }}
+            accepts, and nothing is held until then.<br />
+            Prices are per set, full day; a stay is one request, answered whole.</ng-container
           >
-            @for (tile of row.tiles; track tile.set.id) {
-              <li
-                appMapTile
-                [state]="tile.state"
-                class="set-tile relative snap-start h-full min-w-0 flex items-center justify-center rounded-[10px] border-[1.5px] font-bold text-[12.5px] [&.bookable]:p-0 [&.partly]:p-0 data-[state=partly]:border-2 [&.inplan]:shadow-[0_0_0_3px_var(--riv-plan-fill)]"
-                data-testid="set-tile"
-                [class.premium]="tile.state === 'premium'"
-                [class.partly]="tile.state === 'partly'"
-                [class.walkin]="tile.state === 'walkin'"
-                [class.taken]="tile.state === 'taken'"
-                [class.bookable]="tile.bookable"
-                [class.inplan]="tile.planIndex !== undefined"
-                [style.--riv-plan-fill]="tile.planFill"
-                [attr.data-plan-index]="tile.planIndex ?? null"
-                [attr.aria-label]="tile.bookable || tile.partly ? null : tile.name"
-              >
-                @if (tile.planIndex !== undefined) {
-                  <!-- Inside the tile's box, so the disc adds no touch target; aria-hidden because the plan panel names each stop. -->
-                  <span
-                    class="pointer-events-none absolute -top-1.5 -left-1.5 z-[2] grid size-[16px] place-items-center rounded-full bg-(--riv-plan-fill) text-[9px] leading-none font-bold text-riv-stretch-ink"
-                    data-testid="plan-number"
-                    aria-hidden="true"
-                    >{{ tile.planIndex }}</span
-                  >
-                }
-                @if (tile.state === 'partly') {
-                  <!-- Inside the existing button's box, so the badge adds no touch target; aria-hidden because the name already says "free k of N days". -->
-                  <span
-                    class="pointer-events-none absolute top-[3px] right-[3px] z-[2] grid h-[15px] min-w-[16px] place-items-center rounded-full bg-riv-tile-badge-fill px-[3px] text-[9px] leading-none font-bold text-riv-tile-badge-ink"
-                    data-testid="free-days-badge"
-                    aria-hidden="true"
-                    >{{ tile.freeDays }}</span
-                  >
-                }
-                @if (tile.partly) {
-                  <button
-                    appTouchTarget
-                    type="button"
-                    class="set-button w-full h-full flex items-center justify-center border-0 rounded-[inherit] bg-transparent text-inherit cursor-pointer touch-manipulation [transition:background_0.15s_ease,translate_0.12s_ease] hover:bg-riv-tile-hover hover:-translate-y-0.5 motion-reduce:transition-none motion-reduce:hover:translate-y-0 focus-visible:outline-[3px] focus-visible:outline-riv-tile-focus focus-visible:outline-offset-2"
-                    [attr.data-set-id]="tile.set.id"
-                    [attr.aria-label]="tile.partlyName"
-                    (click)="showDays(tile.set)"
-                  >
-                    <span aria-hidden="true">{{ tile.set.positionNo }}</span>
-                  </button>
-                } @else if (tile.bookable) {
-                  <button
-                    appTouchTarget
-                    type="button"
-                    class="set-button w-full h-full flex items-center justify-center border-0 rounded-[inherit] bg-transparent text-inherit cursor-pointer touch-manipulation [transition:background_0.15s_ease,translate_0.12s_ease] hover:bg-riv-tile-hover hover:-translate-y-0.5 motion-reduce:transition-none motion-reduce:hover:translate-y-0 focus-visible:outline-[3px] focus-visible:outline-riv-tile-focus focus-visible:outline-offset-2"
-                    [attr.data-set-id]="tile.set.id"
-                    [attr.aria-label]="tile.bookName"
-                    (click)="select(tile.set)"
-                  >
-                    <span aria-hidden="true">{{ tile.set.positionNo }}</span>
-                  </button>
-                } @else {
-                  <span aria-hidden="true">{{ tile.set.positionNo }}</span>
-                }
+        } @else {
+          <ng-container i18n
+            >Pick any free set to book it · prices are per set, full day.</ng-container
+          >
+        }
+      </ng-template>
+      <ng-template #mapEmpty>
+        <h2 class="mb-[7px] text-[19px] font-bold tracking-[-0.01em] text-riv-card-ink" i18n>
+          No sunbeds mapped yet
+        </h2>
+        <p
+          class="mx-auto mb-5 max-w-[380px] text-[14.5px] leading-normal text-riv-card-ink-soft"
+          i18n
+        >
+          This beach is listed on Riviera, but its owner hasn’t drawn the sunbed layout yet — so
+          there’s nothing to book here on any date. The map appears as soon as it’s published.
+        </p>
+        <app-retry-button
+          testId="map-empty-back"
+          label="Back to Discover"
+          i18n-label
+          (retry)="onBack()"
+        />
+      </ng-template>
+      @if (phone()) {
+        <!-- Below sm the map is the row lens (#1762): the whole beach at overview scale, one row open to 44px tiles. The card leaves the page's 24px gutter for 12px, which is what lets a 20-column beach keep 12px cells at 390px. -->
+        <app-beach-row-lens
+          class="-mx-3 mt-[18px]"
+          label="Beach map — {{ v.name }}"
+          i18n-label
+          [looks]="overviewLooks"
+          [(open)]="lensOpen"
+          [panAgain]="lensSeed()"
+          focusOnOpen=".bookable button"
+        >
+          <!-- Swatches wear the overview looks the cells below them wear, on the wash's first stop. -->
+          <ul
+            lensLegend
+            class="flex list-none flex-wrap items-center justify-center gap-x-4 gap-y-2 bg-riv-map-sea px-4 py-[9px] text-[12px] text-riv-card-ink-soft"
+            aria-label="Legend"
+            i18n-aria-label
+          >
+            @for (entry of overviewLegend; track entry.key) {
+              <li class="flex items-center gap-[7px]">
+                <span
+                  appBeachLensCell
+                  [look]="overviewLooks[entry.key]"
+                  class="w-3.5"
+                  data-testid="legend-cell"
+                  [attr.data-state]="entry.key"
+                  aria-hidden="true"
+                ></span>
+                {{ entry.label }}
               </li>
             }
           </ul>
-        </ng-template>
-        <!-- The footer states the venue's own deal where the tap happens (#703): a REQUEST venue's tourist otherwise first meets the no-charge-until-accepted flow inside the dialog, after committing to a spot. -->
-        <p
-          canvasFooter
-          class="text-center text-[12px] text-riv-card-ink-faint mt-2.5 tracking-[0.02em]"
-        >
-          @if (v.bookingMode === 'REQUEST') {
-            <ng-container i18n
-              >Pick a set to request it — you pay only once
-              {{
-                v.name // i18n(ph="venue")
-              }}
-              accepts, and nothing is held until then.<br />
-              Prices are per set, full day; a stay is one request, answered whole.</ng-container
-            >
-          } @else {
-            <ng-container i18n
-              >Pick any free set to book it · prices are per set, full day.</ng-container
-            >
-          }
-        </p>
-        <!-- Zero sets (#717): the canvas drops the legend, grid and footer together, so this slot IS the card. The state is date-independent — sets come from the venue's layout — so the copy sends the tourist onward, not back to the picker. -->
-        <div canvasEmpty class="px-3 py-9 text-center" data-testid="map-empty">
-          <h2 class="mb-[7px] text-[19px] font-bold tracking-[-0.01em] text-riv-card-ink" i18n>
-            No sunbeds mapped yet
-          </h2>
+          <ng-template [appBeachRowLensTiles]="rows()" let-row>
+            <!-- One line of tiles: seven fit a 390px phone at 44px, growing to share the row; a wider row keeps 44px and pans. -->
+            <ul
+              appVenueMapRow
+              [tiles]="row.tiles"
+              [pressable]="true"
+              class="set-row flex list-none gap-[3px] [&>li]:aspect-square [&>li]:h-auto [&>li]:max-w-14 [&>li]:w-11 [&>li]:flex-[1_0_44px]"
+              (chosen)="togglePick($event)"
+              (days)="showDays($event)"
+            ></ul>
+          </ng-template>
+          <p lensHint data-testid="lens-tap-hint" i18n>Tap a row to open it and pick a set.</p>
           <p
-            class="mx-auto mb-5 max-w-[380px] text-[14.5px] leading-normal text-riv-card-ink-soft"
-            i18n
+            lensFooter
+            class="mt-2.5 text-center text-[12px] tracking-[0.02em] text-riv-card-ink-faint"
           >
-            This beach is listed on Riviera, but its owner hasn’t drawn the sunbed layout yet — so
-            there’s nothing to book here on any date. The map appears as soon as it’s published.
+            <ng-container *ngTemplateOutlet="mapFooter" />
           </p>
-          <app-retry-button
-            testId="map-empty-back"
-            label="Back to Discover"
-            i18n-label
-            (retry)="onBack()"
-          />
-        </div>
-      </app-beach-map-canvas>
+          <div lensEmpty class="px-3 py-9 text-center" data-testid="map-empty">
+            <ng-container *ngTemplateOutlet="mapEmpty" />
+          </div>
+        </app-beach-row-lens>
+      } @else {
+        <app-beach-map-canvas
+          class="mt-[18px] min-[1280px]:[margin-inline:calc((100%_-_1100px)/2)]"
+          label="Beach map — {{ v.name }}"
+          i18n-label
+          railCodes="capped-labels"
+          priceChips="capped-spans"
+        >
+          <!-- The legend leads the card (#701): the tourist decodes the colours BEFORE reading the tiles, so it is projected above the grid rather than trailing it. Swatches wear the SAME appMapTile appearance as the tiles they stand for AND sit on the wash's own first stop, so a translucent swatch composites over the same ground its tiles do — matching computed styles is not the same as looking alike. The canvas owns the band's vertical spacing. -->
+          <ul
+            canvasLegend
+            class="flex list-none flex-wrap items-center justify-center gap-x-[22px] gap-y-2 bg-riv-map-sea px-4 py-[9px] text-[12px] text-riv-card-ink-soft"
+            aria-label="Legend"
+            i18n-aria-label
+          >
+            @for (entry of legend; track entry.state) {
+              <li class="flex items-center gap-[7px]">
+                <span
+                  appMapTile
+                  [state]="entry.state"
+                  class="h-[18px] w-[18px] rounded-[6px] border-[1.5px] data-[state=partly]:border-2"
+                  aria-hidden="true"
+                ></span>
+                {{ entry.label }}
+              </li>
+            }
+          </ul>
+          <ng-template [appBeachMapRow]="rows()" let-row>
+            <ul
+              appVenueMapRow
+              [tiles]="row.tiles"
+              class="set-row list-none h-full grid grid-cols-[repeat(var(--riv-map-cols,1),var(--riv-tile))] gap-1.5"
+              (chosen)="select($event)"
+              (days)="showDays($event)"
+            ></ul>
+          </ng-template>
+          <!-- The footer states the venue's own deal where the tap happens (#703): a REQUEST venue's tourist otherwise first meets the no-charge-until-accepted flow inside the dialog, after committing to a spot. -->
+          <p
+            canvasFooter
+            class="text-center text-[12px] text-riv-card-ink-faint mt-2.5 tracking-[0.02em]"
+          >
+            <ng-container *ngTemplateOutlet="mapFooter" />
+          </p>
+          <!-- Zero sets (#717): the canvas drops the legend, grid and footer together, so this slot IS the card. The state is date-independent — sets come from the venue's layout — so the copy sends the tourist onward, not back to the picker. -->
+          <div canvasEmpty class="px-3 py-9 text-center" data-testid="map-empty">
+            <ng-container *ngTemplateOutlet="mapEmpty" />
+          </div>
+        </app-beach-map-canvas>
+      }
 
       <!-- The header's aggregate anchors this section: the score up there, the words down here. -->
       <app-venue-reviews [venueId]="v.id" [reviewsCount]="v.reviewsCount" />
@@ -624,6 +629,35 @@
         [name]="v.name"
         (dismissed)="closeLightbox()"
       />
+    }
+
+    <!-- Outside the @if on purpose: a region inserted already holding its text reads as silence (#741). -->
+    <output class="sr-only" data-testid="pick-status">{{ pickAnnouncement() }}</output>
+    @if (pick(); as picked) {
+      <!-- The spacer lets the last row scroll clear of the bar; the bar sits above the phone tab bar and under every modal. -->
+      <div class="h-[76px]" aria-hidden="true" data-testid="pick-bar-spacer"></div>
+      <div
+        class="fixed inset-x-3 bottom-[calc(76px+env(safe-area-inset-bottom))] z-10 flex items-center justify-between gap-2.5 rounded-[18px] border border-riv-pop-border bg-riv-pop-surface py-2.5 pr-2.5 pl-4 text-[14px] text-riv-pop-ink shadow-riv-pop backdrop-blur-[28px] backdrop-saturate-[1.8]"
+        data-testid="pick-bar"
+      >
+        <span class="min-w-0 leading-tight" data-testid="pick-summary"
+          ><b>{{ picked.spot }}</b> · {{ picked.priced }}</span
+        >
+        <button
+          appPrimaryCta
+          appTouchTarget
+          type="button"
+          class="shrink-0 cursor-pointer rounded-xl px-4 text-[14px] font-bold"
+          data-testid="pick-book"
+          (click)="bookPick()"
+        >
+          @if (v.bookingMode === 'REQUEST') {
+            <ng-container i18n>Request this set</ng-container>
+          } @else {
+            <ng-container i18n>Book this set</ng-container>
+          }
+        </button>
+      </div>
     }
 
     @if (partlySet(); as set) {
@@ -760,9 +794,9 @@
       </div>
 
       <!-- Description and amenity chips are deliberately absent: both are conditional in the loaded header, so mirroring them makes the frame jump UP on a venue that carries neither (#744). -->
-      <!-- The same canvas, and the same 1100px breakout, so the frame does not move when the map lands. The same rail vocabularies too: both rails reserve their width, so the grid neither slides sideways (#749) nor loses its trailing edge (#751) when the map lands. -->
+      <!-- The same canvas, the same 1100px breakout and the phone lens's 12px gutter, so the frame does not move when the map lands. The same rail vocabularies too: both rails reserve their width, so the grid neither slides sideways (#749) nor loses its trailing edge (#751) when the map lands. -->
       <app-map-skeleton-grid
-        class="mt-[18px] min-[1280px]:[margin-inline:calc((100%_-_1100px)/2)]"
+        class="mt-[18px] max-sm:-mx-3 min-[1280px]:[margin-inline:calc((100%_-_1100px)/2)]"
         viewportTestid="map-skeleton-grid"
         tileTestid="map-skeleton-tile"
         tileRadiusClass="rounded-[10px]"

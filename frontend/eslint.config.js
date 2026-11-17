@@ -99,6 +99,7 @@ module.exports = defineConfig([
       'src/app/booking/cancellation-terms-note.ts',
       'src/app/booking/legal-consent.ts',
       'src/app/shared/legal-footer.ts',
+      'src/app/venue/venue-map-row.ts',
     ],
     rules: {
       '@angular-eslint/component-selector': [

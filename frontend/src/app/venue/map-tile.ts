@@ -61,6 +61,57 @@ export const MAP_TILE_MEANING: Record<MapTileState, { legend: string; announced:
   },
 };
 
+/** The pick's skin on a 44px tile: the one solid fill on the map, so it replaces the state's. */
+const MAP_TILE_PICK_CLASS =
+  'border-riv-tile-pick-fill bg-riv-tile-pick-fill text-riv-tile-pick-ink';
+
+/** The half fill a partly-free cell draws, as a border so forced colours keep it. */
+const HALF = 'after:absolute after:inset-x-0 after:bottom-0 after:border-b-[50cqw]';
+
+/**
+ * Each state at overview scale (the phone lens's cells and legend): told apart by shape, drawn in
+ * `currentColor` on `::after`, none of them solid. Keyed by {@link MapTileState}, so a new state
+ * cannot ship without an overview look.
+ */
+const MAP_OVERVIEW_CLASS: Record<MapTileState, string> = {
+  available: 'text-riv-tile-available-ink bg-current/18',
+  premium: 'text-riv-tile-premium-ink bg-current/16',
+  partly: `text-riv-tile-available-ink ${HALF} after:border-riv-tile-partly-tint`,
+  walkin:
+    'text-riv-tile-walkin-ink after:absolute after:top-1/2 after:left-1/2 after:-translate-1/2 after:rounded-full after:border-[24cqw] after:border-current',
+  taken:
+    'text-riv-tile-taken-border after:absolute after:top-1/2 after:-left-1/4 after:w-[150%] after:-translate-y-1/2 after:-rotate-45 after:border-t-[1.5px] after:border-current',
+};
+
+/** The lens keys the tourist map hands out: every tile state, a front-row partly, and the pick. */
+export type MapOverviewKey = MapTileState | 'partly-premium' | 'pick';
+
+/** The tourist map's overview looks by lens key. `pick` is the only solid one. */
+export const MAP_OVERVIEW_LOOKS: Record<MapOverviewKey, string> = {
+  ...MAP_OVERVIEW_CLASS,
+  'partly-premium': `text-riv-tile-premium-ink ${HALF} after:border-riv-tile-partly-premium-tint`,
+  // Wider than half the cell on purpose: at a fractional cell size two 50cqw borders leave a seam. The halo ends 2px out, where the row's scroller clips.
+  pick: 'text-riv-tile-pick-fill outline-1 outline-offset-1 outline-current after:absolute after:inset-0 after:border-[60cqw] after:border-current',
+};
+
+/** The states a free count counts: the ones wearing a free look. */
+export const MAP_FREE_STATES: readonly MapTileState[] = ['available', 'premium'];
+
+/** A set's overview key: its tile state, with partly split by tier so the half fill keeps the row's hue. */
+export function mapOverviewKey(set: SetView): MapOverviewKey {
+  const state = mapTileState(set);
+  return state === 'partly' && set.tier === 'PREMIUM' ? 'partly-premium' : state;
+}
+
+/** The phone legend's rows: one per tile state in its overview look, then the pick. */
+export const MAP_OVERVIEW_LEGEND: readonly {
+  readonly key: MapOverviewKey;
+  readonly label: string;
+}[] = [
+  ...MAP_TILE_STATES.map((state) => ({ key: state, label: MAP_TILE_MEANING[state].legend })),
+  { key: 'pick', label: $localize`:Map legend swatch for the set the visitor picked:Your pick` },
+];
+
 /** The legend's rows, in tile-state order — what `venue-map.html` iterates. */
 export const MAP_TILE_LEGEND: readonly { readonly state: MapTileState; readonly label: string }[] =
   MAP_TILE_STATES.map((state) => ({ state, label: MAP_TILE_MEANING[state].legend }));
@@ -97,6 +148,10 @@ export function mapTileState(set: SetView): MapTileState {
 })
 export class MapTile {
   readonly state = input.required<MapTileState>();
+  /** The visitor's pick (phone only): the solid skin replaces the state's, `data-state` stays. */
+  readonly picked = input(false);
 
-  protected readonly classes = computed(() => MAP_TILE_CLASS[this.state()]);
+  protected readonly classes = computed(() =>
+    this.picked() ? MAP_TILE_PICK_CLASS : MAP_TILE_CLASS[this.state()],
+  );
 }

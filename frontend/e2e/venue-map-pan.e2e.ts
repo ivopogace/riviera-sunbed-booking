@@ -529,10 +529,11 @@ test('the pan affordances follow the viewport across the breakout breakpoint (#7
     .poll(() => panState(page))
     .toEqual({ overflows: true, masked: true, scrollPaddingLeft: '16px' });
 
-  // Mobile: unchanged behaviour — the map pans and says so.
+  // Below sm the canvas gives way to the row lens (#1762): no pan viewport, no drag cue.
   await page.setViewportSize({ width: 390, height: 844 });
-  await expect(page.getByTestId('scroll-hint')).toBeVisible();
-  await expect.poll(async () => (await panState(page)).overflows).toBe(true);
+  await expect(page.getByTestId('row-lens')).toBeVisible();
+  await expect(page.getByTestId('map-pan')).toHaveCount(0);
+  await expect(page.getByTestId('scroll-hint')).toHaveCount(0);
 
   // Widening back past the breakpoint fits the map again, and the cue goes away with the need.
   await page.setViewportSize({ width: 1280, height: 720 });
@@ -574,10 +575,8 @@ test('the legend leads the map card on mobile — decoded before the first tile 
   expect(legend.height).toBeGreaterThan(0);
 
   // R-3: the band's margins cancel the banner's and the wash's, so the wash starts where it ends.
-  const wash = (await page
-    .locator('[data-testid="beach-grid"] [data-riv-scroller]')
-    .first()
-    .boundingBox())!;
+  // At this width the wash is the row lens's (#1762).
+  const wash = (await page.getByTestId('row-lens').boundingBox())!;
   expect(wash.y).toBeCloseTo(legend.y + legend.height, 0);
 
   // One screen: reaching the grid is what reveals the legend, never scrolling past it.

@@ -201,6 +201,8 @@ test.describe('44px touch targets on the tourist surfaces at a phone width', () 
       .getByRole('button', { name: /Select to book/ })
       .first()
       .click();
+    // On a phone the tap picks the set; the bar's action opens the dialog (#1762).
+    await page.getByTestId('pick-book').click();
     await completeDialog(page.getByRole('dialog'), 'Continue to payment');
     await expect(page).toHaveURL(/\/booking\/pay/);
     // pay-cancel also renders while mounting and on error; pay-button is what proves `ready`.
@@ -232,6 +234,8 @@ test.describe('44px touch targets on the tourist surfaces at a phone width', () 
       .getByRole('button', { name: /Select to book/ })
       .first()
       .click();
+    // On a phone the tap picks the set; the bar's action opens the dialog (#1762).
+    await page.getByTestId('pick-book').click();
     await completeDialog(page.getByRole('dialog'), 'Continue to payment');
     await expect(page).toHaveURL(/\/booking\/confirmation/);
     await expect(page.getByTestId('manage-link')).toBeVisible();
@@ -297,6 +301,8 @@ test.describe('44px touch targets on the tourist surfaces at a phone width', () 
       .getByRole('button', { name: /Select to book/ })
       .first()
       .click();
+    // On a phone the tap picks the set; the bar's action opens the dialog (#1762).
+    await page.getByTestId('pick-book').click();
     await expect(page.getByRole('dialog')).toBeVisible();
 
     await expectTouchTargets(page, 'booking dialog');
