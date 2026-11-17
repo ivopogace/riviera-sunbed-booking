@@ -328,7 +328,9 @@ describe('VenueMap on a phone: the row lens (#1762)', () => {
       expect(tile(2).getAttribute('aria-pressed')).toBe('true');
       expect(tile(2).closest('li')!.classList.contains('picked')).toBe(true);
       expect(tile(2).closest('li')!.querySelector('[data-testid="pick-tick"]')).not.toBeNull();
-      expect(one('pick-summary')!.textContent.replace(/\s+/g, ' ').trim()).toBe('A · spot 2 · €45');
+      expect(one('pick-summary')!.textContent.replace(/\s+/g, ' ').trim()).toBe(
+        'A · spot 2 · €45 · full day',
+      );
       expect(one('pick-book')!.textContent.trim()).toBe('Book this set');
       expect(fixture.debugElement.query(By.directive(BookingDialog))).toBeNull();
 
@@ -337,6 +339,20 @@ describe('VenueMap on a phone: the row lens (#1762)', () => {
       expect(tile(2).getAttribute('aria-pressed')).toBe('false');
       expect(one('pick-bar')).toBeNull();
       expect(all('pick-tick')).toHaveLength(0);
+    });
+
+    it('says a stay’s price is for each day, so it is not read as the total', async () => {
+      const first = defaultBookingDate(new Date(Date.now() + 5 * 24 * 60 * 60 * 1000));
+      await mount({ date: first, lastDate: addDays(first, 2) });
+      fixture.detectChanges();
+      venueReq().flush(beach());
+      await settle();
+
+      await tap(tile(2));
+
+      expect(one('pick-summary')!.textContent.replace(/\s+/g, ' ').trim()).toBe(
+        'A · spot 2 · €45 · per day',
+      );
     });
 
     it('announces the bar through a region that was there before the pick', async () => {
@@ -349,7 +365,7 @@ describe('VenueMap on a phone: the row lens (#1762)', () => {
 
       expect(one('pick-status')).toBe(region);
       expect(region.textContent.trim()).toBe(
-        'A · spot 2 picked, €45. The button to continue is at the bottom of the screen.',
+        'A · spot 2 picked, €45 full day. The button to continue is at the bottom of the screen.',
       );
     });
 

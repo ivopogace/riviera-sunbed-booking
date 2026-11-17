@@ -45,7 +45,7 @@
           >
             <div class="mb-1.5 flex items-center gap-1.5">
               <span
-                class="grid size-6 shrink-0 place-items-center rounded-lg bg-riv-map-rail-fill text-[12px] font-bold text-riv-map-rail-ink"
+                class="grid size-6 shrink-0 place-items-center rounded-lg border border-riv-map-chip-border bg-riv-map-rail-fill text-[12px] font-bold text-riv-map-rail-ink"
                 aria-hidden="true"
                 >{{ row.code }}</span
               >
@@ -73,9 +73,9 @@
                 <app-chevron-down-icon class="[&_svg]:size-[18px] [&_svg]:rotate-180" />
               </button>
             </div>
-            <!-- The top padding is the pick badge's headroom: a sideways scroller clips upward too. -->
+            <!-- Padded on three sides and pulled back by as much: the scroller clips, and a badge overhangs its tile upward and sideways. -->
             <div
-              class="relative -mt-[9px] scrollbar-none overflow-x-auto overflow-y-hidden pt-[9px]"
+              class="relative -mx-2 -mt-[9px] scrollbar-none overflow-x-auto overflow-y-hidden px-2 pt-[9px]"
               [class]="openFadeClass(row.code)"
               data-testid="lens-pan"
               [attr.data-lens-pan]="row.code"
@@ -101,7 +101,7 @@
             (click)="openRow(row.code, $event.currentTarget)"
           >
             <span
-              class="grid size-6 shrink-0 place-items-center rounded-lg bg-riv-map-rail-fill text-[12px] font-bold text-riv-map-rail-ink"
+              class="grid size-6 shrink-0 place-items-center rounded-lg border border-riv-map-chip-border bg-riv-map-rail-fill text-[12px] font-bold text-riv-map-rail-ink"
               aria-hidden="true"
               >{{ row.code }}</span
             >

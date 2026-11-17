@@ -173,6 +173,8 @@ test.describe('phone', () => {
       .getByRole('button', { name: /Select to book/ })
       .first()
       .click();
+    // On a phone the tap picks the set; the bar's action opens the dialog (#1762).
+    await page.getByTestId('pick-book').click();
     await completeDialog(page.getByRole('dialog'), 'Continue to payment');
     await expect(page).toHaveURL(/\/booking\/pay/);
     await expect(page.getByTestId('pay-button')).toBeVisible();

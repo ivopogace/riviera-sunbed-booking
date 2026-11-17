@@ -13723,8 +13723,24 @@
         </context-group>
         <note priority="1" from="description">Accessible name of the control that closes an open beach-map row</note>
       </trans-unit>
+      <trans-unit id="5895809412846982273" datatype="html">
+        <source>per day</source>
+        <target state="translated">në ditë</target>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/venue/venue-map.ts</context>
+        </context-group>
+        <note priority="1" from="description">What a set&apos;s price on the pick bar covers, on a stay of several days</note>
+      </trans-unit>
+      <trans-unit id="6526729166753064901" datatype="html">
+        <source>full day</source>
+        <target state="translated">gjithë ditën</target>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/venue/venue-map.ts</context>
+        </context-group>
+        <note priority="1" from="description">What a set&apos;s price on the pick bar covers, on one day</note>
+      </trans-unit>
       <trans-unit id="3573555021964404664" datatype="html">
-        <source><x id="spot" equiv-text="pick.spot"/> picked, <x id="price" equiv-text="pick.price"/>. The button to continue is at the bottom of the screen.</source>
+        <source><x id="spot" equiv-text="pick.spot"/> picked, <x id="price" equiv-text="priced"/>. The button to continue is at the bottom of the screen.</source>
         <target state="translated"><x id="spot" equiv-text="pick.spot"/> u zgjodh, <x id="price" equiv-text="pick.price"/>. Butoni për të vazhduar është në fund të ekranit.</target>
         <context-group purpose="location">
           <context context-type="sourcefile">src/app/venue/venue-map.ts</context>

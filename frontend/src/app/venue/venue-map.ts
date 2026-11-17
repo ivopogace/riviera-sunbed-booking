@@ -93,6 +93,8 @@ interface PickView {
   readonly set: SetView;
   readonly spot: string;
   readonly price: string;
+  /** What the price buys: the full day, or each day of a stay. A stay's bare price would read as its total. */
+  readonly unit: string;
 }
 
 /**
@@ -514,14 +516,19 @@ export class VenueMap {
           set: tile.set,
           spot: spotLabel(tile.set.rowLabel, tile.set.positionNo),
           price: this.money(tile.set.price),
+          unit: this.isStay()
+            ? $localize`:What a set's price on the pick bar covers, on a stay of several days:per day`
+            : $localize`:What a set's price on the pick bar covers, on one day:full day`,
         };
   });
   /** What the pick's live region says: the bar's arrival, and nothing once the pick is gone. */
   protected readonly pickAnnouncement = computed(() => {
     const pick = this.pick();
-    return pick === undefined
-      ? ''
-      : $localize`:Screen-reader announcement when a set is picked on the phone beach map:${pick.spot}:spot: picked, ${pick.price}:price:. The button to continue is at the bottom of the screen.`;
+    if (pick === undefined) {
+      return '';
+    }
+    const priced = `${pick.price} ${pick.unit}`;
+    return $localize`:Screen-reader announcement when a set is picked on the phone beach map:${pick.spot}:spot: picked, ${priced}:price:. The button to continue is at the bottom of the screen.`;
   });
 
   constructor() {

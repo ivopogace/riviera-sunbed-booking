@@ -131,6 +131,14 @@ const FADE_CLASS: Record<Fade, string> = {
   start: '[mask-image:linear-gradient(90deg,transparent,black_20px)]',
 };
 
+/** The open row's fade is a 3px hint: a wider one would wash out a whole tile at rest, and the pick's tick. */
+const OPEN_FADE_CLASS: Record<Fade, string> = {
+  none: '',
+  end: '[mask-image:linear-gradient(90deg,black_calc(100%-3px),transparent)]',
+  both: '[mask-image:linear-gradient(90deg,transparent,black_3px,black_calc(100%-3px),transparent)]',
+  start: '[mask-image:linear-gradient(90deg,transparent,black_3px)]',
+};
+
 function fadeOf(el: HTMLElement): Fade {
   const max = el.scrollWidth - el.clientWidth;
   if (max <= 1) {
@@ -264,7 +272,7 @@ export class BeachRowLens {
   }
 
   protected openFadeClass(code: string): string {
-    return FADE_CLASS[this.openFades().get(code) ?? 'none'];
+    return OPEN_FADE_CLASS[this.openFades().get(code) ?? 'none'];
   }
 
   /** Rows whose opening pan has been applied; a row leaves when it closes. */
@@ -355,11 +363,13 @@ export class BeachRowLens {
         continue;
       }
       const tile = this.panTile(pan, row);
-      if (tile && row.panTo && tile.offsetLeft + tile.offsetWidth > pan.clientWidth) {
+      // The viewport is padded for the tiles' badges: a tile is in view inside that padding.
+      const pad = Number.parseFloat(getComputedStyle(pan).paddingLeft) || 0;
+      if (tile && row.panTo && tile.offsetLeft + tile.offsetWidth > pan.clientWidth - pad) {
         pan.scrollLeft =
           row.panTo.align === 'center'
             ? tile.offsetLeft - (pan.clientWidth - tile.offsetWidth) / 2
-            : tile.offsetLeft;
+            : tile.offsetLeft - pad;
       } else if (pan.scrollLeft !== 0) {
         // A row panned again in place keeps its old scroll: position 1 shows its tile, or it has none.
         pan.scrollLeft = 0;

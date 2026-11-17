@@ -137,7 +137,7 @@ for (const theme of THEMES) {
     await settle(page);
     await expect(tile(page, 'B', 2)).toHaveCSS('background-color', 'rgba(0, 0, 0, 0)');
     const bar = page.getByTestId('pick-bar');
-    await expect(bar).toContainText('B · spot 2 · €35');
+    await expect(bar).toContainText('B · spot 2 · €35 · full day');
     // The tick overhangs its tile; the pan viewport, which clips, has the headroom for all of it.
     const tick = (await page.getByTestId('pick-tick').boundingBox())!;
     const picked = (await tile(page, 'B', 2).boundingBox())!;
@@ -264,6 +264,77 @@ test('an open row starts at its first free set when none shows from position 1, 
   expect(await inView(tile(page, 'A', 13))).toBe(true);
   // Focus lands on the tile in view, not on the first free tile scrolled out of it.
   await expect(tile(page, 'A', 13)).toBeFocused();
+});
+
+test('a whole tile in the open row, the pick and its tick are never under the edge fade', async ({
+  page,
+}) => {
+  const venue = miramarMapVenue();
+  await openMap(page, {
+    ...venue,
+    sets: venue.sets.map((set) =>
+      set.rowLabel === 'A' ? { ...set, availability: 'FREE' as const } : set,
+    ),
+  });
+  /** The edge fade is 3px of the viewport at each end that can still pan. */
+  const FADE = 3;
+  const clear = async (pan: Locator, part: Locator, what: string): Promise<void> => {
+    const box = (await part.boundingBox())!;
+    const view = (await pan.boundingBox())!;
+    const { left, max } = await pan.evaluate((el) => ({
+      left: el.scrollLeft,
+      max: el.scrollWidth - el.clientWidth,
+    }));
+    if (left > 1) {
+      expect(box.x, `${what}: clear of the leading fade`).toBeGreaterThanOrEqual(
+        view.x + FADE - 0.5,
+      );
+    }
+    if (left < max - 1) {
+      expect(box.x + box.width, `${what}: clear of the trailing fade`).toBeLessThanOrEqual(
+        view.x + view.width - FADE + 0.5,
+      );
+    }
+  };
+  /** The spots whose tiles lie wholly inside the pan viewport, in order. */
+  const wholeSpots = async (pan: Locator): Promise<number[]> => {
+    const view = (await pan.boundingBox())!;
+    const boxes = await pan
+      .getByTestId('set-tile')
+      .evaluateAll((tiles) => tiles.map((t) => t.getBoundingClientRect().toJSON() as DOMRect));
+    return boxes
+      .map((box, index) => ({ box, spot: index + 1 }))
+      .filter(({ box }) => box.x >= view.x && box.x + box.width <= view.x + view.width)
+      .map(({ spot }) => spot);
+  };
+
+  // At rest: row A is 13 wide and pans, and the last tile that fits is drawn whole.
+  const pan = openRow(page, 'A').getByTestId('lens-pan');
+  expect(await pan.evaluate((el) => el.scrollWidth - el.clientWidth)).toBeGreaterThan(1);
+  expect(await pan.evaluate((el) => el.scrollLeft)).toBe(0);
+  const spot = (await wholeSpots(pan)).at(-1)!;
+  expect(spot).toBeGreaterThanOrEqual(6);
+  await clear(pan, tile(page, 'A', spot), `tile ${spot} at rest`);
+
+  // After a tap: the pick and the tick that overhangs its corner.
+  await tile(page, 'A', spot).click();
+  await expect(tile(page, 'A', spot)).toHaveAttribute('aria-pressed', 'true');
+  await clear(pan, tile(page, 'A', spot), `picked tile ${spot}`);
+  await clear(pan, pan.getByTestId('pick-tick'), 'the tick');
+
+  // After the pan start: the row reopens on its pick, scrolled away from position 1.
+  await pan.evaluate((el) => (el.scrollLeft = el.scrollWidth));
+  await tile(page, 'A', spot).click();
+  await tile(page, 'A', 13).click();
+  await closedRow(page, 'B').click();
+  await closedRow(page, 'A').click();
+  await expect(openRow(page, 'A')).toBeVisible();
+  await settle(page);
+  expect(await pan.evaluate((el) => el.scrollLeft)).toBeGreaterThan(1);
+  await clear(pan, tile(page, 'A', 13), 'the pick after the pan start');
+  await clear(pan, pan.getByTestId('pick-tick'), 'the tick after the pan start');
+  const first = (await wholeSpots(pan))[0];
+  await clear(pan, tile(page, 'A', first), `tile ${first}, the first whole one after the pan`);
 });
 
 test('a closed row is named with its row, price and free count; what it draws is hidden from a screen reader', async ({
@@ -521,6 +592,141 @@ test.describe('how the overview states paint', () => {
           }, shot.toString('base64'));
           // A 12px box's 1.5px edge alone is ~130 device pixels at 2x; a speck is not a state.
           expect(strong, `${state} in ${theme}: device pixels at 3:1`).toBeGreaterThanOrEqual(40);
+        }
+      });
+    }
+  });
+
+  test.describe('a stay plan’s ring at 12px, on a 2x screen', () => {
+    test.use({ deviceScaleFactor: 2 });
+
+    for (const theme of THEMES) {
+      test(`each plan set’s ring paints at 3:1 against the wash — ${theme}`, async ({ page }) => {
+        const { first, last } = stayDates();
+        const beach = wideBeachVenue('wide40');
+        // Nothing covers the stay: B2 hosts the first day and C1 the second, so the plan is those two.
+        const hosts = [
+          { set: beach.sets.find((s) => s.rowLabel === 'B' && s.positionNo === 2)!, day: first },
+          { set: beach.sets.find((s) => s.rowLabel === 'C' && s.positionNo === 1)!, day: last },
+        ];
+        await page.route(/\/api\/venues\/1\/itinerary\?.*$/, (route) =>
+          route.fulfill({
+            json: {
+              maxMoves: 3,
+              anchor: null,
+              plan: {
+                moves: 1,
+                stretches: hosts.map(({ set, day }) => ({
+                  setId: set.id,
+                  rowLabel: set.rowLabel,
+                  positionNo: set.positionNo,
+                  gridX: set.gridX,
+                  gridY: set.gridY,
+                  tier: set.tier,
+                  firstDate: day,
+                  lastDate: day,
+                  days: 1,
+                  pricePerDay: set.price,
+                  amount: set.price,
+                })),
+                movesBetween: [{ onDate: last, rowsAway: 1, positionsAway: 1, towardSea: false }],
+                total: { minorUnits: 6000, currency: 'EUR' },
+              },
+            },
+          }),
+        );
+        await page.route(/\/api\/venues\/1\/availability-calendar\?.*$/, (route) =>
+          route.fulfill({ json: [] }),
+        );
+        await openMap(
+          page,
+          {
+            ...beach,
+            sets: beach.sets.map((set) => {
+              const host = hosts.find((h) => h.set.id === set.id);
+              return host
+                ? {
+                    ...set,
+                    availability: 'PARTLY_FREE' as const,
+                    freeDays: 1,
+                    takenDates: [host.day === first ? last : first],
+                  }
+                : { ...set, availability: 'TAKEN' as const, freeDays: 0 };
+            }),
+          },
+          { theme, query: `?date=${first}&lastDate=${last}` },
+        );
+        await page.getByTestId('no-cover-plan').click();
+        const ringed = page.locator('[data-lens-cells] [data-ring]');
+        // The rings show while the plan is open, and it opens in the page, not over the map.
+        await expect(ringed).toHaveCount(2);
+        await settle(page);
+
+        for (const [index, cell] of (await ringed.all()).entries()) {
+          await cell.scrollIntoViewIfNeeded();
+          const box = (await cell.boundingBox())!;
+          expect(box.width, `plan set ${index + 1} cell width`).toBeCloseTo(12, 1);
+          // The ring is the 1.5px outside the cell; the wash is read from the row above the cell.
+          const RING = 1.5;
+          const shot = await page.screenshot({
+            clip: {
+              x: box.x - RING,
+              y: box.y - RING,
+              width: box.width + 2 * RING,
+              height: box.height + 2 * RING,
+            },
+          });
+          const wash = await page.screenshot({
+            clip: { x: box.x + box.width / 2, y: box.y - 6, width: 1, height: 1 },
+          });
+          const strong = await page.evaluate(
+            async ({ shot, wash, band }) => {
+              const read = async (base64: string) => {
+                const image = new Image();
+                image.src = `data:image/png;base64,${base64}`;
+                await image.decode();
+                const canvas = document.createElement('canvas');
+                canvas.width = image.width;
+                canvas.height = image.height;
+                const context = canvas.getContext('2d')!;
+                context.drawImage(image, 0, 0);
+                return context.getImageData(0, 0, canvas.width, canvas.height);
+              };
+              const luminance = (data: Uint8ClampedArray, i: number): number => {
+                const channel = (v: number): number => {
+                  const c = v / 255;
+                  return c <= 0.03928 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4;
+                };
+                return (
+                  0.2126 * channel(data[i]) +
+                  0.7152 * channel(data[i + 1]) +
+                  0.0722 * channel(data[i + 2])
+                );
+              };
+              const ground = luminance((await read(wash)).data, 0);
+              const { data, width, height } = await read(shot);
+              let pixels = 0;
+              for (let y = 0; y < height; y++) {
+                for (let x = 0; x < width; x++) {
+                  // Only the band outside the cell: the cell's own half fill is not the ring.
+                  if (x >= band && x < width - band && y >= band && y < height - band) {
+                    continue;
+                  }
+                  const l = luminance(data, (y * width + x) * 4);
+                  if ((Math.max(l, ground) + 0.05) / (Math.min(l, ground) + 0.05) >= 3) {
+                    pixels++;
+                  }
+                }
+              }
+              return pixels;
+            },
+            { shot: shot.toString('base64'), wash: wash.toString('base64'), band: RING * 2 },
+          );
+          // A one-device-pixel loop round the cell is ~100 pixels at 2x: less is a ring with a side missing.
+          expect(
+            strong,
+            `plan set ${index + 1} in ${theme}: ring device pixels at 3:1`,
+          ).toBeGreaterThanOrEqual(100);
         }
       });
     }
