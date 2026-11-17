@@ -359,6 +359,36 @@ test('the open row has no edge fade, and a picked tile and its tick are never cu
   await page.setViewportSize({ width: 390, height: 844 });
   await settle(page);
 
+  // Where a tile's edge lands on the viewport's, no cut tile shows: the thumb says the row pans.
+  await page.setViewportSize({ width: 428, height: 844 });
+  await pan.evaluate((el) => (el.scrollLeft = 0));
+  await settle(page);
+  const thumb = openRow(page, 'A').getByTestId('lens-open-thumb');
+  const span = async (): Promise<{ left: number; width: number }> => {
+    const track = (await openRow(page, 'A').getByTestId('lens-open-position').boundingBox())!;
+    const box = (await thumb.boundingBox())!;
+    return { left: (box.x - track.x) / track.width, width: box.width / track.width };
+  };
+  expect((await span()).left).toBeCloseTo(0, 2);
+  const shown = await pan.evaluate((el) => el.clientWidth / el.scrollWidth);
+  expect(shown).toBeLessThan(0.75);
+  expect((await span()).width).toBeCloseTo(shown, 2);
+  await pan.evaluate((el) => (el.scrollLeft = el.scrollWidth));
+  await expect.poll(async () => (await span()).left).toBeCloseTo(1 - shown, 2);
+
+  // A row the user panned away from its pick stays there when the width changes.
+  await pan.evaluate((el) => (el.scrollLeft = 0));
+  await tile(page, 'A', 2).click();
+  await pan.evaluate((el) => (el.scrollLeft = el.scrollWidth));
+  const panned = await pan.evaluate((el) => el.scrollLeft);
+  await page.setViewportSize({ width: 427, height: 844 });
+  await settle(page);
+  expect(await pan.evaluate((el) => el.scrollLeft)).toBeGreaterThanOrEqual(panned);
+  await pan.evaluate((el) => (el.scrollLeft = 0));
+  await tile(page, 'A', 2).click();
+  await page.setViewportSize({ width: 390, height: 844 });
+  await settle(page);
+
   // After the pan start: the row reopens on its last set, at the far end of the pan.
   await pan.evaluate((el) => (el.scrollLeft = el.scrollWidth));
   await tile(page, 'A', 13).click();
@@ -370,6 +400,36 @@ test('the open row has no edge fade, and a picked tile and its tick are never cu
   await unfaded('at the far end');
   await inside(tile(page, 'A', 13), 'the pick after the pan start');
   await inside(pan.getByTestId('pick-tick'), 'the tick after the pan start');
+});
+
+test('a focused tile’s ring fits inside the open row’s viewport, below and beside it', async ({
+  page,
+}) => {
+  await openMap(page, miramarMapVenue());
+  const pan = openRow(page, 'A').getByTestId('lens-pan');
+  /** The 3px focus ring at its 2px offset. */
+  const RING = 5;
+  // Tab along the row, as a keyboard does: each tile is shown whole, and its ring with it.
+  await tile(page, 'A', 2).focus();
+  for (const spot of [2, 3, 4, 5, 7, 8, 9, 10, 12, 13]) {
+    await expect(tile(page, 'A', spot)).toBeFocused();
+    await settle(page);
+    const view = (await pan.boundingBox())!;
+    const box = (await tile(page, 'A', spot).boundingBox())!;
+    expect(box.y - RING, `tile ${spot}: ring top`).toBeGreaterThanOrEqual(view.y - 0.5);
+    expect(box.y + box.height + RING, `tile ${spot}: ring bottom`).toBeLessThanOrEqual(
+      view.y + view.height + 0.5,
+    );
+    expect(box.x - RING, `tile ${spot}: ring left`).toBeGreaterThanOrEqual(view.x - 0.5);
+    expect(box.x + box.width + RING, `tile ${spot}: ring right`).toBeLessThanOrEqual(
+      view.x + view.width + 0.5,
+    );
+    await page.keyboard.press('Tab');
+  }
+  // The 7-wide rows fit: no thumb there.
+  await closedRow(page, 'B').click();
+  await settle(page);
+  await expect(page.getByTestId('lens-open-thumb')).toHaveCount(0);
 });
 
 test('a closed row is named with its row, price and free count; what it draws is hidden from a screen reader', async ({
@@ -701,21 +761,19 @@ test.describe('how the overview states paint', () => {
           await cell.scrollIntoViewIfNeeded();
           const box = (await cell.boundingBox())!;
           expect(box.width, `plan set ${index + 1} cell width`).toBeCloseTo(12, 1);
-          // The ring is the 1.5px outside the cell; the wash is read from the row above the cell.
-          const RING = 1.5;
-          const shot = await page.screenshot({
-            clip: {
-              x: box.x - RING,
-              y: box.y - RING,
-              width: box.width + 2 * RING,
-              height: box.height + 2 * RING,
-            },
-          });
+          // The cell with 2px around it, on whole device pixels; the wash is read from above the cell.
+          const clip = {
+            x: Math.floor((box.x - 2) * 2) / 2,
+            y: Math.floor((box.y - 2) * 2) / 2,
+            width: 17,
+            height: 17,
+          };
+          const shot = await page.screenshot({ clip });
           const wash = await page.screenshot({
             clip: { x: box.x + box.width / 2, y: box.y - 6, width: 1, height: 1 },
           });
-          const strong = await page.evaluate(
-            async ({ shot, wash, band }) => {
+          const painted = await page.evaluate(
+            async ({ shot, wash }) => {
               const read = async (base64: string) => {
                 const image = new Image();
                 image.src = `data:image/png;base64,${base64}`;
@@ -740,28 +798,32 @@ test.describe('how the overview states paint', () => {
               };
               const ground = luminance((await read(wash)).data, 0);
               const { data, width, height } = await read(shot);
-              let pixels = 0;
+              // The box of everything at 3:1, short of the next cell, which starts 4 device pixels on.
+              const reach = { left: width, right: -1, top: height, bottom: -1 };
               for (let y = 0; y < height; y++) {
-                for (let x = 0; x < width; x++) {
-                  // Only the band outside the cell: the cell's own half fill is not the ring.
-                  if (x >= band && x < width - band && y >= band && y < height - band) {
-                    continue;
-                  }
+                for (let x = 0; x < width - 3; x++) {
                   const l = luminance(data, (y * width + x) * 4);
                   if ((Math.max(l, ground) + 0.05) / (Math.min(l, ground) + 0.05) >= 3) {
-                    pixels++;
+                    reach.left = Math.min(reach.left, x);
+                    reach.right = Math.max(reach.right, x);
+                    reach.top = Math.min(reach.top, y);
+                    reach.bottom = Math.max(reach.bottom, y);
                   }
                 }
               }
-              return pixels;
+              return { width: reach.right - reach.left + 1, height: reach.bottom - reach.top + 1 };
             },
-            { shot: shot.toString('base64'), wash: wash.toString('base64'), band: RING * 2 },
+            { shot: shot.toString('base64'), wash: wash.toString('base64') },
           );
-          // A one-device-pixel loop round the cell is ~100 pixels at 2x: less is a ring with a side missing.
+          // The cell alone is 24 device pixels at 2x: 27 is a ring on both sides, 26 or less a side cut off.
           expect(
-            strong,
-            `plan set ${index + 1} in ${theme}: ring device pixels at 3:1`,
-          ).toBeGreaterThanOrEqual(100);
+            painted.width,
+            `plan set ${index + 1} in ${theme}: ring left to right`,
+          ).toBeGreaterThanOrEqual(27);
+          expect(
+            painted.height,
+            `plan set ${index + 1} in ${theme}: ring top to bottom`,
+          ).toBeGreaterThanOrEqual(27);
         }
       });
     }

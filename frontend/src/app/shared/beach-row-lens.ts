@@ -72,7 +72,8 @@ export interface BeachRowLensContext<R extends BeachRowLensRow> {
 /**
  * Declares the open row's tile template and carries the rows the lens renders:
  * `<ng-template [appBeachRowLensTiles]="rows()" let-row>`. The template renders ONE root element
- * whose children are the row's tiles in cell order; `panTo` and `keepWhole` index them.
+ * whose children are the row's tiles in cell order; `panTo` and `keepWhole` index them. Give each
+ * tile a width and leave the root unpositioned: the track is as wide as its tiles, measured from it.
  */
 @Directive({ selector: 'ng-template[appBeachRowLensTiles]' })
 export class BeachRowLensTilesDef<R extends BeachRowLensRow = BeachRowLensRow> {
@@ -89,8 +90,8 @@ export class BeachRowLensTilesDef<R extends BeachRowLensRow = BeachRowLensRow> {
 
 /**
  * One overview cell's box, worn by the lens's cells and by a surface's legend swatches alike. Every
- * shape a look draws is a real `border` in `currentColor` (the edge here, a strike, dot or fill on
- * `::after`), because forced colours drop backgrounds and shadows. The box is a size container, so
+ * shape a look draws is a real `border` or `outline` in `currentColor` (the edge here, a strike, dot
+ * or fill on `::after`, a halo), because forced colours drop backgrounds and shadows. The box is a size container, so
  * a look sizes its shape in `cqw` and it scales with the cell.
  */
 @Directive({
@@ -146,6 +147,12 @@ function fadeOf(el: HTMLElement): Fade {
   return el.scrollLeft >= max - 2 ? 'start' : 'both';
 }
 
+/** The part of an open row's tiles its viewport shows, in percent of their whole width. */
+interface OpenSpan {
+  readonly left: number;
+  readonly width: number;
+}
+
 /** A lens row as rendered: the surface's row plus what the template would otherwise recompute. */
 interface LensRowView<R extends BeachRowLensRow> {
   readonly row: R;
@@ -175,7 +182,7 @@ interface LensRowView<R extends BeachRowLensRow> {
     TouchTarget,
   ],
   templateUrl: './beach-row-lens.html',
-  host: { class: 'block' },
+  host: { class: 'block', '(focusin)': 'onFocusIn($event)' },
 })
 export class BeachRowLens {
   /** Columns from which the overview packs tighter: a 2px gap and a smaller radius. */
@@ -265,6 +272,13 @@ export class BeachRowLens {
     return FADE_CLASS[fade];
   }
 
+  /** Where each panning open row's viewport sits in its tiles, by row code; a row that fits has none. */
+  private readonly openSpans = signal<ReadonlyMap<string, OpenSpan>>(new Map());
+
+  protected openSpan(code: string): OpenSpan | undefined {
+    return this.openSpans().get(code);
+  }
+
   /** Rows whose opening pan has been applied, with the `keepWhole` last seen; a row leaves when it closes. */
   private readonly panned = new Map<string, number | null>();
   /** The {@link panAgain} value the open rows were last panned for. */
@@ -326,6 +340,21 @@ export class BeachRowLens {
       this.overviewContent.set(scroller.scrollWidth);
       this.overflowing.set(scroller.scrollWidth > scroller.clientWidth + 1);
       this.overviewFade.set(fadeOf(scroller));
+    }
+    const spans = new Map<string, OpenSpan>();
+    for (const pan of this.host.nativeElement.querySelectorAll<HTMLElement>('[data-lens-pan]')) {
+      if (pan.scrollWidth > pan.clientWidth + 1) {
+        spans.set(pan.dataset['lensPan'] ?? '', {
+          left: (pan.scrollLeft / pan.scrollWidth) * 100,
+          width: (pan.clientWidth / pan.scrollWidth) * 100,
+        });
+      }
+    }
+    const before = this.openSpans();
+    const same = (a: OpenSpan | undefined, b: OpenSpan): boolean =>
+      a?.left === b.left && a.width === b.width;
+    if (spans.size !== before.size || [...spans].some(([code, s]) => !same(before.get(code), s))) {
+      this.openSpans.set(spans);
     }
   }
 
@@ -394,12 +423,17 @@ export class BeachRowLens {
     return first instanceof HTMLElement ? first.offsetLeft : 0;
   }
 
-  /** A resize can cut a tile that was whole: every open row's named tile is brought in again. */
+  /** A change of width can cut a named tile that was whole: one still partly in view is brought
+   *  in again, and one the user panned away from is left there. */
   private keepWholeTiles(): void {
     for (const { row, open } of this.view()) {
       const pan = open && this.openRowEl(row.code)?.querySelector<HTMLElement>('[data-lens-pan]');
-      if (pan) {
-        this.bringIn(pan, row);
+      const tile = pan && typeof row.keepWhole === 'number' && this.tiles(pan)[row.keepWhole];
+      if (pan && tile) {
+        const left = tile.offsetLeft - pan.scrollLeft;
+        if (left < pan.clientWidth && left + tile.offsetWidth > 0) {
+          this.bringIn(pan, row);
+        }
       }
     }
   }
@@ -408,9 +442,23 @@ export class BeachRowLens {
    *  track's side room beside it for its badge. */
   private bringIn(pan: HTMLElement, row: BeachRowLensRow): void {
     const tile = typeof row.keepWhole === 'number' ? this.tiles(pan)[row.keepWhole] : undefined;
-    if (!tile) {
-      return;
+    if (tile) {
+      this.showWhole(pan, tile);
     }
+  }
+
+  /** A tile focused from the keyboard is shown whole, ring and all: the browser leaves one cut by
+   *  the edge where it is. Not on a press, which would move the tile from under the finger. */
+  protected onFocusIn(event: FocusEvent): void {
+    const focused = event.target instanceof Element ? event.target : null;
+    const pan = focused?.closest<HTMLElement>('[data-lens-pan]');
+    const tile = pan && this.tiles(pan).find((t) => t.contains(focused));
+    if (pan && tile && focused?.matches(':focus-visible')) {
+      this.showWhole(pan, tile);
+    }
+  }
+
+  private showWhole(pan: HTMLElement, tile: HTMLElement): void {
     const room = this.sideRoom(pan);
     const left = tile.offsetLeft - pan.scrollLeft;
     const over = left + tile.offsetWidth - (pan.clientWidth - room);

@@ -387,6 +387,25 @@ describe('BeachRowLens', () => {
     });
   });
 
+  describe('an open row wider than its viewport', () => {
+    it('shows a thumb for the part in view, and none on a row that fits', async () => {
+      fixture.componentInstance.open.set(['A']);
+      await settle();
+      expect(all('lens-open-thumb')).toHaveLength(0);
+
+      const pan = openRow('A')!.querySelector<HTMLElement>('[data-lens-pan]')!;
+      geometry(pan, 200, 800);
+      pan.scrollLeft = 400;
+      pan.dispatchEvent(new Event('scroll'));
+      await settle();
+
+      const thumb = all('lens-open-thumb')[0];
+      expect(thumb.style.left).toBe('50%');
+      expect(thumb.style.width).toBe('25%');
+      expect(thumb.parentElement!.getAttribute('aria-hidden')).toBe('true');
+    });
+  });
+
   describe('the tile a row says to keep whole', () => {
     /** Tiles of 44px every 50px after 8px of side room: the fourth spans 158–202px. */
     function stubTiles(client: number): () => void {
@@ -454,6 +473,26 @@ describe('BeachRowLens', () => {
         await settle();
         expect(pan().scrollLeft).toBe(50);
       } finally {
+        restore();
+      }
+    });
+
+    it('a tile focused from the keyboard is shown whole too, and one focused by a press is not moved', async () => {
+      const restore = stubTiles(204);
+      const visible = vi.spyOn(Element.prototype, 'matches');
+      try {
+        await openOn(null);
+        const cut = pan().querySelectorAll<HTMLElement>('li')[4];
+
+        visible.mockImplementation((selector) => selector !== ':focus-visible');
+        cut.dispatchEvent(new FocusEvent('focusin', { bubbles: true }));
+        expect(pan().scrollLeft).toBe(0);
+
+        visible.mockImplementation(() => true);
+        cut.dispatchEvent(new FocusEvent('focusin', { bubbles: true }));
+        expect(pan().scrollLeft).toBe(56);
+      } finally {
+        visible.mockRestore();
         restore();
       }
     });

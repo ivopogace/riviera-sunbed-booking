@@ -73,9 +73,9 @@
                 <app-chevron-down-icon class="[&_svg]:size-[18px] [&_svg]:rotate-180" />
               </button>
             </div>
-            <!-- The scroller clips, and a badge overhangs its tile upward and sideways: headroom on the viewport, side room on the track, so both ends of the pan keep it. The track is as wide as its tiles, which is their content unless the surface gives them a width. No edge fade: at some widths it would lie over a whole tile, and a cut tile already says the row pans. -->
+            <!-- The scroller clips, and a badge overhangs its tile upward and sideways: headroom on the viewport, room below for a focus ring, side room on the track, so both ends of the pan keep it. The track is as wide as its tiles, which is their content unless the surface gives them a width. No edge fade: at some widths it would lie over a whole tile. -->
             <div
-              class="relative -mx-2 -mt-[9px] scrollbar-none overflow-x-auto overflow-y-hidden pt-[9px]"
+              class="relative -mx-2 -mt-[9px] -mb-[5px] scrollbar-none scroll-px-2 overflow-x-auto overflow-y-hidden pt-[9px] pb-[5px]"
               data-testid="lens-pan"
               [attr.data-lens-pan]="row.code"
               (scroll)="onOpenPan($event, row)"
@@ -89,6 +89,21 @@
                 />
               </div>
             </div>
+            <!-- A row cut at a tile's edge shows no cut tile, so the thumb says it pans. A border, not a fill: forced colours drop backgrounds. -->
+            @if (openSpan(row.code); as span) {
+              <span
+                class="relative mt-[11px] block h-1 rounded-full bg-riv-map-chip-border"
+                aria-hidden="true"
+                data-testid="lens-open-position"
+              >
+                <span
+                  class="absolute top-0 h-0 rounded-full border-t-4 border-riv-accent-ink"
+                  data-testid="lens-open-thumb"
+                  [style.left.%]="span.left"
+                  [style.width.%]="span.width"
+                ></span>
+              </span>
+            }
           </div>
         } @else {
           <button

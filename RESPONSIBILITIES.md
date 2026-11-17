@@ -1548,7 +1548,7 @@ The SPA rules whose TSDoc points here; structure is `riviera-frontend`'s, stylin
   and its spec mounts a made-up vocabulary with several rows open, the Daily view's reuse (#1807).
 - **On the lens solid means the pick and nothing else, and states differ by shape** (`venue/map-tile.ts`):
   free a tinted box, partly free a half fill, walk-in a dot, taken a strike. Every shape is a real
-  `border` in `currentColor`, never a gradient or shadow, which forced colours drop. A free count
+  `border` or `outline` in `currentColor`, never a gradient or shadow, which forced colours drop. A free count
   counts the cells wearing a free look, so "N of M free" agrees with what is drawn. A plan ring takes
   `--riv-stretch-N-ring`, not the fill: it sits on the wash, light in riviera where the fills turn light.
 - **Lens cells shrink to a 12px floor, then the overview pans as one block** under a position bar and

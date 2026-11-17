@@ -120,6 +120,13 @@ describe.each(THEMES)('Row lens non-text contrast, $name theme', ({ name, token 
       }
     });
 
+    it('an open row’s own thumb clears 3:1 against its track on the row’s surface', () => {
+      for (const stop of openSurface) {
+        const track = over(token('--riv-map-chip-border'), stop);
+        expect(ratio(token('--riv-accent-ink').color, track)).toBeGreaterThanOrEqual(NON_TEXT);
+      }
+    });
+
     it('the free tint is under 3:1 on purpose: the edge carries the state, solid is the pick’s alone', () => {
       for (const stop of wash) {
         const tint = composite(token('--riv-tile-available-ink').color, 0.18, stop);
@@ -213,6 +220,12 @@ describe('Row lens looks are drawn in the tokens measured above', () => {
     for (const look of Object.values(MAP_OVERVIEW_LOOKS)) {
       expect(look).not.toMatch(/gradient|shadow/);
     }
+  });
+
+  it('the pick’s halo ends 2px out, inside the 2px the closed row’s scroller leaves around a cell', () => {
+    expect(MAP_OVERVIEW_LOOKS.pick).toContain('outline-1 outline-offset-1 outline-current');
+    expect(lens).toContain('class="-m-0.5 block min-w-0 flex-1 scrollbar-none overflow-x-auto');
+    expect(lens).toContain('overflow-y-hidden p-0.5"');
   });
 
   it('the lens draws its chevrons and the position thumb in the accent ink', () => {
