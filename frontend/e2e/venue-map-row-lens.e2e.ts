@@ -681,42 +681,52 @@ test.describe('how the overview states paint', () => {
           await cell.scrollIntoViewIfNeeded();
           const box = (await cell.boundingBox())!;
           expect(box.width, `${state} cell width`).toBeCloseTo(12, 1);
-          // One CSS px of the ground on every side: the corner pixel is the wash itself.
           const shot = await page.screenshot({
             clip: { x: box.x - 1, y: box.y - 1, width: box.width + 2, height: box.height + 2 },
           });
-          const strong = await page.evaluate(async (base64) => {
-            const image = new Image();
-            image.src = `data:image/png;base64,${base64}`;
-            await image.decode();
-            const canvas = document.createElement('canvas');
-            canvas.width = image.width;
-            canvas.height = image.height;
-            const context = canvas.getContext('2d')!;
-            context.drawImage(image, 0, 0);
-            const { data } = context.getImageData(0, 0, canvas.width, canvas.height);
-            const luminance = (i: number): number => {
-              const channel = (v: number): number => {
-                const c = v / 255;
-                return c <= 0.03928 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4;
+          // The wash is read 6px clear of the cell, in its own row: the pick's halo reaches the clip's corner.
+          const clear = box.y >= 8 ? box.y - 6 : box.y + box.height + 6;
+          const wash = await page.screenshot({
+            clip: { x: box.x + box.width / 2, y: clear, width: 1, height: 1 },
+          });
+          const strong = await page.evaluate(
+            async ([cell, around]) => {
+              const read = async (base64: string): Promise<Uint8ClampedArray> => {
+                const image = new Image();
+                image.src = `data:image/png;base64,${base64}`;
+                await image.decode();
+                const canvas = document.createElement('canvas');
+                canvas.width = image.width;
+                canvas.height = image.height;
+                const context = canvas.getContext('2d')!;
+                context.drawImage(image, 0, 0);
+                return context.getImageData(0, 0, canvas.width, canvas.height).data;
               };
-              return (
-                0.2126 * channel(data[i]) +
-                0.7152 * channel(data[i + 1]) +
-                0.0722 * channel(data[i + 2])
-              );
-            };
-            const ground = luminance(0);
-            let pixels = 0;
-            for (let i = 0; i < data.length; i += 4) {
-              const l = luminance(i);
-              const ratio = (Math.max(l, ground) + 0.05) / (Math.min(l, ground) + 0.05);
-              if (ratio >= 3) {
-                pixels++;
+              const data = await read(cell);
+              const luminance = (i: number, from = data): number => {
+                const channel = (v: number): number => {
+                  const c = v / 255;
+                  return c <= 0.03928 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4;
+                };
+                return (
+                  0.2126 * channel(from[i]) +
+                  0.7152 * channel(from[i + 1]) +
+                  0.0722 * channel(from[i + 2])
+                );
+              };
+              const ground = luminance(0, await read(around));
+              let pixels = 0;
+              for (let i = 0; i < data.length; i += 4) {
+                const l = luminance(i);
+                const ratio = (Math.max(l, ground) + 0.05) / (Math.min(l, ground) + 0.05);
+                if (ratio >= 3) {
+                  pixels++;
+                }
               }
-            }
-            return pixels;
-          }, shot.toString('base64'));
+              return pixels;
+            },
+            [shot.toString('base64'), wash.toString('base64')],
+          );
           // A 12px box's 1.5px edge alone is ~130 device pixels at 2x; a speck is not a state.
           expect(strong, `${state} in ${theme}: device pixels at 3:1`).toBeGreaterThanOrEqual(40);
         }
@@ -802,7 +812,12 @@ test.describe('how the overview states paint', () => {
           };
           const shot = await page.screenshot({ clip });
           const wash = await page.screenshot({
-            clip: { x: box.x + box.width / 2, y: box.y - 6, width: 1, height: 1 },
+            clip: {
+              x: box.x + box.width / 2,
+              y: box.y >= 8 ? box.y - 6 : box.y + box.height + 6,
+              width: 1,
+              height: 1,
+            },
           });
           const painted = await page.evaluate(
             async ({ shot, wash }) => {
