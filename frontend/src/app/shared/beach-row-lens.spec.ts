@@ -546,9 +546,6 @@ describe('BeachRowLens', () => {
       // At the open row's far end the overview is at its own end: only the leading edge fades.
       pan.scrollLeft = 1100;
       pan.dispatchEvent(new Event('scroll'));
-      for (const scroller of scrollers) {
-        scroller.dispatchEvent(new Event('scroll'));
-      }
       await settle();
       expect(scrollers.map((s) => s.scrollLeft)).toEqual([280, 280]);
       expect(scrollers[0].className).toContain('linear-gradient(90deg,transparent,black_20px)]');

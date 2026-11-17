@@ -299,6 +299,8 @@ export class VenueMap {
   protected readonly selectedPlan = signal<PlanView | undefined>(undefined);
   /** True while the latest map read is unanswered. */
   private reading = false;
+  /** A quiet read asked for while another was in flight: it runs when that one settles. */
+  private quietReadDue = false;
   /** Bumped per itinerary dispatch, so a superseded answer is dropped. */
   private planEpoch = 0;
   /** Whether the latest itinerary read failed, so the open panel can say so instead of staying blank. */
@@ -575,6 +577,8 @@ export class VenueMap {
     this.selectedSet.set(undefined);
     this.pickId.set(undefined);
     this.lensUnseeded = true;
+    this.quietReadDue = false;
+    this.reading = false;
     // The reset takes any focus-trapped modal AND its trigger, so move focus deliberately (RV-FE-9).
     const modalWasOpen =
       this.pickerOpen() || this.lightboxIndex() !== undefined || this.partlySet() !== undefined;
@@ -719,13 +723,17 @@ export class VenueMap {
 
   /**
    * Fetch the map for the currently selected days. A `quiet` read refreshes a map already on
-   * screen: its failure changes nothing, and it yields to a read already in flight, whose answer
-   * is as fresh and whose failure must still show.
+   * screen: its failure changes nothing, it leaves an open plan alone, and behind a read already
+   * in flight (whose failure must still show) it waits and then runs.
    */
   private load(options?: { readonly quiet: boolean }): void {
     const id = this.venueId();
     const quiet = options?.quiet === true;
-    if (id === undefined || (quiet && this.reading)) {
+    if (id === undefined) {
+      return;
+    }
+    if (quiet && this.reading) {
+      this.quietReadDue = true;
       return;
     }
     // A fresh attempt clears any prior failure so a recovered load renders the map.
@@ -737,23 +745,27 @@ export class VenueMap {
     this.venues.getVenueMap(id, this.selectedDate(), this.selectedLastDate()).subscribe({
       next: (venue) => {
         if (this.epoch === epoch) {
-          this.reading = false;
           this.venue.set(venue);
           this.settleLens();
           this.openPendingSelection(venue);
-          if (this.planOpen() || this.noSetCovers()) {
+          // A quiet read asks for a plan the banner newly needs, and never re-plans an open panel.
+          if (
+            quiet ? !this.planOpen() && this.noSetCovers() : this.planOpen() || this.noSetCovers()
+          ) {
             this.loadItinerary(this.planAnchorSet()?.id);
           }
+          this.readSettled();
         }
       },
       error: (error: unknown) => {
         if (this.epoch !== epoch) {
           return;
         }
-        this.reading = false;
         if (quiet) {
+          this.readSettled();
           return;
         }
+        this.readSettled();
         this.pendingSelectSetId = undefined;
         // A stale map under a new date header misleads — the panel must win over the old view.
         const toreDownMap = this.venue() !== undefined;
@@ -775,6 +787,15 @@ export class VenueMap {
         }
       },
     });
+  }
+
+  /** The latest read answered: run the quiet read that waited behind it, if one did. */
+  private readSettled(): void {
+    this.reading = false;
+    if (this.quietReadDue) {
+      this.quietReadDue = false;
+      this.load({ quiet: true });
+    }
   }
 
   /** Retry after a load failure: re-fetch the current date's map. */

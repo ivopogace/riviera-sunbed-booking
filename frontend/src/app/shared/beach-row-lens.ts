@@ -355,20 +355,13 @@ export class BeachRowLens {
         continue;
       }
       const tile = this.panTile(pan, row);
-      if (!tile || !row.panTo) {
-        // No target: a row panned again in place returns to position 1, and nothing else moves.
-        if (pan.scrollLeft !== 0) {
-          pan.scrollLeft = 0;
-        }
-        continue;
-      }
-      if (tile.offsetLeft + tile.offsetWidth > pan.clientWidth) {
+      if (tile && row.panTo && tile.offsetLeft + tile.offsetWidth > pan.clientWidth) {
         pan.scrollLeft =
           row.panTo.align === 'center'
             ? tile.offsetLeft - (pan.clientWidth - tile.offsetWidth) / 2
             : tile.offsetLeft;
       } else if (pan.scrollLeft !== 0) {
-        // A row panned again in place keeps its old scroll: its tile shows from position 1.
+        // A row panned again in place keeps its old scroll: position 1 shows its tile, or it has none.
         pan.scrollLeft = 0;
       }
       this.follow(pan, row);

@@ -405,6 +405,34 @@ describe('VenueMap on a phone: the row lens (#1762)', () => {
       expect(document.activeElement).toBe(one('pick-book'));
     });
 
+    it('a second dismiss while the first re-read is unanswered still gets its own re-read', async () => {
+      await load();
+      await tap(tile(3));
+      const dismiss = (): void => {
+        const dialog = fixture.debugElement.query(By.directive(BookingDialog));
+        (dialog.componentInstance as BookingDialog).dismissed.emit();
+        fixture.detectChanges();
+      };
+
+      await tap(one('pick-book')!);
+      dismiss();
+      const first = venueReq();
+      await tap(one('pick-book')!);
+      dismiss();
+      // One read in flight, the second waiting behind it: the first answer predates this dismiss.
+      first.flush(beach());
+      await settle();
+      expect(tile(3).getAttribute('aria-pressed')).toBe('true');
+
+      const taken = beach();
+      venueReq().flush({
+        ...taken,
+        sets: taken.sets.map((set) => (set.id === 3 ? { ...set, availability: 'TAKEN' } : set)),
+      });
+      await settle();
+      expect(one('pick-bar')).toBeNull();
+    });
+
     it('words the action as a request at a Request-to-Book venue', async () => {
       await load({ ...beach(), bookingMode: 'REQUEST' });
       await tap(tile(2));
