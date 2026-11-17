@@ -417,16 +417,7 @@ export class BeachRowLens {
       }
       const before = pan.scrollLeft;
       if (fresh) {
-        const tile = this.panTile(pan, row);
-        if (tile && row.panTo && tile.offsetLeft + tile.offsetWidth > pan.clientWidth) {
-          pan.scrollLeft =
-            row.panTo.align === 'center'
-              ? tile.offsetLeft - (pan.clientWidth - tile.offsetWidth) / 2
-              : tile.offsetLeft - this.sideRoom(pan);
-        } else if (pan.scrollLeft !== 0) {
-          // A row panned again in place keeps its old scroll: position 1 shows its tile, or it has none.
-          pan.scrollLeft = 0;
-        }
+        this.openingPan(pan, row);
       }
       this.bringIn(pan, row);
       this.panWidths.set(row.code, pan.clientWidth);
@@ -434,6 +425,20 @@ export class BeachRowLens {
       if (fresh || pan.scrollLeft !== before) {
         this.follow(pan, row);
       }
+    }
+  }
+
+  /** Where a row starts when it opens: on its {@link BeachRowLensRow.panTo} tile if that is out of view, else at position 1. */
+  private openingPan(pan: HTMLElement, row: BeachRowLensRow): void {
+    const tile = this.panTile(pan, row);
+    if (tile && row.panTo && tile.offsetLeft + tile.offsetWidth > pan.clientWidth) {
+      pan.scrollLeft =
+        row.panTo.align === 'center'
+          ? tile.offsetLeft - (pan.clientWidth - tile.offsetWidth) / 2
+          : tile.offsetLeft - this.sideRoom(pan);
+    } else if (pan.scrollLeft !== 0) {
+      // A row panned again in place keeps its old scroll: position 1 shows its tile, or it has none.
+      pan.scrollLeft = 0;
     }
   }
 

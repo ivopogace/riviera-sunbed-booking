@@ -473,6 +473,7 @@ export class VenueMap {
       const count = freeOfLabel(free, sets.length);
       const picked = tiles[index].findIndex((tile) => tile.picked);
       const firstFree = tiles[index].findIndex((tile) => isFreeLook(tile));
+      const opensOn = firstFree >= 0 ? { index: firstFree, align: 'start' as const } : null;
       return {
         code: label,
         priceLabel: price,
@@ -490,12 +491,7 @@ export class VenueMap {
         summary: count,
         label: $localize`:Accessible name of a beach-map row:Row ${label}:row:, ${price}:price:, ${count}:free:`,
         closeLabel: $localize`:Accessible name of the control that closes an open beach-map row:Close row ${label}:row:`,
-        panTo:
-          picked >= 0
-            ? { index: picked, align: 'center' as const }
-            : firstFree >= 0
-              ? { index: firstFree, align: 'start' as const }
-              : null,
+        panTo: picked >= 0 ? { index: picked, align: 'center' as const } : opensOn,
         keepWhole: picked >= 0 ? picked : null,
       };
     });
