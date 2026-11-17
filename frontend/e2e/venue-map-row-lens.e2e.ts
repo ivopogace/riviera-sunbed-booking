@@ -31,14 +31,14 @@ function stayDates(): { first: string; last: string } {
 async function openMap(
   page: Page,
   venue: MockVenueMapView,
-  options: { theme?: Theme; query?: string } = {},
+  options: { theme?: Theme; query?: string; width?: number } = {},
 ): Promise<void> {
   await page.route(/\/api\/venues\/1(\?.*)?$/, (route) => route.fulfill({ json: venue }));
   await page.addInitScript(
     (id) => localStorage.setItem('riviera-theme', id),
     options.theme ?? 'porcelain',
   );
-  await page.setViewportSize({ width: 390, height: 844 });
+  await page.setViewportSize({ width: options.width ?? 390, height: 844 });
   await page.goto(`/venues/1${options.query ?? ''}`);
   await expect(page.locator('html')).toHaveAttribute(
     'data-riv-theme',
@@ -277,31 +277,43 @@ test('an open row starts at its first free set when none shows from position 1, 
   await expect(tile(page, 'A', 13)).toBeFocused();
 });
 
-test('the open row has no edge fade, and a picked tile and its tick are never cut by the edge', async ({
-  page,
-}) => {
-  const venue = miramarMapVenue();
-  await openMap(page, {
-    ...venue,
-    sets: venue.sets.map((set) =>
-      set.rowLabel === 'A' ? { ...set, availability: 'FREE' as const } : set,
-    ),
-  });
-  const pan = openRow(page, 'A').getByTestId('lens-pan');
-  const unfaded = async (when: string): Promise<void> => {
-    expect(await pan.evaluate((el) => getComputedStyle(el).maskImage), when).toBe('none');
-  };
-  const inside = async (part: Locator, what: string): Promise<void> => {
+test.describe('the open row’s edges', () => {
+  /** Miramar with every set of row A free, so any of its 13 tiles can be picked; row A opens first. */
+  async function openRowA(page: Page, width = 390): Promise<Locator> {
+    const venue = miramarMapVenue();
+    await openMap(
+      page,
+      {
+        ...venue,
+        sets: venue.sets.map((set) =>
+          set.rowLabel === 'A' ? { ...set, availability: 'FREE' as const } : set,
+        ),
+      },
+      { width },
+    );
+    // Mid-screen, clear of the page's fixed bars: a click that had to scroll to its tile would pan the row.
+    await openRow(page, 'A').evaluate((el) => el.scrollIntoView({ block: 'center' }));
+    return openRow(page, 'A').getByTestId('lens-pan');
+  }
+  /** The lens answers a resize from an observer, a frame or two after the viewport changes. */
+  async function resize(page: Page, width: number): Promise<void> {
+    await page.setViewportSize({ width, height: 844 });
+    await page.evaluate(
+      () => new Promise((done) => requestAnimationFrame(() => requestAnimationFrame(done))),
+    );
+    await settle(page);
+  }
+  async function inside(pan: Locator, part: Locator, what: string): Promise<void> {
     const box = (await part.boundingBox())!;
     const view = (await pan.boundingBox())!;
     expect(box.x, `${what}: inside the leading edge`).toBeGreaterThanOrEqual(view.x - 0.5);
     expect(box.x + box.width, `${what}: inside the trailing edge`).toBeLessThanOrEqual(
       view.x + view.width + 0.5,
     );
-  };
+  }
   /** The last spot whose tile lies wholly inside the pan viewport. */
-  const lastWhole = (): Promise<number> =>
-    pan.evaluate((el) => {
+  function lastWhole(pan: Locator): Promise<number> {
+    return pan.evaluate((el) => {
       const view = el.getBoundingClientRect();
       const whole = [...el.querySelectorAll('[data-testid="set-tile"]')].map((tile) => {
         const box = tile.getBoundingClientRect();
@@ -309,116 +321,113 @@ test('the open row has no edge fade, and a picked tile and its tick are never cu
       });
       return whole.lastIndexOf(true) + 1;
     });
-
-  // At rest, at widths where a tile's far edge lands on, beside and well inside the viewport's.
-  for (const width of [360, 374, 376, 377, 378, 390, 412]) {
-    await page.setViewportSize({ width, height: 844 });
-    await pan.evaluate((el) => (el.scrollLeft = 0));
-    await settle(page);
-    expect(await pan.evaluate((el) => el.scrollWidth - el.clientWidth)).toBeGreaterThan(1);
-    await unfaded(`at rest at ${width}px`);
-
-    // After a tap: the pick, and the tick that overhangs its corner.
-    const spot = await lastWhole();
-    expect(spot).toBeGreaterThanOrEqual(5);
-    await tile(page, 'A', spot).click();
-    await settle(page);
-    await expect(tile(page, 'A', spot)).toHaveAttribute('aria-pressed', 'true');
-    await inside(tile(page, 'A', spot), `picked tile ${spot} at ${width}px`);
-    await inside(pan.getByTestId('pick-tick'), `the tick on tile ${spot} at ${width}px`);
-    await tile(page, 'A', spot).click();
-    await settle(page);
-    await expect(pan.getByTestId('pick-tick')).toHaveCount(0);
   }
-  await page.setViewportSize({ width: 390, height: 844 });
-  await pan.evaluate((el) => (el.scrollLeft = 0));
-  await settle(page);
+  async function pick(page: Page, spot: number, options?: { position: { x: number; y: number } }) {
+    await tile(page, 'A', spot).click(options);
+    await settle(page);
+  }
 
-  // A tile cut by the far edge is brought in whole when it is picked.
-  const cut = (await lastWhole()) + 1;
-  const cutBox = (await tile(page, 'A', cut).boundingBox())!;
-  const edge = await pan.boundingBox().then((view) => view!.x + view!.width);
-  expect(cutBox.x + 4, 'the tile shows enough to tap').toBeLessThan(edge);
-  expect(cutBox.x + cutBox.width, 'the tile is cut').toBeGreaterThan(edge);
-  await tile(page, 'A', cut).click({ position: { x: 4, y: 22 } });
-  await settle(page);
-  await expect(tile(page, 'A', cut)).toHaveAttribute('aria-pressed', 'true');
-  await inside(tile(page, 'A', cut), `picked tile ${cut}, cut before the tap`);
-  await inside(pan.getByTestId('pick-tick'), `the tick on tile ${cut}`);
-  await tile(page, 'A', cut).click();
-  await settle(page);
+  // Widths where a tile's far edge lands on, beside and well inside the viewport's.
+  for (const width of [360, 374, 376, 377, 378, 390, 412]) {
+    test(`at ${width}px nothing fades, and the last whole tile is picked with its tick whole`, async ({
+      page,
+    }) => {
+      const pan = await openRowA(page, width);
+      expect(await pan.evaluate((el) => el.scrollWidth - el.clientWidth)).toBeGreaterThan(1);
+      expect(await pan.evaluate((el) => getComputedStyle(el).maskImage)).toBe('none');
 
-  // A narrower viewport cuts a pick that was whole, or pushes it out: it is brought in again.
-  await page.setViewportSize({ width: 430, height: 844 });
-  // Back to the top: a tile under the page's sticky header would have the click scroll to reach it.
-  await page.evaluate(() => window.scrollTo(0, 0));
-  await pan.evaluate((el) => (el.scrollLeft = 0));
-  await settle(page);
-  const wide = await lastWhole();
-  await tile(page, 'A', wide).click();
-  await settle(page);
-  const wideBox = (await tile(page, 'A', wide).boundingBox())!;
-  await page.setViewportSize({ width: 320, height: 844 });
-  await settle(page);
-  expect(wideBox.x, 'the pick would be wholly out of the narrow viewport').toBeGreaterThan(320);
-  expect(await lastWhole()).toBeLessThan(13);
-  await inside(tile(page, 'A', wide), `picked tile ${wide} after the viewport narrowed`);
-  await inside(pan.getByTestId('pick-tick'), 'the tick after the viewport narrowed');
-  await tile(page, 'A', wide).click();
-  await settle(page);
-  await page.setViewportSize({ width: 390, height: 844 });
-  await settle(page);
+      const spot = await lastWhole(pan);
+      expect(spot).toBeGreaterThanOrEqual(5);
+      await pick(page, spot);
 
-  // Where a tile's edge lands on the viewport's, no cut tile shows: the thumb says the row pans.
-  await page.setViewportSize({ width: 428, height: 844 });
-  await pan.evaluate((el) => (el.scrollLeft = 0));
-  await settle(page);
-  const thumb = openRow(page, 'A').getByTestId('lens-open-thumb');
-  const span = async (): Promise<{ left: number; width: number }> => {
-    const track = (await openRow(page, 'A').getByTestId('lens-open-track').boundingBox())!;
-    const box = (await thumb.boundingBox())!;
-    return { left: (box.x - track.x) / track.width, width: box.width / track.width };
-  };
-  expect((await span()).left).toBeCloseTo(0, 2);
-  const shown = await pan.evaluate((el) => el.clientWidth / el.scrollWidth);
-  expect(shown).toBeLessThan(0.75);
-  expect((await span()).width).toBeCloseTo(shown, 2);
-  await pan.evaluate((el) => (el.scrollLeft = el.scrollWidth));
-  await expect.poll(async () => (await span()).left).toBeCloseTo(1 - shown, 2);
+      await expect(tile(page, 'A', spot)).toHaveAttribute('aria-pressed', 'true');
+      await inside(pan, tile(page, 'A', spot), `picked tile ${spot}`);
+      await inside(pan, pan.getByTestId('pick-tick'), `the tick on tile ${spot}`);
+    });
+  }
 
-  // A row the user panned away from its pick stays there when the width changes.
-  await pan.evaluate((el) => (el.scrollLeft = 0));
-  await tile(page, 'A', 2).click();
-  await settle(page);
-  await pan.evaluate((el) => (el.scrollLeft = el.scrollWidth));
-  const panned = await pan.evaluate((el) => el.scrollLeft);
-  await page.setViewportSize({ width: 427, height: 844 });
-  await settle(page);
-  expect(await pan.evaluate((el) => el.scrollLeft)).toBeGreaterThanOrEqual(panned);
-  // A widening that brings the pick partly back shows it whole.
-  await page.setViewportSize({ width: 600, height: 844 });
-  await settle(page);
-  await inside(tile(page, 'A', 2), 'the pick a wider viewport brought back');
-  await page.setViewportSize({ width: 427, height: 844 });
-  await settle(page);
-  await pan.evaluate((el) => (el.scrollLeft = 0));
-  await tile(page, 'A', 2).click();
-  await settle(page);
-  await page.setViewportSize({ width: 390, height: 844 });
-  await settle(page);
+  test('a tile cut by the far edge is brought in whole when it is picked', async ({ page }) => {
+    const pan = await openRowA(page);
+    const cut = (await lastWhole(pan)) + 1;
+    const cutBox = (await tile(page, 'A', cut).boundingBox())!;
+    const edge = await pan.boundingBox().then((view) => view!.x + view!.width);
+    expect(cutBox.x + 4, 'the tile shows enough to tap').toBeLessThan(edge);
+    expect(cutBox.x + cutBox.width, 'the tile is cut').toBeGreaterThan(edge);
 
-  // After the pan start: the row reopens on its last set, at the far end of the pan.
-  await pan.evaluate((el) => (el.scrollLeft = el.scrollWidth));
-  await tile(page, 'A', 13).click();
-  await settle(page);
-  await closedRow(page, 'B').click();
-  await closedRow(page, 'A').click();
-  await expect(openRow(page, 'A')).toBeVisible();
-  await settle(page);
-  expect(await pan.evaluate((el) => el.scrollLeft)).toBeGreaterThan(1);
-  await unfaded('at the far end');
-  await inside(tile(page, 'A', 13), 'the pick after the pan start');
-  await inside(pan.getByTestId('pick-tick'), 'the tick after the pan start');
+    await pick(page, cut, { position: { x: 4, y: 22 } });
+
+    await expect(tile(page, 'A', cut)).toHaveAttribute('aria-pressed', 'true');
+    await inside(pan, tile(page, 'A', cut), `picked tile ${cut}`);
+    await inside(pan, pan.getByTestId('pick-tick'), `the tick on tile ${cut}`);
+  });
+
+  test('a row reopened on its last set shows the pick and its tick whole at the far end', async ({
+    page,
+  }) => {
+    const pan = await openRowA(page);
+    await pan.evaluate((el) => (el.scrollLeft = el.scrollWidth));
+    await settle(page);
+    await pick(page, 13);
+    await closedRow(page, 'B').click();
+    await closedRow(page, 'A').click();
+    await expect(openRow(page, 'A')).toBeVisible();
+    await settle(page);
+
+    expect(await pan.evaluate((el) => el.scrollLeft)).toBeGreaterThan(1);
+    expect(await pan.evaluate((el) => getComputedStyle(el).maskImage)).toBe('none');
+    await inside(pan, tile(page, 'A', 13), 'the pick');
+    await inside(pan, pan.getByTestId('pick-tick'), 'the tick');
+  });
+
+  test('a narrower viewport that pushes the pick out brings it back in', async ({ page }) => {
+    const pan = await openRowA(page, 430);
+    const spot = await lastWhole(pan);
+    await pick(page, spot);
+    expect((await tile(page, 'A', spot).boundingBox())!.x).toBeGreaterThan(320);
+
+    await resize(page, 320);
+
+    expect(await lastWhole(pan)).toBeLessThan(13);
+    await inside(pan, tile(page, 'A', spot), `picked tile ${spot}`);
+    await inside(pan, pan.getByTestId('pick-tick'), 'the tick');
+  });
+
+  test('a row panned away from its pick stays there on a resize, until a wider one shows the pick', async ({
+    page,
+  }) => {
+    const pan = await openRowA(page, 428);
+    await pick(page, 2);
+    await pan.evaluate((el) => (el.scrollLeft = el.scrollWidth));
+    await settle(page);
+    const panned = await pan.evaluate((el) => el.scrollLeft);
+
+    await resize(page, 427);
+    expect(await pan.evaluate((el) => el.scrollLeft)).toBeGreaterThanOrEqual(panned);
+
+    // Wide enough that the row's far end leaves the pick partly in view.
+    await resize(page, 600);
+    await inside(pan, tile(page, 'A', 2), 'the pick a wider viewport brought back');
+  });
+
+  test('where a tile’s edge lands on the viewport’s, the thumb says the row pans', async ({
+    page,
+  }) => {
+    const pan = await openRowA(page, 428);
+    const thumb = openRow(page, 'A').getByTestId('lens-open-thumb');
+    const span = async (): Promise<{ left: number; width: number }> => {
+      const track = (await openRow(page, 'A').getByTestId('lens-open-track').boundingBox())!;
+      const box = (await thumb.boundingBox())!;
+      return { left: (box.x - track.x) / track.width, width: box.width / track.width };
+    };
+    const shown = await pan.evaluate((el) => el.clientWidth / el.scrollWidth);
+    expect(shown).toBeLessThan(0.75);
+    expect((await span()).left).toBeCloseTo(0, 2);
+    expect((await span()).width).toBeCloseTo(shown, 2);
+
+    await pan.evaluate((el) => (el.scrollLeft = el.scrollWidth));
+
+    await expect.poll(async () => (await span()).left).toBeCloseTo(1 - shown, 2);
+  });
 });
 
 test('a focused tile’s ring fits inside the open row’s viewport, below and beside it', async ({

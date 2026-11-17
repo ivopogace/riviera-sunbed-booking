@@ -364,16 +364,16 @@ export class BeachRowLens {
       this.overflowing.set(scroller.scrollWidth > scroller.clientWidth + 1);
       this.overviewFade.set(fadeOf(scroller));
     }
-    const pans = [...this.host.nativeElement.querySelectorAll<HTMLElement>('[data-lens-pan]')];
-    for (const pan of pans) {
-      this.setSpan(pan.dataset['lensPan'] ?? '', spanOf(pan));
-    }
-    // A closed row's thumb goes with it.
-    const open = new Set(pans.map((pan) => pan.dataset['lensPan']));
-    for (const code of this.openSpans().keys()) {
-      if (!open.has(code)) {
-        this.setSpan(code, undefined);
+    const spans = new Map<string, OpenSpan>();
+    for (const pan of this.host.nativeElement.querySelectorAll<HTMLElement>('[data-lens-pan]')) {
+      const span = spanOf(pan);
+      if (span) {
+        spans.set(pan.dataset['lensPan'] ?? '', span);
       }
+    }
+    const before = this.openSpans();
+    if (spans.size !== before.size || [...spans].some(([code, s]) => !same(before.get(code), s))) {
+      this.openSpans.set(spans);
     }
   }
 
@@ -477,8 +477,7 @@ export class BeachRowLens {
 
   /** The tile a row's {@link BeachRowLensRow.keepWhole} names, inside its pan viewport. */
   private keptTile(pan: Element, row: BeachRowLensRow): HTMLElement | null {
-    const tile = typeof row.keepWhole === 'number' ? this.list(pan)?.children[row.keepWhole] : null;
-    return tile instanceof HTMLElement ? tile : null;
+    return typeof row.keepWhole === 'number' ? (this.tiles(pan)[row.keepWhole] ?? null) : null;
   }
 
   /** Scroll by the least that shows a row's {@link BeachRowLensRow.keepWhole} tile whole, the
@@ -555,7 +554,7 @@ export class BeachRowLens {
     }
     const room = this.sideRoom(pan);
     const tilePitch = (pan.scrollWidth - 2 * room) / row.cells.length;
-    const column = (pan.scrollLeft + pan.clientWidth / 2 - room) / tilePitch;
+    const column = (scrollOf(pan) + pan.clientWidth / 2 - room) / tilePitch;
     const columnPitch = scroller.scrollWidth / this.cols();
     const max = scroller.scrollWidth - scroller.clientWidth;
     const offset = Math.max(0, Math.min(max, column * columnPitch - scroller.clientWidth / 2));

@@ -21,7 +21,8 @@
                 left: thumbLeft(),
                 width: thumbWidth(),
                 frame: 'flex-1',
-                testid: 'lens-position',
+                track: 'lens-position-track',
+                thumb: 'lens-position-thumb',
               }
             "
           />
@@ -77,7 +78,7 @@
             </div>
             <!-- The scroller clips, and a badge overhangs its tile upward and sideways: headroom on the viewport, room below for a focus ring, side room on the track, so both ends of the pan keep it. The track is as wide as its tiles, which is their content unless the surface gives them a width. No edge fade: at some widths it would lie over a whole tile. -->
             <div
-              class="relative -mx-2 -mt-[9px] -mb-[5px] scrollbar-none scroll-px-2 overflow-x-auto overflow-y-hidden pt-[9px] pb-[5px]"
+              class="relative -mx-2 -mt-[9px] -mb-[5px] scrollbar-none overflow-x-auto overflow-y-hidden pt-[9px] pb-[5px]"
               data-testid="lens-pan"
               [attr.data-lens-pan]="row.code"
               (scroll)="onOpenPan($event, row)"
@@ -100,7 +101,8 @@
                     left: span.left,
                     width: span.width,
                     frame: 'mt-[11px] block',
-                    testid: 'lens-open',
+                    track: 'lens-open-track',
+                    thumb: 'lens-open-thumb',
                   }
                 "
               />
@@ -191,16 +193,23 @@
 </app-beach-grid-frame>
 
 <!-- Which part of a sideways scroller is in view. The thumb is a border, not a fill: forced colours drop backgrounds. -->
-<ng-template #thumb let-left="left" let-width="width" let-frame="frame" let-testid="testid">
+<ng-template
+  #thumb
+  let-left="left"
+  let-width="width"
+  let-frame="frame"
+  let-track="track"
+  let-thumbId="thumb"
+>
   <span
     class="relative h-1 rounded-full bg-riv-map-chip-border"
     [class]="frame"
     aria-hidden="true"
-    [attr.data-testid]="testid + '-track'"
+    [attr.data-testid]="track"
   >
     <span
       class="absolute top-0 h-0 rounded-full border-t-4 border-riv-accent-ink"
-      [attr.data-testid]="testid + '-thumb'"
+      [attr.data-testid]="thumbId"
       [style.left.%]="left"
       [style.width.%]="width"
     ></span>

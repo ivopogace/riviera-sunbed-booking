@@ -430,7 +430,8 @@ describe('BeachRowLens', () => {
 
   describe('the tile a row says to keep whole', () => {
     /** Thirteen tiles' worth of track, 44px every 50px after 8px of side room: the fourth spans 158–202px. */
-    function stubTiles(client: number): () => void {
+    function stubTiles(client: number | (() => number)): () => void {
+      const width = typeof client === 'number' ? () => client : client;
       const spies = [
         vi.spyOn(HTMLElement.prototype, 'offsetLeft', 'get').mockImplementation(function (
           this: HTMLElement,
@@ -447,7 +448,7 @@ describe('BeachRowLens', () => {
         vi.spyOn(HTMLElement.prototype, 'clientWidth', 'get').mockImplementation(function (
           this: HTMLElement,
         ) {
-          return this.dataset['lensPan'] === undefined ? 0 : client;
+          return this.dataset['lensPan'] === undefined ? 0 : width();
         }),
         vi.spyOn(HTMLElement.prototype, 'scrollWidth', 'get').mockImplementation(function (
           this: HTMLElement,
@@ -573,6 +574,84 @@ describe('BeachRowLens', () => {
       } finally {
         restore();
       }
+    });
+    describe('when the lens changes width', () => {
+      type Resize = (entries: { contentRect: { width: number } }[]) => void;
+      let resizes: Resize[];
+      let client: number;
+      let restore: () => void;
+      const resizeTo = (width: number): void => {
+        client = width;
+        resizes.at(-1)!([{ contentRect: { width } }]);
+      };
+
+      beforeEach(async () => {
+        resizes = [];
+        // jsdom has no ResizeObserver: this one hands the spec the lens's callback, and is removed after.
+        (globalThis as Record<string, unknown>)['ResizeObserver'] = class {
+          constructor(callback: Resize) {
+            resizes.push(callback);
+          }
+          observe(): void {
+            resizes.at(-1)!([{ contentRect: { width: 300 } }]);
+          }
+          disconnect(): void {
+            resizes = [];
+          }
+        };
+        client = 300;
+        restore = stubTiles(() => client);
+        fixture = TestBed.createComponent(DeckHost);
+        host = fixture.nativeElement as HTMLElement;
+        await settle();
+      });
+
+      afterEach(() => {
+        restore();
+        delete (globalThis as Record<string, unknown>)['ResizeObserver'];
+      });
+
+      it('a named tile the narrowing cuts, or pushes out, is brought in', async () => {
+        // Tile 5 spans 208–252px: whole in 300px with room to spare.
+        await openOn(4);
+        expect(pan().scrollLeft).toBe(0);
+
+        resizeTo(230);
+        expect(pan().scrollLeft).toBe(30);
+
+        pan().scrollLeft = 0;
+        resizeTo(300);
+        resizeTo(180);
+        expect(pan().scrollLeft).toBe(80);
+      });
+
+      it('a named tile the user panned away from is left there', async () => {
+        await openOn(0);
+        pan().scrollLeft = 200;
+
+        resizeTo(260);
+
+        expect(pan().scrollLeft).toBe(200);
+      });
+
+      it('a named tile a widening brings partly back is shown whole, the scroll read as it will be clamped', async () => {
+        await openOn(0);
+        // The far end of a 666px track in 300px; at 640px the browser clamps the scroll to 26px.
+        pan().scrollLeft = 366;
+
+        resizeTo(640);
+
+        expect(pan().scrollLeft).toBe(0);
+      });
+
+      it('a change of height alone moves nothing', async () => {
+        await openOn(4);
+        client = 230;
+
+        resizes.at(-1)!([{ contentRect: { width: 300 } }]);
+
+        expect(pan().scrollLeft).toBe(0);
+      });
     });
   });
 
