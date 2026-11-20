@@ -233,13 +233,15 @@ describe('VenueMap: reloading under the visitor (#1810)', () => {
       venueReq(2).flush(freeBeach(2));
     });
 
-    it('from a map tile, with no modal open', async () => {
+    it('from a map tile, with no modal open, scrolling up to the button', async () => {
       await loadFree();
       tile(2).focus();
+      const focus = vi.spyOn(one('venue-back'), 'focus');
 
       await switchVenue();
 
       expect(document.activeElement).toBe(one('venue-back'));
+      expect(focus).toHaveBeenCalledWith({ preventScroll: false });
       venueReq(2).flush(freeBeach(2));
     });
 
@@ -506,15 +508,34 @@ describe('VenueMap: reloading under the visitor (#1810)', () => {
       expect(dom().querySelector('app-availability-calendar')).not.toBeNull();
     });
 
-    it('survives a read that answers after the visitor left the page', async () => {
+    it('drops its reads with the page, so a late answer moves no focus on a destroyed view', async () => {
+      await loadNoCover();
+      await tap(one('no-cover-plan'));
+      (fixture.componentInstance as unknown as { planAround(set: SetView): void }).planAround(
+        noCoverBeach().sets[0],
+      );
+      const plan = itineraryReq();
+      pickDays(otherDay, addDays(otherDay, 2));
+      const map = venueReq();
+
+      fixture.destroy();
+
+      expect(plan.cancelled).toBe(true);
+      expect(map.cancelled).toBe(true);
+    });
+
+    it('leaves focus the visitor moved on while the shortened stay loaded', async () => {
       await loadNoCover();
       await tap(tile(1));
       await tap(one('shorten-stay'));
-      const late = venueReq();
-      fixture.destroy();
+      one('venue-back').focus();
 
-      expect(() => late.flush(noCoverBeach())).not.toThrow();
+      venueReq().flush(noCoverBeach());
+      await settle();
       itineraryReq().flush(stitched());
+      await settle();
+
+      expect(document.activeElement).toBe(one('venue-back'));
     });
 
     it('shortening from the sheet parks focus on the date field, then on the tile if it is still not free', async () => {

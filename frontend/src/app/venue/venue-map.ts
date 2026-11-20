@@ -12,7 +12,7 @@ import {
   untracked,
 } from '@angular/core';
 import { NgTemplateOutlet } from '@angular/common';
-import { toSignal } from '@angular/core/rxjs-interop';
+import { takeUntilDestroyed, toSignal } from '@angular/core/rxjs-interop';
 import { Title } from '@angular/platform-browser';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 
@@ -217,8 +217,10 @@ export class VenueMap {
   private readonly title = inject(Title);
   /** WCAG 2.4.3: a re-fetch failure tears down the map (which may hold focus) — move it (RV-FE-9). */
   private readonly moveFocus = focusMover();
-  /** Moves focus only if the render took its holder, and never scrolls: the visitor may be far down the map. */
-  private readonly landIfTaken = focusMover({ onlyIfLost: true, preventScroll: true });
+  /** A route reset's landing: moves focus only if the reset took its holder, and scrolls to it. */
+  private readonly landIfTaken = focusMover({ onlyIfLost: true });
+  /** A date change's landing: the same, without scrolling, as the visitor may be far down the map. */
+  private readonly parkIfTaken = focusMover({ onlyIfLost: true, preventScroll: true });
   private readonly destroyRef = inject(DestroyRef);
   private readonly host = inject<ElementRef<HTMLElement>>(ElementRef);
 
@@ -609,7 +611,9 @@ export class VenueMap {
     this.resetPlan();
     this.pendingSelectSetId = undefined;
     // Everything under the back button is rebuilt. Not the skeleton: it is inert, so a browser drops the move (RV-FE-9).
-    this.landHeldFocus('venue-back');
+    if (this.holdsFocus()) {
+      this.landIfTaken('venue-back');
+    }
     this.lastTriggerId = undefined;
     const floor = defaultBookingDate(new Date());
     this.minDate.set(floor);
@@ -623,11 +627,9 @@ export class VenueMap {
     this.load();
   }
 
-  /** Focus held inside the page lands on `testId` if the next render removes or disables its holder. */
-  private landHeldFocus(testId: string): void {
-    if (this.host.nativeElement.contains(document.activeElement)) {
-      this.landIfTaken(testId);
-    }
+  /** Whether focus is inside the page: focus on `<body>` or in the shell is never moved by a reload. */
+  private holdsFocus(): boolean {
+    return this.host.nativeElement.contains(document.activeElement);
   }
 
   /** Build the render+a11y view of one set (invariant #3: only free ONLINE sets are bookable). */
@@ -674,7 +676,14 @@ export class VenueMap {
     }
     const epoch = ++this.planEpoch;
     this.planFailed.set(false);
-    this.venues.itinerary(id, this.selectedDate(), this.selectedLastDate(), anchorSetId).subscribe({
+    const read = this.venues.itinerary(
+      id,
+      this.selectedDate(),
+      this.selectedLastDate(),
+      anchorSetId,
+    );
+    // Dropped with the page: an answer after it is left would move focus on a destroyed view.
+    read.pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
       next: (itinerary) => {
         if (this.planEpoch === epoch) {
           this.itinerary.set(itinerary);
@@ -760,7 +769,8 @@ export class VenueMap {
     this.notFound.set(false);
     // The per-dispatch generation: any later dispatch or reset supersedes this response.
     const epoch = ++this.epoch;
-    this.venues.getVenueMap(id, this.selectedDate(), this.selectedLastDate()).subscribe({
+    const read = this.venues.getVenueMap(id, this.selectedDate(), this.selectedLastDate());
+    read.pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
       next: (venue) => {
         if (this.epoch === epoch) {
           this.venue.set(venue);
@@ -828,9 +838,14 @@ export class VenueMap {
     const set = venue.sets.find((s) => s.id === id);
     if (set !== undefined && this.toTile(set).bookable) {
       this.select(set);
-    } else {
+    } else if (this.dateField()?.contains(document.activeElement)) {
+      // Focus still waits where the date change parked it; focus the visitor moved on stays theirs.
       this.focusTile(id);
     }
+  }
+
+  private dateField(): HTMLElement | null {
+    return this.host.nativeElement.querySelector<HTMLElement>('[data-testid="map-date"]');
   }
 
   /** Re-fetch availability for newly chosen days (closing any open dialog or sheet first). */
@@ -849,7 +864,9 @@ export class VenueMap {
     if (this.venue() !== undefined) {
       // The old days' map stays on screen but inert: focus it held lands on the field naming the new days (RV-FE-9).
       this.staleDays.set(true);
-      this.landHeldFocus('map-date');
+      if (this.holdsFocus()) {
+        this.parkIfTaken('map-date');
+      }
     }
     this.load();
   }
@@ -1037,8 +1054,7 @@ export class VenueMap {
   }
 
   private focusTile(setId: number | undefined): void {
-    // A read can answer after the visitor left the page: a destroyed view takes no render hook.
-    if (setId === undefined || this.destroyRef.destroyed) {
+    if (setId === undefined) {
       return;
     }
     // On a phone the tile exists only while its row is open: open it first.
