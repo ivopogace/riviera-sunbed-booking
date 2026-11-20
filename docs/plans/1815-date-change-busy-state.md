@@ -23,7 +23,7 @@ Seam for all: the rendered `VenueMap` page (DOM in jsdom, computed style and foc
 - [ ] **AC-2:** Given AC-1's window, when the read answers with the same count as before, then the line's text changed twice (loading, then count), in the same element. *Pinned by:* `venue-map-reload.spec.ts` › "an unchanged count is still a change of the line"; `venue-map-reload.e2e.ts` › "while other days load…"
 - [ ] **AC-3:** Given AC-1's window, then the availability bar shows no proportion and the no-cover banner is not shown; both return with the answer. *Pinned by:* `venue-map-reload.spec.ts` › "the bar shows no proportion…", "takes the no-cover banner with it…"
 - [ ] **AC-4:** Given AC-1's window, then the map card is at half opacity at both widths and back to full when the read answers or fails. *Pinned by:* `venue-map-reload.e2e.ts` › "while other days load…" (computed `opacity`)
-- [ ] **AC-5:** Given AC-1's window, then no progress mark is shown before one second, one is shown after, and none once the read answers. *Pinned by:* `venue-map-reload.spec.ts` › "the progress mark" (fake timers); `venue-map-reload.e2e.ts` (`page.clock`)
+- [ ] **AC-5:** Given AC-1's window, then no progress mark is shown before one second, one is shown after, and none once the read answers. *Pinned by:* `venue-map-reload.spec.ts` › "the progress mark" (fake timers, the threshold); `venue-map-reload.e2e.ts` (the mark arrives while the read is held, and goes)
 - [ ] **AC-6:** The mark's arc reaches 3:1 on the card glass in all three themes; it does not spin under reduced motion. *Pinned by:* `venue-map.contrast.spec.ts`; `venue-map-reload.e2e.ts` (reduced motion, `animation-name`)
 - [ ] **AC-7:** `aria-busy` is on no inert element. *Pinned by:* `venue-map-reload.spec.ts` › "is inert until the read answers"
 - [ ] **AC-8:** A same-days re-read (Retry, the #1809 refresh) changes neither the line nor the map's look. *Pinned by:* `venue-map-reload.spec.ts` › "stays usable through a re-read for the same days", "the map is not inert while that same-days read is in flight"
@@ -39,7 +39,7 @@ Seam for all: the rendered `VenueMap` page (DOM in jsdom, computed style and foc
 
 - **Dim: `opacity: 0.5`, 150ms ease, no transition under reduced motion.** The card is `inert`, so it is an inactive component with no contrast requirement (WCAG 1.4.3, as the orchestrator read it; `w3.org` is blocked in this session); the HTML spec asks authors to mark inert parts clearly. Opacity is theme-independent, so one computed-style proof covers the three themes.
 - **Mark: the pay page's ring** (`booking-pay.ts`, `pay-spin`, `motion-reduce:animate-none`), 14px, in `--riv-accent-ink`, beside the line and outside the live region so its arrival re-announces nothing. Accent ink is the count's own text ink on this card, so it clears 3:1.
-- **Delay: a 1000ms timer** set by an effect on `staleDays`; unit specs use fake timers, the e2e `page.clock`.
+- **Delay: a 1000ms timer** set by an effect on `staleDays`; unit specs prove the threshold on fake timers; the e2e only waits for the mark while the read is held.
 - **No-cover banner: removed for the window, not dimmed.** Its sentence states the new days' count from the old read, which decision 2 rules out.
 - **`aria-busy` removed** from the map card: inert nodes are not exposed to assistive technology (HTML spec § inert), and on the live region it would hold the announcement back (MDN `aria-busy`).
 - **`aria-atomic="true"` on the line**, so a part that changes reads the whole status.

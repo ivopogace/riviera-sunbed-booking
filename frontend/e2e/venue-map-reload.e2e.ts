@@ -265,7 +265,6 @@ for (const { name, width } of WIDTHS) {
     test('while other days load, the old map is dimmed, takes no tap, and the line says it is checking', async ({
       page,
     }) => {
-      await page.clock.install();
       const lineBefore = await mockAndMeasureLine(page);
       const release = await shortenWithHeldRead(page, [set(1, 'FREE', []), ...NO_COVER.slice(1)]);
 
@@ -290,13 +289,13 @@ for (const { name, width } of WIDTHS) {
         await expect(page.getByTestId('map-date')).not.toBeInViewport();
       }
 
-      // No progress mark under a second of waiting; one after it, beside the line.
-      await page.clock.runFor(900);
-      await expect(page.getByTestId('availability-wait')).toHaveCount(0);
-      await page.clock.runFor(200);
+      // The read is still held, so the progress mark arrives beside the line (its one-second threshold is the unit spec's, on fake timers).
       await expect(page.getByTestId('availability-wait')).toBeVisible();
       await expect(page.getByTestId('availability-wait')).toHaveCSS('animation-name', 'pay-spin');
       await expect(page.getByTestId('availability-wait')).toHaveCSS('width', '14px');
+      await expect(page.getByTestId('availability')).toHaveText(
+        `Checking availability for ${days}…`,
+      );
 
       // A tap where the other partly-free tile is drawn reaches nothing.
       const box = (await tile(page, 2).boundingBox())!;
@@ -319,11 +318,9 @@ for (const { name, width } of WIDTHS) {
       page,
     }) => {
       await page.emulateMedia({ reducedMotion: 'reduce' });
-      await page.clock.install();
       const release = await shortenWithHeldRead(page, [set(1, 'FREE', []), ...NO_COVER.slice(1)]);
 
       await expect(mapCard(page)).toHaveCSS('transition-property', 'none');
-      await page.clock.runFor(1100);
       await expect(page.getByTestId('availability-wait')).toHaveCSS('animation-name', 'none');
       release();
     });
