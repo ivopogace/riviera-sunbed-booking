@@ -451,6 +451,32 @@ describe('VenueMap: reloading under the visitor (#1810)', () => {
       });
     });
 
+    for (const last of ['answers', 'fails'] as const) {
+      it(`stays inert through an overlapping same-days read, until the last read ${last}`, async () => {
+        await loadFree();
+        pickDays(otherDay);
+        const superseded = venueReq();
+        // The plan dialog's close and Retry dispatch this same read while the date change is in flight.
+        (fixture.componentInstance as unknown as { retry(): void }).retry();
+        const latest = venueReq();
+
+        superseded.flush(freeBeach());
+        await settle();
+        expect(map().hasAttribute('inert')).toBe(true);
+
+        if (last === 'answers') {
+          latest.flush(freeBeach());
+          await settle();
+          expect(map().hasAttribute('inert')).toBe(false);
+        } else {
+          latest.flush('down', { status: 503, statusText: 'Service Unavailable' });
+          await settle();
+          expect(map()).toBeNull();
+          expect(document.activeElement).toBe(one('map-error'));
+        }
+      });
+    }
+
     it('is usable again on the map a retry brings back after the read failed', async () => {
       await loadFree();
       pickDays(otherDay);
