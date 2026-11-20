@@ -191,10 +191,11 @@ for (const { name, width } of WIDTHS) {
       await expect(back(page)).toBeFocused();
     });
 
-    test('while other days load, the old map takes no tap and focus waits on the date field', async ({
-      page,
-    }) => {
-      // The stay's read answers at once; the shortened stay's read is held until released.
+    /**
+     * Shorten the no-cover stay to set 1's two days from its sheet. The stay's read answers at once;
+     * the shortened stay's read is held until the returned release is called, then answers `sets`.
+     */
+    async function shortenWithHeldRead(page: Page, sets: MockSetView[]): Promise<() => void> {
       let release: () => void = () => undefined;
       const held = new Promise<void>((resolve) => (release = resolve));
       await mockVenues(page);
@@ -203,9 +204,7 @@ for (const { name, width } of WIDTHS) {
         if (shortened) {
           await held;
         }
-        return route.fulfill({
-          json: venue(1, shortened ? [set(1, 'FREE', []), ...NO_COVER.slice(1)] : NO_COVER),
-        });
+        return route.fulfill({ json: venue(1, shortened ? sets : NO_COVER) });
       });
       await page.goto(`/venues/1?${STAY}`);
       if (name === 'phone') {
@@ -214,6 +213,42 @@ for (const { name, width } of WIDTHS) {
       }
       await tile(page, 1).click();
       await page.getByTestId('shorten-stay').click();
+      await expect(mapCard(page)).toHaveAttribute('inert', '');
+      return release;
+    }
+
+    /** The shortened stay's read when someone took set 1's last day meanwhile: still partly free. */
+    const STILL_PARTLY = [set(1, 'PARTLY_FREE', [MIDDLE]), ...NO_COVER.slice(1)];
+
+    test('a shortened stay whose set is still not free hands focus from the date field to its tile', async ({
+      page,
+    }) => {
+      const release = await shortenWithHeldRead(page, STILL_PARTLY);
+      await expect(page.getByTestId('map-date')).toBeFocused();
+
+      release();
+
+      await expect(mapCard(page)).not.toHaveAttribute('inert');
+      await expect(tile(page, 1)).toBeFocused();
+      await expect(page.getByRole('dialog')).toHaveCount(0);
+    });
+
+    test('focus the visitor moved on while a shortened stay loaded is left alone', async ({
+      page,
+    }) => {
+      const release = await shortenWithHeldRead(page, STILL_PARTLY);
+      await back(page).focus();
+
+      release();
+
+      await expect(mapCard(page)).not.toHaveAttribute('inert');
+      await expect(back(page)).toBeFocused();
+    });
+
+    test('while other days load, the old map takes no tap and focus waits on the date field', async ({
+      page,
+    }) => {
+      const release = await shortenWithHeldRead(page, [set(1, 'FREE', []), ...NO_COVER.slice(1)]);
 
       // The old days' map is still drawn, under the new days in the header.
       await expect(page.getByTestId('map-date')).toHaveAttribute('data-last-date', MIDDLE);

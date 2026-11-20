@@ -822,8 +822,8 @@ export class VenueMap {
 
   /**
    * After a shortened stay's map arrives: open the dialog on the set the offer was made for, if
-   * it is still free for those days — the server decides (invariant #2); otherwise the tile keeps
-   * focus and the new map speaks for itself.
+   * it is still free for those days — the server decides (invariant #2); otherwise focus still
+   * waiting on the date field moves to the set's tile, and the new map speaks for itself.
    */
   private openPendingSelection(venue: VenueMapView): void {
     const id = this.pendingSelectSetId;
