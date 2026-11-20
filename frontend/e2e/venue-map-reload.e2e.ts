@@ -6,8 +6,9 @@ import type { MockSetView, MockVenueMapView } from './support/venue-views';
  * The two ways the venue page reloads under the visitor (#1810). An in-place route change: the
  * router reuses the page when the venue or the days in the URL change, the reset rebuilds everything
  * under the "All beaches" button, focus the reset would take lands on that button, and a plan's
- * booking dialog does not carry over. A date change: the old days' map stays on screen but takes
- * no tap and no focus until the read for the new days answers. A real browser is the proof here:
+ * booking dialog does not carry over. A date change: the old days' map stays on screen, dimmed, and
+ * takes no tap and no focus until the read for the new days answers, while the availability line
+ * says it is checking (#1815). A real browser is the proof here:
  * it ignores `focus()` and clicks on an `inert` element, jsdom does not. Mocked API, CI-safe.
  */
 
@@ -217,6 +218,22 @@ for (const { name, width } of WIDTHS) {
       return release;
     }
 
+    /** The availability line's offset inside its card: the page may scroll, the card's inside may not move. */
+    const lineTop = (page: Page): Promise<number> =>
+      page.evaluate(() => {
+        const top = (id: string) =>
+          document.querySelector(`[data-testid="${id}"]`)!.getBoundingClientRect().top;
+        return top('availability') - top('map-overview');
+      });
+
+    /** Where the availability line sits on the plain no-cover page, before any date change. */
+    async function mockAndMeasureLine(page: Page): Promise<number> {
+      await mockVenues(page, () => NO_COVER);
+      await page.goto(`/venues/1?${STAY}`);
+      await expect(page.getByTestId('availability')).toBeVisible();
+      return lineTop(page);
+    }
+
     /** The shortened stay's read when someone took set 1's last day meanwhile: still partly free. */
     const STILL_PARTLY = [set(1, 'PARTLY_FREE', [MIDDLE]), ...NO_COVER.slice(1)];
 
@@ -245,22 +262,41 @@ for (const { name, width } of WIDTHS) {
       await expect(back(page)).toBeFocused();
     });
 
-    test('while other days load, the old map takes no tap and focus waits on the date field', async ({
+    test('while other days load, the old map is dimmed, takes no tap, and the line says it is checking', async ({
       page,
     }) => {
+      await page.clock.install();
+      const lineBefore = await mockAndMeasureLine(page);
       const release = await shortenWithHeldRead(page, [set(1, 'FREE', []), ...NO_COVER.slice(1)]);
 
       // The old days' map is still drawn, under the new days in the header.
       await expect(page.getByTestId('map-date')).toHaveAttribute('data-last-date', MIDDLE);
       await expect(mapCard(page)).toHaveAttribute('inert', '');
-      await expect(mapCard(page)).toHaveAttribute('aria-busy', 'true');
-      // The banner's offers are computed from the old days' map too.
-      await expect(page.getByTestId('no-cover')).toHaveAttribute('inert', '');
+      await expect(mapCard(page)).toHaveCSS('opacity', '0.5');
+      // An inert node is not exposed, so a busy state on it would reach nobody.
+      await expect(mapCard(page)).not.toHaveAttribute('aria-busy');
+      // The line names the new days and no count; the bar and the banner state nothing from the old read.
+      const days = (await page.getByTestId('map-date').innerText()).trim();
+      await expect(page.getByTestId('availability')).toHaveText(
+        `Checking availability for ${days}…`,
+      );
+      await expect(page.getByTestId('availability-bar').locator('span')).toHaveCSS('width', '0px');
+      await expect(page.getByTestId('no-cover')).toHaveCount(0);
+      // The wrapper that seats the mark moved nothing: the line sits where it sat.
+      expect(await lineTop(page)).toBe(lineBefore);
       await expect(page.getByTestId('map-date')).toBeFocused();
       if (name === 'phone') {
         // Focus went up to the header; the page stayed down on the map.
         await expect(page.getByTestId('map-date')).not.toBeInViewport();
       }
+
+      // No progress mark under a second of waiting; one after it, beside the line.
+      await page.clock.runFor(900);
+      await expect(page.getByTestId('availability-wait')).toHaveCount(0);
+      await page.clock.runFor(200);
+      await expect(page.getByTestId('availability-wait')).toBeVisible();
+      await expect(page.getByTestId('availability-wait')).toHaveCSS('animation-name', 'pay-spin');
+      await expect(page.getByTestId('availability-wait')).toHaveCSS('width', '14px');
 
       // A tap where the other partly-free tile is drawn reaches nothing.
       const box = (await tile(page, 2).boundingBox())!;
@@ -272,7 +308,24 @@ for (const { name, width } of WIDTHS) {
       await expect(page.getByRole('dialog')).toBeVisible();
       await expect(page.getByTestId('partly-free-sheet')).toHaveCount(0);
       await expect(mapCard(page)).not.toHaveAttribute('inert');
-      await expect(mapCard(page)).toHaveAttribute('aria-busy', 'false');
+      await expect(mapCard(page)).toHaveCSS('opacity', '1');
+      await expect(page.getByTestId('availability')).toContainText(
+        '1 of 3 sets free for all 2 days',
+      );
+      await expect(page.getByTestId('availability-wait')).toHaveCount(0);
+    });
+
+    test('with reduced motion the progress mark stands still and the dim does not fade', async ({
+      page,
+    }) => {
+      await page.emulateMedia({ reducedMotion: 'reduce' });
+      await page.clock.install();
+      const release = await shortenWithHeldRead(page, [set(1, 'FREE', []), ...NO_COVER.slice(1)]);
+
+      await expect(mapCard(page)).toHaveCSS('transition-property', 'none');
+      await page.clock.runFor(1100);
+      await expect(page.getByTestId('availability-wait')).toHaveCSS('animation-name', 'none');
+      release();
     });
   });
 }

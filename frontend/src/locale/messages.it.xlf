@@ -13368,16 +13368,28 @@
           <context context-type="sourcefile">src/app/venue/venue-map.html</context>
         </context-group>
       </trans-unit>
+      <trans-unit id="2888893406690500414" datatype="html">
+        <source>Checking availability for <x id="DAYS" equiv-text="{{
+                    triggerLabel()  // i18n(ph=&quot;days&quot;)
+                  }}"/>…</source>
+        <target state="translated">Verifica della disponibilità per <x id="DAYS" equiv-text="{{
+                    triggerLabel()  // i18n(ph=&quot;days&quot;)
+                  }}"/>…</target>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/venue/venue-map.html</context>
+        </context-group>
+        <note priority="1" from="description">The venue page&apos;s availability line while newly picked days load</note>
+      </trans-unit>
       <trans-unit id="4743520620509078277" datatype="html">
         <source><x id="START_TAG_STRONG" ctype="x-strong" equiv-text="&lt;strong class=&quot;text-[19px] font-bold text-riv-accent-ink&quot;&gt;"/><x id="FREE" equiv-text="{{
-                  freeCount() // i18n(ph=&quot;free&quot;)
-                }}"/><x id="CLOSE_TAG_STRONG" ctype="x-strong" equiv-text="&lt;/strong&gt;"/> of <x id="TOTAL" equiv-text="{{
-                  totalCount() // i18n(ph=&quot;total&quot;)
-                }}"/> sets free for all <x id="DAYS" equiv-text="{{
-                  dayCount() // i18n(ph=&quot;days&quot;)
-                }}"/> days, <x id="STAY" equiv-text="{{
-                  stayLabel() // i18n(ph=&quot;stay&quot;)
-                }}"/></source>
+                    freeCount() // i18n(ph=&quot;free&quot;)
+                  }}"/><x id="CLOSE_TAG_STRONG" ctype="x-strong" equiv-text="&lt;/strong&gt;"/> of <x id="TOTAL" equiv-text="{{
+                    totalCount() // i18n(ph=&quot;total&quot;)
+                  }}"/> sets free for all <x id="DAYS" equiv-text="{{
+                    dayCount() // i18n(ph=&quot;days&quot;)
+                  }}"/> days, <x id="STAY" equiv-text="{{
+                    stayLabel() // i18n(ph=&quot;stay&quot;)
+                  }}"/></source>
         <target state="translated"><x id="START_TAG_STRONG" ctype="x-strong" equiv-text="&lt;strong class=&quot;text-[19px] font-bold text-riv-accent-ink&quot;&gt;"/><x id="FREE" equiv-text="{{
                   freeCount() // i18n(ph=&quot;free&quot;)
                 }}"/><x id="CLOSE_TAG_STRONG" ctype="x-strong" equiv-text="&lt;/strong&gt;"/> set liberi su <x id="TOTAL" equiv-text="{{
@@ -13400,12 +13412,12 @@
       </trans-unit>
       <trans-unit id="7752228471913883809" datatype="html">
         <source><x id="START_TAG_STRONG" ctype="x-strong" equiv-text="&lt;strong class=&quot;text-[19px] font-bold text-riv-accent-ink&quot;&gt;"/><x id="FREE" equiv-text="{{
-                  freeCount() // i18n(ph=&quot;free&quot;)
-                }}"/><x id="CLOSE_TAG_STRONG" ctype="x-strong" equiv-text="&lt;/strong&gt;"/> of <x id="TOTAL" equiv-text="{{
-                  totalCount() // i18n(ph=&quot;total&quot;)
-                }}"/> sets free on <x id="DATE" equiv-text="{{
-                  dateLabel() // i18n(ph=&quot;date&quot;)
-                }}"/></source>
+                    freeCount() // i18n(ph=&quot;free&quot;)
+                  }}"/><x id="CLOSE_TAG_STRONG" ctype="x-strong" equiv-text="&lt;/strong&gt;"/> of <x id="TOTAL" equiv-text="{{
+                    totalCount() // i18n(ph=&quot;total&quot;)
+                  }}"/> sets free on <x id="DATE" equiv-text="{{
+                    dateLabel() // i18n(ph=&quot;date&quot;)
+                  }}"/></source>
         <target state="translated"><x id="START_TAG_STRONG" ctype="x-strong" equiv-text="&lt;strong class=&quot;text-[19px] font-bold text-riv-accent-ink&quot;&gt;"/><x id="FREE" equiv-text="{{
                   freeCount() // i18n(ph=&quot;free&quot;)
                 }}"/><x id="CLOSE_TAG_STRONG" ctype="x-strong" equiv-text="&lt;/strong&gt;"/> set liberi su <x id="TOTAL" equiv-text="{{

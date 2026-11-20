@@ -85,6 +85,9 @@ import { AlertIcon } from '../shared/alert-icon';
 import { UmbrellaIcon } from '../shared/umbrella-icon';
 import { ArrowLeftIcon } from '../shared/arrow-left-icon';
 
+/** How long a date change's read may run before the wait shows a progress mark: under about a second a mark only flickers. */
+const SLOW_READ_MS = 1000;
+
 /** One row of the map: the canvas's row contract (`sm` up), the lens's (phone), and the tiles. */
 interface MapRow extends BeachMapCanvasRow, BeachRowLensRow {
   readonly tiles: readonly TileView[];
@@ -288,8 +291,13 @@ export class VenueMap {
    */
   private loadInFlight = false;
 
-  /** The map on screen is for the days just left: inert until a read answers. A same-days re-read never sets it. */
+  /**
+   * The map on screen is for the days just left: inert and dimmed until a read answers, while the
+   * availability line says it is checking. A same-days re-read never sets it. RESPONSIBILITIES.md §Frontend.
+   */
   protected readonly staleDays = signal(false);
+  /** {@link staleDays} has held for {@link SLOW_READ_MS}: the wait now shows a progress mark. */
+  protected readonly slowRead = signal(false);
 
   /** Whether the availability calendar is open over the header's date field. */
   protected readonly pickerOpen = signal(false);
@@ -547,6 +555,14 @@ export class VenueMap {
   protected readonly pickAnnouncement = computed(() => this.pick()?.announcement ?? '');
 
   constructor() {
+    effect((onCleanup) => {
+      if (!this.staleDays()) {
+        this.slowRead.set(false);
+        return;
+      }
+      const timer = setTimeout(() => this.slowRead.set(true), SLOW_READ_MS);
+      onCleanup(() => clearTimeout(timer));
+    });
     // The route's static title stands while the read loads or fails; a loaded venue names the page.
     effect(() => {
       const view = this.venueView();

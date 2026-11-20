@@ -194,55 +194,75 @@
       <div
         class="mt-5 backdrop-blur-[26px] backdrop-saturate-[1.7] rounded-[28px] shadow-[0_14px_44px_rgba(7,42,58,0.28),inset_0_1px_0_rgba(255,255,255,0.8)] p-4 min-[1280px]:[margin-inline:calc((100%_-_1100px)/2)]"
         appCardGlass
+        data-testid="map-overview"
       >
         <!-- No bottom padding: the gap under the bar existed only to separate it from the photo band that used to follow it here. -->
         <div class="pt-1 px-0.5">
-          <!-- aria-live: changing the date silently swaps the grid, so announce the new count. Only the CONTENT branches (#717) — swapping the element would rebuild the live region, which announces unreliably. -->
-          <p
-            class="mb-2 text-[16px] text-riv-card-ink"
-            data-testid="availability"
-            aria-live="polite"
-          >
-            @if (totalCount() && isStay()) {
-              <ng-container i18n
-                ><strong class="text-[19px] font-bold text-riv-accent-ink">{{
-                  freeCount() // i18n(ph="free")
-                }}</strong>
-                of
-                {{
-                  totalCount() // i18n(ph="total")
-                }}
-                sets free for all
-                {{
-                  dayCount() // i18n(ph="days")
-                }}
-                days,
-                {{
-                  stayLabel() // i18n(ph="stay")
-                }}</ng-container
-              >
-              @if (partlyCount()) {
-                &ngsp;<ng-container i18n>· {{ partlyCount() }} partly free</ng-container>
+          <!-- The wrapper seats the progress mark beside the line, outside the live region: a node arriving inside it could be read as a second message. -->
+          <div class="mb-2 flex items-center gap-2">
+            <!-- aria-live: changing the date silently swaps the grid, so announce the new count. Only the CONTENT branches (#717) — swapping the element would rebuild the live region, which announces unreliably. While other days load it says so, which also makes an unchanged count a new message (#1815). -->
+            <p
+              class="text-[16px] text-riv-card-ink"
+              data-testid="availability"
+              aria-live="polite"
+              aria-atomic="true"
+            >
+              @if (staleDays()) {
+                <ng-container i18n="The venue page's availability line while newly picked days load"
+                  >Checking availability for
+                  {{
+                    triggerLabel()  // i18n(ph="days")
+                  }}…</ng-container
+                >
+              } @else if (totalCount() && isStay()) {
+                <ng-container i18n
+                  ><strong class="text-[19px] font-bold text-riv-accent-ink">{{
+                    freeCount() // i18n(ph="free")
+                  }}</strong>
+                  of
+                  {{
+                    totalCount() // i18n(ph="total")
+                  }}
+                  sets free for all
+                  {{
+                    dayCount() // i18n(ph="days")
+                  }}
+                  days,
+                  {{
+                    stayLabel() // i18n(ph="stay")
+                  }}</ng-container
+                >
+                @if (partlyCount()) {
+                  &ngsp;<ng-container i18n>· {{ partlyCount() }} partly free</ng-container>
+                }
+              } @else if (totalCount()) {
+                <ng-container i18n
+                  ><strong class="text-[19px] font-bold text-riv-accent-ink">{{
+                    freeCount() // i18n(ph="free")
+                  }}</strong>
+                  of
+                  {{
+                    totalCount() // i18n(ph="total")
+                  }}
+                  sets free on
+                  {{
+                    dateLabel() // i18n(ph="date")
+                  }}</ng-container
+                >
+              } @else {
+                <!-- No date: a set count comes from the venue's layout, so no other day reads differently. -->
+                <ng-container i18n>No sets to book yet</ng-container>
               }
-            } @else if (totalCount()) {
-              <ng-container i18n
-                ><strong class="text-[19px] font-bold text-riv-accent-ink">{{
-                  freeCount() // i18n(ph="free")
-                }}</strong>
-                of
-                {{
-                  totalCount() // i18n(ph="total")
-                }}
-                sets free on
-                {{
-                  dateLabel() // i18n(ph="date")
-                }}</ng-container
-              >
-            } @else {
-              <!-- No date: a set count comes from the venue's layout, so no other day reads differently. -->
-              <ng-container i18n>No sets to book yet</ng-container>
+            </p>
+            @if (slowRead()) {
+              <!-- The pay page's ring, in the count's own ink: 3:1 on this card in every theme (venue-map.contrast.spec.ts). -->
+              <span
+                class="inline-block size-3.5 shrink-0 animate-[pay-spin_0.8s_linear_infinite] rounded-full border-2 border-riv-accent-ink/25 border-t-riv-accent-ink motion-reduce:animate-none"
+                data-testid="availability-wait"
+                aria-hidden="true"
+              ></span>
             }
-          </p>
+          </div>
           @if (totalCount()) {
             <!-- Decorative: the count above already conveys this to AT. -->
             <div
@@ -252,7 +272,7 @@
             >
               <span
                 class="block h-full bg-(image:--riv-bar-grad)"
-                [style.width.%]="(freeCount() / totalCount()) * 100"
+                [style.width.%]="staleDays() ? 0 : (freeCount() / totalCount()) * 100"
               ></span>
             </div>
           }
@@ -285,12 +305,11 @@
               </div>
             </div>
           }
-          @if (noSetCovers()) {
-            <!-- No single spot covers the stay: the longest one-spot run, with the offer to shorten to it, and the way back to the other beaches. -->
+          @if (noSetCovers() && !staleDays()) {
+            <!-- No single spot covers the stay: the longest one-spot run, with the offer to shorten to it, and the way back to the other beaches. Not while other days load: it would state their count from the old days' map (#1815). -->
             <div
               class="mt-3 rounded-[16px] border border-riv-field-border bg-riv-field-solid px-4 py-3 text-[14px] text-riv-card-ink"
               data-testid="no-cover"
-              [attr.inert]="staleDays() ? '' : null"
             >
               @if (plan(); as offered) {
                 <!-- A stitched plan fits the move budget: the banner leads with it (D13); the longest single run stays as the way not to move. -->
@@ -506,7 +525,7 @@
       @if (phone()) {
         <!-- Below sm the map is the row lens (#1762): the whole beach at overview scale, one row open to 44px tiles. The card leaves the page's 24px gutter for 12px, which is what lets a 20-column beach keep 12px cells at 390px. -->
         <app-beach-row-lens
-          class="-mx-3 mt-[18px]"
+          class="-mx-3 mt-[18px] [transition:opacity_0.15s_ease] motion-reduce:transition-none"
           label="Beach map — {{ v.name }}"
           i18n-label
           [looks]="overviewLooks"
@@ -514,7 +533,7 @@
           [panAgain]="lensSeed()"
           focusOnOpen=".bookable button"
           [attr.inert]="staleDays() ? '' : null"
-          [attr.aria-busy]="staleDays()"
+          [class.opacity-50]="staleDays()"
         >
           <!-- Swatches wear the overview looks the cells below them wear, on the wash's first stop. -->
           <ul
@@ -561,13 +580,13 @@
         </app-beach-row-lens>
       } @else {
         <app-beach-map-canvas
-          class="mt-[18px] min-[1280px]:[margin-inline:calc((100%_-_1100px)/2)]"
+          class="mt-[18px] [transition:opacity_0.15s_ease] motion-reduce:transition-none min-[1280px]:[margin-inline:calc((100%_-_1100px)/2)]"
           label="Beach map — {{ v.name }}"
           i18n-label
           railCodes="capped-labels"
           priceChips="capped-spans"
           [attr.inert]="staleDays() ? '' : null"
-          [attr.aria-busy]="staleDays()"
+          [class.opacity-50]="staleDays()"
         >
           <!-- The legend leads the card (#701): the tourist decodes the colours BEFORE reading the tiles, so it is projected above the grid rather than trailing it. Swatches wear the SAME appMapTile appearance as the tiles they stand for AND sit on the wash's own first stop, so a translucent swatch composites over the same ground its tiles do — matching computed styles is not the same as looking alike. The canvas owns the band's vertical spacing. -->
           <ul
