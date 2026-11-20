@@ -1360,14 +1360,21 @@ describe('VenueMap', () => {
       expect(document.activeElement).toBe(el().querySelector('[data-testid="beach-grid"]'));
     });
 
-    it('leaves focus held outside the map where it is', async () => {
+    it('moves no focus that no tile held: on another control, or on nothing', async () => {
       const id = await openDialog();
       await dismissDialog(true);
       dateTrigger().focus();
-
       await land(venueRequest(), withTaken(miramar(), id));
-
       expect(document.activeElement).toBe(dateTrigger());
+
+      // A visitor who clicked the page away holds no focus: the refresh must not put it on the map.
+      const other = Number(el().querySelector<HTMLButtonElement>('.set-button')!.dataset['setId']);
+      el().querySelector<HTMLButtonElement>('.set-button')!.click();
+      await settle();
+      await dismissDialog(true);
+      tileButton(other)!.blur();
+      await land(venueRequest(), withTaken(withTaken(miramar(), id), other));
+      expect(document.activeElement).toBe(document.body);
     });
 
     it.each([
