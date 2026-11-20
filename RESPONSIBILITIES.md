@@ -1557,13 +1557,19 @@ The SPA rules whose TSDoc points here; structure is `riviera-frontend`'s, stylin
   its skeleton) sits in a 12px gutter there. Rows scroll with the page, never inside the lens.
   An open row wider than its viewport shows a thumb, never an edge fade, and keeps the tile its row
   names (`keepWhole`, the pick here) whole with its badge, as it does a tile focused from the keyboard.
-- **A booking dialog closed on `SET_TAKEN` refreshes the map; no other dismissal does** (`BookingDismissal`
-  in `booking/booking-dialog.ts`, `VenueMap.refresh`, #1809): the dialog knows the outcome, so the map never
-  pays a request per close. The refresh is not `load()`. Nobody asked for it, so its failure keeps the map it
-  had. It waits out a `load()` in flight rather than superseding it: a refresh that superseded a date change
-  and then failed would leave the old days' map under the new header. It re-asks no open stay plan, and it
-  does not reseed the lens, so no row re-pans and a pick that stands is not announced again. The plan dialog's
-  close keeps re-reading through `load()`: a plan is re-planned whole.
+- **A booking dialog closed on a refusal that leaves the map stale refreshes it; no other dismissal does**
+  (`BookingDismissal` in `booking/booking-dialog.ts`, #1809, #1812): the refusals naming the venue, the set or
+  the days (`SET_TAKEN`, `BOOKING_CLOSED`, `VENUE_CLOSED`, `SET_NOT_BOOKABLE_ONLINE`, `NO_SUCH_SET`,
+  `STAY_TOO_LONG`). The dialog knows the outcome, so the map pays a request per refused booking, never per
+  close, and it keeps reporting stale once it saw one: a later refusal of another kind leaves the map no
+  fresher. The plan dialog's close keeps re-reading through `load()`: a plan is re-planned whole.
+- **That refresh is not `load()`** (`VenueMap.refresh`): nobody asked for it, so a failure keeps the map it
+  had, except a 404, which no retry mends: the not-available panel takes over as for a load. It waits out a
+  `load()` in flight rather than superseding it (superseding a date change and then failing would leave the old
+  days' map under the new header); that load may predate the refusal, so its answer is followed by the one
+  refresh owed, unless a later load was dispatched. It re-asks no open stay plan and does not reseed the lens.
+  Focus on a tile follows the set, not the element (#1817): free turned partly free swaps the button and
+  keeps focus on the new one, a set left with none hands it to the map, and neither move scrolls.
 - **While other days load, the availability card states nothing from the old read** (`VenueMap.staleDays`, #1815): an
   in-page date change leaves the old days' map on screen, `inert` and at half opacity, and the availability line
   reads "Checking availability for <new days>…" until the read answers. The line is the one voice: a persistent

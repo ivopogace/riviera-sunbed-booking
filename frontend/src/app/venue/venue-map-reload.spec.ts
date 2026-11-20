@@ -503,17 +503,53 @@ describe('VenueMap: reloading under the visitor (#1810)', () => {
       venueReq().flush(freeBeach());
     });
 
-    describe('beside the refresh after a set was just taken (#1809)', () => {
-      /** Open the dialog on set 1 and close it as the reserve does on `409 SET_TAKEN`. */
-      async function closeOnSetTaken(): Promise<TestRequest> {
-        await loadFree();
+    describe('beside the refresh after a refused booking (#1809, #1812)', () => {
+      /** Open the dialog on set 1 and close it as it does after a refusal that leaves the map stale. */
+      async function closeOnSetTaken(query: Record<string, string> = {}): Promise<TestRequest> {
+        await mount(query);
+        venueReq().flush(freeBeach());
+        await settle();
         await tap(tile(1));
         const dialog = fixture.debugElement.query(By.directive(BookingDialog))
           .componentInstance as BookingDialog;
-        dialog.dismissed.emit({ setTaken: true });
+        dialog.dismissed.emit({ mapStale: true });
         await settle();
         return venueReq();
       }
+
+      it('ends with the page: a refresh in flight when the visitor leaves is dropped (#1817)', async () => {
+        const refresh = await closeOnSetTaken();
+
+        fixture.destroy();
+
+        expect(refresh.cancelled).toBe(true);
+      });
+
+      it('keeps focus on a tile that turns partly free: its "which days" button takes it, unscrolled (#1817)', async () => {
+        const refresh = await closeOnSetTaken({ date: first, lastDate: last });
+        const bookButton = tile(1);
+        expect(document.activeElement).toBe(bookButton);
+
+        refresh.flush(
+          venue(1, [set(1, 'PARTLY_FREE', [last]), set(2, 'FREE', []), set(3, 'TAKEN', [first])]),
+        );
+        await settle();
+
+        expect(tile(1)).not.toBe(bookButton);
+        expect(tile(1).getAttribute('aria-label')).toContain('Select to see which days');
+        expect(document.activeElement).toBe(tile(1));
+      });
+
+      it('leaves focus alone when the refresh keeps the tile’s button', async () => {
+        const refresh = await closeOnSetTaken();
+        const focus = vi.spyOn(tile(1), 'focus');
+
+        refresh.flush(freeBeach());
+        await settle();
+
+        expect(document.activeElement).toBe(tile(1));
+        expect(focus).not.toHaveBeenCalled();
+      });
 
       it('the map is not inert while that same-days read is in flight', async () => {
         const refresh = await closeOnSetTaken();
@@ -555,6 +591,128 @@ describe('VenueMap: reloading under the visitor (#1810)', () => {
         expect(map().hasAttribute('inert')).toBe(false);
         expect(dom().querySelector('h1')!.textContent).toContain('Miramar Beach Club');
       });
+    });
+
+    describe('the refresh owed to a refusal seen while the new days loaded (#1812)', () => {
+      const mark = (): HTMLElement | null =>
+        dom().querySelector('[data-testid="availability-wait"]');
+      let heard: string[];
+      let observer: MutationObserver;
+
+      /** A date change's load in flight, a refusal reported under it, then the load's answer: the owed refresh is in flight. */
+      async function owedRefresh(): Promise<TestRequest> {
+        await loadFree();
+        heard = [];
+        observer = new MutationObserver(() => {
+          if (heard.at(-1) !== line()) {
+            heard.push(line());
+          }
+        });
+        observer.observe(one('availability'), {
+          childList: true,
+          subtree: true,
+          characterData: true,
+        });
+        pickDays(otherDay);
+        await settle();
+        (
+          fixture.componentInstance as unknown as { onDialogClose(d: { mapStale: boolean }): void }
+        ).onDialogClose({ mapStale: true });
+        venueReq().flush(freeBeach());
+        await settle();
+        return venueReq();
+      }
+
+      beforeEach(() => {
+        vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout', 'Date'] });
+      });
+
+      afterEach(() => {
+        observer.disconnect();
+        freezeClock();
+      });
+
+      it('is a same-days read: no dim, no loading line and no progress mark, however long it runs', async () => {
+        const refresh = await owedRefresh();
+
+        vi.advanceTimersByTime(5000);
+        await settle();
+
+        expect(map().hasAttribute('inert')).toBe(false);
+        expect(dimmed()).toBe(false);
+        expect(mark()).toBeNull();
+        expect(line()).toBe(`2 of 3 sets free on ${dayLabel(otherDay)}`);
+        refresh.flush(freeBeach());
+      });
+
+      it('speaks the count once, for the load’s answer, when the refresh finds it unchanged', async () => {
+        const refresh = await owedRefresh();
+
+        refresh.flush(freeBeach());
+        await settle();
+
+        expect(heard).toEqual([
+          `Checking availability for ${dayLabel(otherDay)}…`,
+          `2 of 3 sets free on ${dayLabel(otherDay)}`,
+        ]);
+      });
+
+      it('speaks the count again only because the refresh changed it', async () => {
+        const refresh = await owedRefresh();
+
+        refresh.flush(
+          venue(1, [set(1, 'TAKEN', [otherDay]), set(2, 'FREE', []), set(3, 'TAKEN', [otherDay])]),
+        );
+        await settle();
+
+        expect(heard).toEqual([
+          `Checking availability for ${dayLabel(otherDay)}…`,
+          `2 of 3 sets free on ${dayLabel(otherDay)}`,
+          `1 of 3 sets free on ${dayLabel(otherDay)}`,
+        ]);
+      });
+
+      it('its 404 takes the map down with no busy state left: the next venue’s line is its count', async () => {
+        const refresh = await owedRefresh();
+
+        refresh.flush('gone', { status: 404, statusText: 'Not Found' });
+        await settle();
+        expect(dom().querySelector('[data-testid="map-not-found"]')).not.toBeNull();
+        await switchVenue();
+        venueReq(2).flush(freeBeach(2));
+        await settle();
+        vi.advanceTimersByTime(5000);
+        await settle();
+
+        expect(dimmed()).toBe(false);
+        expect(mark()).toBeNull();
+        expect(line()).toContain('2 of 3 sets free on');
+      });
+    });
+
+    it('a refresh’s 404 arriving after a date change is dropped: the old map stays, checking, until the load answers', async () => {
+      await loadFree();
+      await tap(tile(1));
+      (
+        fixture.debugElement.query(By.directive(BookingDialog)).componentInstance as BookingDialog
+      ).dismissed.emit({
+        mapStale: true,
+      });
+      await settle();
+      const refresh = venueReq();
+
+      pickDays(otherDay);
+      await settle();
+      refresh.flush('gone', { status: 404, statusText: 'Not Found' });
+      await settle();
+
+      expect(dom().querySelector('[data-testid="map-not-found"]')).toBeNull();
+      expect(map().hasAttribute('inert')).toBe(true);
+      expect(line()).toBe(`Checking availability for ${dayLabel(otherDay)}…`);
+      venueReq().flush(freeBeach());
+      await settle();
+      expect(dimmed()).toBe(false);
+      expect(line()).toBe(`2 of 3 sets free on ${dayLabel(otherDay)}`);
     });
 
     for (const last of ['answers', 'fails'] as const) {

@@ -394,7 +394,7 @@ describe('VenueMap on a phone: the row lens (#1762)', () => {
       await tap(one('pick-book')!);
 
       const dialog = fixture.debugElement.query(By.directive(BookingDialog));
-      (dialog.componentInstance as BookingDialog).dismissed.emit({ setTaken: false });
+      (dialog.componentInstance as BookingDialog).dismissed.emit({ mapStale: false });
       await settle();
 
       expect(fixture.debugElement.query(By.directive(BookingDialog))).toBeNull();
@@ -403,13 +403,13 @@ describe('VenueMap on a phone: the row lens (#1762)', () => {
       httpMock.expectNone((req) => req.url === `${environment.apiBaseUrl}/api/venues/1`);
     });
 
-    /** Pick set 3, open its dialog from the bar and close it as a dialog refused `SET_TAKEN` does. */
+    /** Pick set 3, open its dialog from the bar and close it as a dialog refused for a reason that leaves the map stale does. */
     async function closeOnTakenPick(): Promise<void> {
       await load();
       await tap(tile(3));
       await tap(one('pick-book')!);
       const dialog = fixture.debugElement.query(By.directive(BookingDialog));
-      (dialog.componentInstance as BookingDialog).dismissed.emit({ setTaken: true });
+      (dialog.componentInstance as BookingDialog).dismissed.emit({ mapStale: true });
       await settle();
     }
 
@@ -458,24 +458,29 @@ describe('VenueMap on a phone: the row lens (#1762)', () => {
       expect(document.activeElement).toBe(one('lens-open'));
     });
 
-    it.each([
-      [503, 'Service Unavailable'],
-      [404, 'Not Found'],
-    ])(
-      'a refresh that fails with %i keeps the map, the pick and focus',
-      async (status, statusText) => {
-        await closeOnTakenPick();
+    it('a refresh that fails with 503 keeps the map, the pick and focus', async () => {
+      await closeOnTakenPick();
 
-        venueReq().flush('down', { status, statusText });
-        await settle();
+      venueReq().flush('down', { status: 503, statusText: 'Service Unavailable' });
+      await settle();
 
-        expect(one('map-error')).toBeNull();
-        expect(one('map-not-found')).toBeNull();
-        expect(one('row-lens')).not.toBeNull();
-        expect(tile(3).getAttribute('aria-pressed')).toBe('true');
-        expect(document.activeElement).toBe(one('pick-book'));
-      },
-    );
+      expect(one('map-error')).toBeNull();
+      expect(one('map-not-found')).toBeNull();
+      expect(one('row-lens')).not.toBeNull();
+      expect(tile(3).getAttribute('aria-pressed')).toBe('true');
+      expect(document.activeElement).toBe(one('pick-book'));
+    });
+
+    it('a refresh answered 404 takes the lens and the bar, and focus the bar held lands on the not-available panel', async () => {
+      await closeOnTakenPick();
+
+      venueReq().flush('gone', { status: 404, statusText: 'Not Found' });
+      await settle();
+
+      expect(one('row-lens')).toBeNull();
+      expect(one('pick-bar')).toBeNull();
+      expect(document.activeElement).toBe(one('map-not-found'));
+    });
 
     it('a re-read that shows the pick taken drops it with its bar, and focus the bar held lands on the open row', async () => {
       await load();
