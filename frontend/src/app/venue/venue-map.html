@@ -290,6 +290,7 @@
             <div
               class="mt-3 rounded-[16px] border border-riv-field-border bg-riv-field-solid px-4 py-3 text-[14px] text-riv-card-ink"
               data-testid="no-cover"
+              [attr.inert]="staleDays() ? '' : null"
             >
               @if (plan(); as offered) {
                 <!-- A stitched plan fits the move budget: the banner leads with it (D13); the longest single run stays as the way not to move. -->

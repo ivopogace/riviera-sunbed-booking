@@ -285,12 +285,15 @@ describe('VenueMap: reloading under the visitor (#1810)', () => {
       await loadFree();
       const outside = document.createElement('button');
       document.body.append(outside);
-      outside.focus();
+      try {
+        outside.focus();
 
-      await switchVenue();
+        await switchVenue();
 
-      expect(document.activeElement).toBe(outside);
-      outside.remove();
+        expect(document.activeElement).toBe(outside);
+      } finally {
+        outside.remove();
+      }
       venueReq(2).flush(freeBeach(2));
     });
 
@@ -431,16 +434,86 @@ describe('VenueMap: reloading under the visitor (#1810)', () => {
     });
 
     it('leaves focus on a control that stays usable', async () => {
+      await loadFree();
+      one('venue-back').focus();
+
+      pickDays(otherDay);
+      await settle();
+
+      expect(document.activeElement).toBe(one('venue-back'));
+      venueReq().flush(freeBeach());
+    });
+
+    it('takes the no-cover banner’s offers with it: they are computed from the old days’ map', async () => {
       await loadNoCover();
-      const others = one('no-cover-others');
-      others.focus();
+      one('no-cover-shorten').focus();
 
       pickDays(otherDay, addDays(otherDay, 2));
       await settle();
 
-      expect(document.activeElement).toBe(others);
+      expect(one('no-cover').hasAttribute('inert')).toBe(true);
+      expect(document.activeElement).toBe(one('map-date'));
       venueReq().flush(noCoverBeach());
       await settle();
+      itineraryReq().flush(stitched());
+      await settle();
+      expect(one('no-cover').hasAttribute('inert')).toBe(false);
+    });
+
+    it('moves focus without scrolling the page away from the map', async () => {
+      await loadFree();
+      tile(2).focus();
+      const focus = vi.spyOn(one('map-date'), 'focus');
+
+      pickDays(otherDay);
+      await settle();
+
+      expect(focus).toHaveBeenCalledWith({ preventScroll: true });
+      venueReq().flush(freeBeach());
+    });
+
+    it('shortening to the days already shown re-reads nothing and arms no dialog for a later read', async () => {
+      await loadNoCover();
+      await tap(tile(1));
+      (
+        fixture.componentInstance as unknown as {
+          shortenTo(set: SetView, days: { first: string; last: string }): void;
+        }
+      ).shortenTo(noCoverBeach().sets[0], { first, last });
+      await settle();
+
+      expect(dom().querySelector('app-partly-free-sheet')).toBeNull();
+      expect(document.activeElement).toBe(tile(1));
+
+      // A later re-read that finds the set free must not open a dialog nobody asked for.
+      (fixture.componentInstance as unknown as { retry(): void }).retry();
+      venueReq().flush(freeBeach());
+      await settle();
+      expect(dom().querySelector('app-booking-dialog')).toBeNull();
+    });
+
+    it('opens no dialog over a calendar the visitor opened while the shortened stay loaded', async () => {
+      await loadNoCover();
+      await tap(tile(1));
+      await tap(one('shorten-stay'));
+      await tap(one('map-date'));
+      expect(dom().querySelector('app-availability-calendar')).not.toBeNull();
+
+      venueReq().flush(freeBeach());
+      await settle();
+
+      expect(dom().querySelector('app-booking-dialog')).toBeNull();
+      expect(dom().querySelector('app-availability-calendar')).not.toBeNull();
+    });
+
+    it('survives a read that answers after the visitor left the page', async () => {
+      await loadNoCover();
+      await tap(tile(1));
+      await tap(one('shorten-stay'));
+      const late = venueReq();
+      fixture.destroy();
+
+      expect(() => late.flush(noCoverBeach())).not.toThrow();
       itineraryReq().flush(stitched());
     });
 

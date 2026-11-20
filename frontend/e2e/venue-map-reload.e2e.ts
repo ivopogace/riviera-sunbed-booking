@@ -219,7 +219,13 @@ for (const { name, width } of WIDTHS) {
       await expect(page.getByTestId('map-date')).toHaveAttribute('data-last-date', MIDDLE);
       await expect(mapCard(page)).toHaveAttribute('inert', '');
       await expect(mapCard(page)).toHaveAttribute('aria-busy', 'true');
+      // The banner's offers are computed from the old days' map too.
+      await expect(page.getByTestId('no-cover')).toHaveAttribute('inert', '');
       await expect(page.getByTestId('map-date')).toBeFocused();
+      if (name === 'phone') {
+        // Focus went up to the header; the page stayed down on the map.
+        await expect(page.getByTestId('map-date')).not.toBeInViewport();
+      }
 
       // A tap where the other partly-free tile is drawn reaches nothing.
       const box = (await tile(page, 2).boundingBox())!;

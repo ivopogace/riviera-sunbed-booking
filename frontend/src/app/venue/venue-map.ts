@@ -3,6 +3,7 @@ import {
   afterNextRender,
   Component,
   computed,
+  DestroyRef,
   effect,
   ElementRef,
   inject,
@@ -216,8 +217,9 @@ export class VenueMap {
   private readonly title = inject(Title);
   /** WCAG 2.4.3: a re-fetch failure tears down the map (which may hold focus) — move it (RV-FE-9). */
   private readonly moveFocus = focusMover();
-  /** For a route reset: moves focus only if the reset removed its holder. */
-  private readonly landIfTaken = focusMover({ onlyIfLost: true });
+  /** Moves focus only if the render took its holder, and never scrolls: the visitor may be far down the map. */
+  private readonly landIfTaken = focusMover({ onlyIfLost: true, preventScroll: true });
+  private readonly destroyRef = inject(DestroyRef);
   private readonly host = inject<ElementRef<HTMLElement>>(ElementRef);
 
   protected readonly venue = signal<VenueMapView | undefined>(undefined);
@@ -819,6 +821,10 @@ export class VenueMap {
       return;
     }
     this.pendingSelectSetId = undefined;
+    // The visitor opened the calendar or the photos meanwhile: neither a dialog nor a focus move over it.
+    if (this.pickerOpen() || this.lightboxIndex() !== undefined) {
+      return;
+    }
     const set = venue.sets.find((s) => s.id === id);
     if (set !== undefined && this.toTile(set).bookable) {
       this.select(set);
@@ -1020,9 +1026,10 @@ export class VenueMap {
   protected shortenTo(set: SetView, days: DateRange): void {
     this.partlySet.set(undefined);
     this.lastTriggerId = set.id;
-    // The sheet held focus: other days land it on the date field (the map is inert), the same days on its tile.
+    // The sheet held focus. The same days re-read nothing: it lands on its tile. Other days land it on the date field.
     if (days.first === this.selectedDate() && days.last === this.selectedLastDate()) {
       this.focusTile(set.id);
+      return;
     }
     this.onDatesChange(days);
     // Set after the dispatch: a date change clears it, so it can only fire for this load.
@@ -1030,7 +1037,8 @@ export class VenueMap {
   }
 
   private focusTile(setId: number | undefined): void {
-    if (setId === undefined) {
+    // A read can answer after the visitor left the page: a destroyed view takes no render hook.
+    if (setId === undefined || this.destroyRef.destroyed) {
       return;
     }
     // On a phone the tile exists only while its row is open: open it first.
