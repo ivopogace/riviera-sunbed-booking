@@ -22,8 +22,9 @@ import { VenueMap } from './venue-map';
  * The two ways the venue page reloads under the visitor (#1810). An in-place route change: the
  * router reuses the page when `:id`, `?date` or `?lastDate` change, and the reset rebuilds everything
  * under the "All beaches" button. A date change: the old days' map stays on screen, inert, until
- * the read for the new days answers. And "Try again" on the failure panel (#1816). jsdom focuses an `inert` element and delivers it clicks, so
- * `e2e/venue-map-reload.e2e.ts` owns the proof in a browser.
+ * the read for the new days answers. And "Try again" on the failure panel (#1816). jsdom focuses
+ * an `inert` element and delivers it clicks, so `e2e/venue-map-reload.e2e.ts` owns the proof in a
+ * browser.
  */
 const first = addDays(defaultBookingDate(new Date()), 3);
 const last = addDays(first, 2);
