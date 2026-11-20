@@ -16,7 +16,7 @@ import { takeUntilDestroyed, toSignal } from '@angular/core/rxjs-interop';
 import { Title } from '@angular/platform-browser';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 
-import { BookingDialog } from '../booking/booking-dialog';
+import { BookingDialog, BookingDismissal } from '../booking/booking-dialog';
 import { Amenity, amenityLabel, distanceToWaterLabel, orderedAmenities } from '../shared/amenities';
 import { beachLabel, regionLabel } from '../shared/beaches';
 import { AmenityChip } from '../shared/amenity-chip';
@@ -221,6 +221,8 @@ export class VenueMap {
   private readonly landIfTaken = focusMover({ onlyIfLost: true });
   /** A date change's landing: the same, without scrolling, as the visitor may be far down the map. */
   private readonly parkIfTaken = focusMover({ onlyIfLost: true, preventScroll: true });
+  /** For a refresh, which no visitor asked for: moves focus only if the render took its holder. */
+  private readonly rescueFocus = focusMover({ onlyIfLost: true });
   private readonly destroyRef = inject(DestroyRef);
   private readonly host = inject<ElementRef<HTMLElement>>(ElementRef);
 
@@ -282,6 +284,11 @@ export class VenueMap {
    *  (id or date) passes again after an A→B→A round trip, so continuations compare this
    *  instead. */
   private epoch = 0;
+  /**
+   * True while a {@link load} is unanswered, never for a {@link refresh}: that one is a same-days
+   * read under a map that stays on screen and usable, and it waits a load out rather than supersede it.
+   */
+  private loadInFlight = false;
 
   /** The map on screen is for the days just left: inert until a read answers. A same-days re-read never sets it. */
   protected readonly staleDays = signal(false);
@@ -621,6 +628,7 @@ export class VenueMap {
     this.selectedDate.set(days.first);
     this.selectedLastDate.set(days.last);
     if (id === undefined) {
+      this.loadInFlight = false;
       this.failed.set(true);
       return;
     }
@@ -769,10 +777,12 @@ export class VenueMap {
     this.notFound.set(false);
     // The per-dispatch generation: any later dispatch or reset supersedes this response.
     const epoch = ++this.epoch;
+    this.loadInFlight = true;
     const read = this.venues.getVenueMap(id, this.selectedDate(), this.selectedLastDate());
     read.pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
       next: (venue) => {
         if (this.epoch === epoch) {
+          this.loadInFlight = false;
           this.venue.set(venue);
           this.staleDays.set(false);
           this.settleLens();
@@ -786,6 +796,7 @@ export class VenueMap {
         if (this.epoch !== epoch) {
           return;
         }
+        this.loadInFlight = false;
         this.pendingSelectSetId = undefined;
         // A stale map under a new date header misleads — the panel must win over the old view.
         const toreDownMap = this.venue() !== undefined;
@@ -806,6 +817,38 @@ export class VenueMap {
             this.moveFocus('map-error');
           }
         }
+      },
+    });
+  }
+
+  /**
+   * Re-read the shown map for the same days, in place (#1809): a failure keeps the map it had, an
+   * open plan is not re-asked, and a {@link load} in flight answers instead. Rationale:
+   * RESPONSIBILITIES.md §Frontend.
+   */
+  private refresh(): void {
+    const id = this.venueId();
+    if (id === undefined || this.venue() === undefined || this.loadInFlight) {
+      return;
+    }
+    const epoch = ++this.epoch;
+    this.venues.getVenueMap(id, this.selectedDate(), this.selectedLastDate()).subscribe({
+      next: (venue) => {
+        if (this.epoch !== epoch) {
+          return;
+        }
+        // A set that stops being bookable loses its button, and with it any focus the button held.
+        if (document.activeElement?.hasAttribute('data-set-id')) {
+          this.rescueFocus('lens-open', 'beach-grid');
+        }
+        this.venue.set(venue);
+        this.settleLens();
+        if (!this.planOpen() && this.noSetCovers()) {
+          this.loadItinerary();
+        }
+      },
+      error: () => {
+        // The map it had stands: nobody asked for this read, so its failure is nobody's news.
       },
     });
   }
@@ -1081,7 +1124,8 @@ export class VenueMap {
     this.moveFocus(this.lightboxTriggerTestId);
   }
 
-  protected onDialogClose(): void {
+  /** The dialog closed without booking; closed on a taken set, the map is refreshed to show it. */
+  protected onDialogClose(dismissal: BookingDismissal): void {
     const set = this.selectedSet();
     this.selectedSet.set(undefined);
     // Return focus to what opened the dialog (modal a11y): the bar's action for the pick, else the tile.
@@ -1089,6 +1133,9 @@ export class VenueMap {
       this.moveFocus('pick-book');
     } else {
       this.focusTile(this.lastTriggerId);
+    }
+    if (dismissal.setTaken) {
+      this.refresh();
     }
   }
 

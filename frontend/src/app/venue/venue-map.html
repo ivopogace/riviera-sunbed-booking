@@ -684,7 +684,7 @@
         [lastDate]="selectedLastDate()"
         [mode]="v.bookingMode"
         [venueName]="v.name"
-        (dismissed)="onDialogClose()"
+        (dismissed)="onDialogClose($event)"
         (booked)="onBooked()"
         (awaiting)="onAwaiting()"
         (requested)="onRequested()"

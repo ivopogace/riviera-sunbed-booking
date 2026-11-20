@@ -6,11 +6,13 @@ import {
   TestRequest,
 } from '@angular/common/http/testing';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
+import { By } from '@angular/platform-browser';
 import { ActivatedRoute, convertToParamMap, ParamMap, provideRouter } from '@angular/router';
 import { BehaviorSubject } from 'rxjs';
 import { vi } from 'vitest';
 
 import { environment } from '../../environments/environment';
+import { BookingDialog } from '../booking/booking-dialog';
 import { ProofOfWork } from '../core/proof-of-work';
 import { addDays, defaultBookingDate } from '../shared/booking-date';
 import { ItineraryView, SetView, VenueMapView } from '../shared/venue-views';
@@ -394,6 +396,58 @@ describe('VenueMap: reloading under the visitor (#1810)', () => {
       expect(map().hasAttribute('inert')).toBe(false);
       expect(map().getAttribute('aria-busy')).toBe('false');
       venueReq().flush(freeBeach());
+    });
+
+    describe('beside the refresh after a set was just taken (#1809)', () => {
+      /** Open the dialog on set 1 and close it as the reserve does on `409 SET_TAKEN`. */
+      async function closeOnSetTaken(): Promise<TestRequest> {
+        await loadFree();
+        await tap(tile(1));
+        const dialog = fixture.debugElement.query(By.directive(BookingDialog))
+          .componentInstance as BookingDialog;
+        dialog.dismissed.emit({ setTaken: true });
+        await settle();
+        return venueReq();
+      }
+
+      it('the map is not inert while that same-days read is in flight', async () => {
+        const refresh = await closeOnSetTaken();
+
+        expect(map().hasAttribute('inert')).toBe(false);
+        expect(map().getAttribute('aria-busy')).toBe('false');
+        refresh.flush(freeBeach());
+      });
+
+      it('a route change during it drops its answer and still lands focus on "All beaches"', async () => {
+        const refresh = await closeOnSetTaken();
+        expect(document.activeElement).toBe(tile(1));
+
+        await switchVenue();
+        refresh.flush({ ...freeBeach(), name: 'Stale Miramar' });
+        await settle();
+
+        expect(dom().querySelector('h1')).toBeNull();
+        expect(document.activeElement).toBe(one('venue-back'));
+        venueReq(2).flush(freeBeach(2));
+        await settle();
+        expect(dom().querySelector('h1')!.textContent).toContain('Riviera Blue');
+        expect(document.activeElement).toBe(one('venue-back'));
+      });
+
+      it('a date change during it makes the map inert until the new days’ read answers', async () => {
+        const refresh = await closeOnSetTaken();
+
+        pickDays(otherDay);
+        await settle();
+        refresh.flush({ ...freeBeach(), name: 'Stale Miramar' });
+        await settle();
+
+        expect(map().hasAttribute('inert')).toBe(true);
+        venueReq().flush(freeBeach());
+        await settle();
+        expect(map().hasAttribute('inert')).toBe(false);
+        expect(dom().querySelector('h1')!.textContent).toContain('Miramar Beach Club');
+      });
     });
 
     it('is usable again on the map a retry brings back after the read failed', async () => {

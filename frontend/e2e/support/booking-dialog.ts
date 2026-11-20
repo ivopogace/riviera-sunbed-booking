@@ -48,3 +48,24 @@ export async function mockFencedBookingCreate(
     return refusal ? route.fulfill(refusal) : respond(route);
   });
 }
+
+/** Refuse every booking create as the server does a set another tourist just took (invariant #2). */
+export async function refuseBookingAsTaken(
+  page: Page,
+  fence: Pick<ChallengeFence, 'screen'>,
+): Promise<void> {
+  // The RFC-7807 contract: application/problem+json whose stable identity is the `code` extension.
+  await mockFencedBookingCreate(page, fence, (route) =>
+    route.fulfill({
+      status: 409,
+      contentType: 'application/problem+json',
+      json: {
+        type: 'about:blank',
+        title: 'Conflict',
+        status: 409,
+        detail: 'The set is already taken for this date.',
+        code: 'SET_TAKEN',
+      },
+    }),
+  );
+}

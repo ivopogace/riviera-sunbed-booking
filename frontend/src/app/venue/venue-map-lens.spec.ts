@@ -394,7 +394,7 @@ describe('VenueMap on a phone: the row lens (#1762)', () => {
       await tap(one('pick-book')!);
 
       const dialog = fixture.debugElement.query(By.directive(BookingDialog));
-      (dialog.componentInstance as BookingDialog).dismissed.emit();
+      (dialog.componentInstance as BookingDialog).dismissed.emit({ setTaken: false });
       await settle();
 
       expect(fixture.debugElement.query(By.directive(BookingDialog))).toBeNull();
@@ -402,6 +402,80 @@ describe('VenueMap on a phone: the row lens (#1762)', () => {
       expect(document.activeElement).toBe(one('pick-book'));
       httpMock.expectNone((req) => req.url === `${environment.apiBaseUrl}/api/venues/1`);
     });
+
+    /** Pick set 3, open its dialog from the bar and close it as a dialog refused `SET_TAKEN` does. */
+    async function closeOnTakenPick(): Promise<void> {
+      await load();
+      await tap(tile(3));
+      await tap(one('pick-book')!);
+      const dialog = fixture.debugElement.query(By.directive(BookingDialog));
+      (dialog.componentInstance as BookingDialog).dismissed.emit({ setTaken: true });
+      await settle();
+    }
+
+    const panAgain = (): number =>
+      (
+        fixture.debugElement.query(By.directive(BeachRowLens)).componentInstance as BeachRowLens
+      ).panAgain();
+
+    it('a dialog closed on a taken set re-reads the map: the pick, its bar and the solid cell go, and focus the bar held lands on the open row (#1809)', async () => {
+      await closeOnTakenPick();
+      const seed = panAgain();
+      expect(document.activeElement).toBe(one('pick-book'));
+      expect(one('pick-status')!.textContent.trim()).not.toBe('');
+
+      venueReq().flush(beach(['taken', 'free', 'taken', 'free', 'free', 'free']));
+      await settle();
+
+      expect(one('pick-bar')).toBeNull();
+      expect(one('pick-status')!.textContent.trim()).toBe('');
+      expect(all('lens-cell').filter((cell) => cell.dataset['state'] === 'pick')).toHaveLength(0);
+      expect(document.activeElement).toBe(one('lens-open'));
+      expect(one('lens-open')!.getAttribute('aria-label')).toBe('Row A, €45, 4 of 6 free');
+      // The visitor's scroll in the open row is theirs: a refresh never asks the lens to pan again.
+      expect(panAgain()).toBe(seed);
+    });
+
+    it('a refresh that still shows the pick free keeps it, and says nothing new', async () => {
+      await closeOnTakenPick();
+      const said = one('pick-status')!.textContent;
+
+      venueReq().flush(beach());
+      await settle();
+
+      expect(tile(3).getAttribute('aria-pressed')).toBe('true');
+      expect(one('pick-status')!.textContent).toBe(said);
+      expect(document.activeElement).toBe(one('pick-book'));
+    });
+
+    it('a refresh that takes the tile holding focus lands it on the open row', async () => {
+      await closeOnTakenPick();
+      tile(3).focus();
+
+      venueReq().flush(beach(['taken', 'free', 'taken', 'free', 'free', 'free']));
+      await settle();
+
+      expect(document.activeElement).toBe(one('lens-open'));
+    });
+
+    it.each([
+      [503, 'Service Unavailable'],
+      [404, 'Not Found'],
+    ])(
+      'a refresh that fails with %i keeps the map, the pick and focus',
+      async (status, statusText) => {
+        await closeOnTakenPick();
+
+        venueReq().flush('down', { status, statusText });
+        await settle();
+
+        expect(one('map-error')).toBeNull();
+        expect(one('map-not-found')).toBeNull();
+        expect(one('row-lens')).not.toBeNull();
+        expect(tile(3).getAttribute('aria-pressed')).toBe('true');
+        expect(document.activeElement).toBe(one('pick-book'));
+      },
+    );
 
     it('a re-read that shows the pick taken drops it with its bar, and focus the bar held lands on the open row', async () => {
       await load();
