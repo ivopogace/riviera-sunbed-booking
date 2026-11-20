@@ -1570,6 +1570,14 @@ The SPA rules whose TSDoc points here; structure is `riviera-frontend`'s, stylin
   refresh owed, unless a later load was dispatched. It re-asks no open stay plan and does not reseed the lens.
   Focus on a tile follows the set, not the element (#1817): free turned partly free swaps the button and
   keeps focus on the new one, a set left with none hands it to the map, and neither move scrolls.
+- **While other days load, the availability card states nothing from the old read** (`VenueMap.staleDays`, #1815): an
+  in-page date change leaves the old days' map on screen, `inert` and at half opacity, and the availability line
+  reads "Checking availability for <new days>…" until the read answers. The line is the one voice: a persistent
+  polite region whose text changes twice, so a count equal to the old one is still spoken; the load announcer stays
+  silent. The bar shows no proportion and the no-cover banner is withheld: each would put the old read's numbers
+  under the new days. No `aria-busy` on the map: an inert node is not exposed, and on the line it would hold the
+  announcement back. A progress mark joins the line after a second, outside the live region so its arrival is not read.
+  A same-days re-read (the refresh above, Retry) shows none of this. The sales-closed alerts still read the old venue (#1822).
 - **The rails' label ellipsis and `rowName()`'s non-letter branch stay, defensive only** (#1626): the
   rails render active sets only (`active_set_position`, `JdbcVenueCatalog`), so no live map reaches a
   long label; the unit specs keep the classes, `loading-skeletons.e2e.ts` the capped rail's width under

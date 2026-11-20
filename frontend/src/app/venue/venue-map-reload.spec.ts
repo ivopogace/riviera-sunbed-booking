@@ -15,7 +15,9 @@ import { environment } from '../../environments/environment';
 import { BookingDialog } from '../booking/booking-dialog';
 import { ProofOfWork } from '../core/proof-of-work';
 import { addDays, defaultBookingDate } from '../shared/booking-date';
+import { formatBookingDate } from '../shared/booking-date-label';
 import { ItineraryView, SetView, VenueMapView } from '../shared/venue-views';
+import { freezeClock } from '../../testing/freeze-clock';
 import { VenueMap } from './venue-map';
 
 /**
@@ -456,6 +458,10 @@ describe('VenueMap: reloading under the visitor (#1810)', () => {
     const otherDay = addDays(first, 7);
     const map = (): HTMLElement =>
       dom().querySelector<HTMLElement>('app-beach-map-canvas, app-beach-row-lens')!;
+    /** The map card wears the dim. Its value is the browser's to prove (`e2e/venue-map-reload.e2e.ts`). */
+    const dimmed = (): boolean => map().classList.contains('opacity-50');
+    const line = (): string => one('availability').textContent.replace(/\s+/g, ' ').trim();
+    const dayLabel = (iso: string): string => formatBookingDate(iso, { withYear: true });
     const pickDays = (firstDay: string, lastDay = firstDay): void => {
       (
         fixture.componentInstance as unknown as {
@@ -465,22 +471,23 @@ describe('VenueMap: reloading under the visitor (#1810)', () => {
     };
 
     for (const phone of [false, true]) {
-      it(`is inert and busy until the read answers (${phone ? 'the lens' : 'the canvas'})`, async () => {
+      it(`is inert until the read answers, and never busy: an inert node is not exposed (${phone ? 'the lens' : 'the canvas'})`, async () => {
         await loadFree(phone);
         expect(map().hasAttribute('inert')).toBe(false);
-        expect(map().getAttribute('aria-busy')).toBe('false');
+        expect(dimmed()).toBe(false);
 
         pickDays(otherDay);
         await settle();
 
         expect(map().hasAttribute('inert')).toBe(true);
-        expect(map().getAttribute('aria-busy')).toBe('true');
+        expect(dimmed()).toBe(true);
+        expect(map().hasAttribute('aria-busy')).toBe(false);
 
         venueReq().flush(freeBeach());
         await settle();
 
         expect(map().hasAttribute('inert')).toBe(false);
-        expect(map().getAttribute('aria-busy')).toBe('false');
+        expect(dimmed()).toBe(false);
       });
     }
 
@@ -491,7 +498,8 @@ describe('VenueMap: reloading under the visitor (#1810)', () => {
       await settle();
 
       expect(map().hasAttribute('inert')).toBe(false);
-      expect(map().getAttribute('aria-busy')).toBe('false');
+      expect(dimmed()).toBe(false);
+      expect(line()).toBe(`2 of 3 sets free on ${dayLabel(defaultBookingDate(new Date()))}`);
       venueReq().flush(freeBeach());
     });
 
@@ -547,7 +555,8 @@ describe('VenueMap: reloading under the visitor (#1810)', () => {
         const refresh = await closeOnSetTaken();
 
         expect(map().hasAttribute('inert')).toBe(false);
-        expect(map().getAttribute('aria-busy')).toBe('false');
+        expect(dimmed()).toBe(false);
+        expect(line()).not.toContain('Checking');
         refresh.flush(freeBeach());
       });
 
@@ -582,6 +591,128 @@ describe('VenueMap: reloading under the visitor (#1810)', () => {
         expect(map().hasAttribute('inert')).toBe(false);
         expect(dom().querySelector('h1')!.textContent).toContain('Miramar Beach Club');
       });
+    });
+
+    describe('the refresh owed to a refusal seen while the new days loaded (#1812)', () => {
+      const mark = (): HTMLElement | null =>
+        dom().querySelector('[data-testid="availability-wait"]');
+      let heard: string[];
+      let observer: MutationObserver;
+
+      /** A date change's load in flight, a refusal reported under it, then the load's answer: the owed refresh is in flight. */
+      async function owedRefresh(): Promise<TestRequest> {
+        await loadFree();
+        heard = [];
+        observer = new MutationObserver(() => {
+          if (heard.at(-1) !== line()) {
+            heard.push(line());
+          }
+        });
+        observer.observe(one('availability'), {
+          childList: true,
+          subtree: true,
+          characterData: true,
+        });
+        pickDays(otherDay);
+        await settle();
+        (
+          fixture.componentInstance as unknown as { onDialogClose(d: { mapStale: boolean }): void }
+        ).onDialogClose({ mapStale: true });
+        venueReq().flush(freeBeach());
+        await settle();
+        return venueReq();
+      }
+
+      beforeEach(() => {
+        vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout', 'Date'] });
+      });
+
+      afterEach(() => {
+        observer.disconnect();
+        freezeClock();
+      });
+
+      it('is a same-days read: no dim, no loading line and no progress mark, however long it runs', async () => {
+        const refresh = await owedRefresh();
+
+        vi.advanceTimersByTime(5000);
+        await settle();
+
+        expect(map().hasAttribute('inert')).toBe(false);
+        expect(dimmed()).toBe(false);
+        expect(mark()).toBeNull();
+        expect(line()).toBe(`2 of 3 sets free on ${dayLabel(otherDay)}`);
+        refresh.flush(freeBeach());
+      });
+
+      it('speaks the count once, for the load’s answer, when the refresh finds it unchanged', async () => {
+        const refresh = await owedRefresh();
+
+        refresh.flush(freeBeach());
+        await settle();
+
+        expect(heard).toEqual([
+          `Checking availability for ${dayLabel(otherDay)}…`,
+          `2 of 3 sets free on ${dayLabel(otherDay)}`,
+        ]);
+      });
+
+      it('speaks the count again only because the refresh changed it', async () => {
+        const refresh = await owedRefresh();
+
+        refresh.flush(
+          venue(1, [set(1, 'TAKEN', [otherDay]), set(2, 'FREE', []), set(3, 'TAKEN', [otherDay])]),
+        );
+        await settle();
+
+        expect(heard).toEqual([
+          `Checking availability for ${dayLabel(otherDay)}…`,
+          `2 of 3 sets free on ${dayLabel(otherDay)}`,
+          `1 of 3 sets free on ${dayLabel(otherDay)}`,
+        ]);
+      });
+
+      it('its 404 takes the map down with no busy state left: the next venue’s line is its count', async () => {
+        const refresh = await owedRefresh();
+
+        refresh.flush('gone', { status: 404, statusText: 'Not Found' });
+        await settle();
+        expect(dom().querySelector('[data-testid="map-not-found"]')).not.toBeNull();
+        await switchVenue();
+        venueReq(2).flush(freeBeach(2));
+        await settle();
+        vi.advanceTimersByTime(5000);
+        await settle();
+
+        expect(dimmed()).toBe(false);
+        expect(mark()).toBeNull();
+        expect(line()).toContain('2 of 3 sets free on');
+      });
+    });
+
+    it('a refresh’s 404 arriving after a date change is dropped: the old map stays, checking, until the load answers', async () => {
+      await loadFree();
+      await tap(tile(1));
+      (
+        fixture.debugElement.query(By.directive(BookingDialog)).componentInstance as BookingDialog
+      ).dismissed.emit({
+        mapStale: true,
+      });
+      await settle();
+      const refresh = venueReq();
+
+      pickDays(otherDay);
+      await settle();
+      refresh.flush('gone', { status: 404, statusText: 'Not Found' });
+      await settle();
+
+      expect(dom().querySelector('[data-testid="map-not-found"]')).toBeNull();
+      expect(map().hasAttribute('inert')).toBe(true);
+      expect(line()).toBe(`Checking availability for ${dayLabel(otherDay)}…`);
+      venueReq().flush(freeBeach());
+      await settle();
+      expect(dimmed()).toBe(false);
+      expect(line()).toBe(`2 of 3 sets free on ${dayLabel(otherDay)}`);
     });
 
     for (const last of ['answers', 'fails'] as const) {
@@ -622,6 +753,8 @@ describe('VenueMap: reloading under the visitor (#1810)', () => {
       await settle();
 
       expect(map().hasAttribute('inert')).toBe(false);
+      expect(dimmed()).toBe(false);
+      expect(line()).toBe(`2 of 3 sets free on ${dayLabel(otherDay)}`);
     });
 
     it('is usable again on the venue a route change brings in mid-load', async () => {
@@ -660,20 +793,171 @@ describe('VenueMap: reloading under the visitor (#1810)', () => {
       venueReq().flush(freeBeach());
     });
 
-    it('takes the no-cover banner’s offers with it: they are computed from the old days’ map', async () => {
+    it('takes the no-cover banner with it: its sentence is the old days’ map under the new days’ count', async () => {
       await loadNoCover();
       one('no-cover-shorten').focus();
 
       pickDays(otherDay, addDays(otherDay, 2));
       await settle();
 
-      expect(one('no-cover').hasAttribute('inert')).toBe(true);
+      expect(dom().querySelector('[data-testid="no-cover"]')).toBeNull();
       expect(document.activeElement).toBe(one('map-date'));
       venueReq().flush(noCoverBeach());
       await settle();
       itineraryReq().flush(stitched());
       await settle();
-      expect(one('no-cover').hasAttribute('inert')).toBe(false);
+      expect(dom().querySelector('[data-testid="no-cover"]')).not.toBeNull();
+    });
+
+    it('shows no banner the old days’ map alone would raise under a stay just picked', async () => {
+      await mount();
+      venueReq().flush(venue(1, [set(1, 'TAKEN', [first]), set(2, 'TAKEN', [first])]));
+      await settle();
+
+      pickDays(otherDay, addDays(otherDay, 2));
+      await settle();
+
+      expect(dom().querySelector('[data-testid="no-cover"]')).toBeNull();
+      venueReq().flush(freeBeach());
+    });
+
+    it('the availability line says it is checking the new days, never the old count', async () => {
+      await loadFree();
+      const region = one('availability');
+
+      pickDays(otherDay);
+      await settle();
+
+      expect(line()).toBe(`Checking availability for ${dayLabel(otherDay)}…`);
+      expect(one('availability')).toBe(region);
+      venueReq().flush(venue(1, [set(1, 'FREE', []), set(2, 'TAKEN', [otherDay])]));
+      await settle();
+      expect(line()).toBe(`1 of 2 sets free on ${dayLabel(otherDay)}`);
+      expect(one('availability')).toBe(region);
+    });
+
+    it('names a stay as the date field does', async () => {
+      await loadFree();
+
+      pickDays(otherDay, addDays(otherDay, 2));
+      await settle();
+
+      expect(line()).toBe(`Checking availability for ${one('map-date').textContent.trim()}…`);
+      venueReq().flush(freeBeach());
+    });
+
+    it('an unchanged count is still a change of the line, so it is spoken again', async () => {
+      await loadFree();
+      const heard: string[] = [];
+      const observer = new MutationObserver(() => heard.push(line()));
+      observer.observe(one('availability'), {
+        childList: true,
+        subtree: true,
+        characterData: true,
+      });
+
+      pickDays(otherDay);
+      await settle();
+      venueReq().flush(freeBeach());
+      await settle();
+      observer.disconnect();
+
+      expect([...new Set(heard)]).toEqual([
+        `Checking availability for ${dayLabel(otherDay)}…`,
+        `2 of 3 sets free on ${dayLabel(otherDay)}`,
+      ]);
+    });
+
+    it('the line is one whole status: polite and atomic', async () => {
+      await loadFree();
+
+      expect(one('availability').getAttribute('aria-live')).toBe('polite');
+      expect(one('availability').getAttribute('aria-atomic')).toBe('true');
+    });
+
+    it('the bar shows no proportion while the new days load', async () => {
+      await loadFree();
+      const fill = (): string => one('availability-bar').querySelector('span')!.style.width;
+      expect(fill()).not.toBe('0%');
+
+      pickDays(otherDay);
+      await settle();
+
+      expect(fill()).toBe('0%');
+      venueReq().flush(freeBeach());
+      await settle();
+      expect(fill()).not.toBe('0%');
+    });
+
+    describe('the progress mark', () => {
+      const mark = (): HTMLElement | null =>
+        dom().querySelector('[data-testid="availability-wait"]');
+
+      beforeEach(() => {
+        vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout', 'Date'] });
+      });
+
+      afterEach(() => {
+        freezeClock();
+      });
+
+      it('appears only once the wait passes a second, outside the live region', async () => {
+        await loadFree();
+        pickDays(otherDay);
+        await settle();
+        expect(mark()).toBeNull();
+
+        vi.advanceTimersByTime(999);
+        await settle();
+        expect(mark()).toBeNull();
+
+        vi.advanceTimersByTime(1);
+        await settle();
+        expect(mark()).not.toBeNull();
+        expect(mark()!.getAttribute('aria-hidden')).toBe('true');
+        expect(one('availability').contains(mark())).toBe(false);
+        expect(line()).toBe(`Checking availability for ${dayLabel(otherDay)}…`);
+        venueReq().flush(freeBeach());
+      });
+
+      it('goes when the read answers', async () => {
+        await loadFree();
+        pickDays(otherDay);
+        await settle();
+        vi.advanceTimersByTime(1000);
+        await settle();
+
+        venueReq().flush(freeBeach());
+        await settle();
+
+        expect(mark()).toBeNull();
+      });
+
+      it('never appears for a read answered within the second, nor after it', async () => {
+        await loadFree();
+        pickDays(otherDay);
+        await settle();
+        vi.advanceTimersByTime(400);
+        venueReq().flush(freeBeach());
+        await settle();
+
+        vi.advanceTimersByTime(5000);
+        await settle();
+
+        expect(mark()).toBeNull();
+      });
+
+      it('is not shown by a same-days re-read, however long', async () => {
+        await loadFree();
+        (fixture.componentInstance as unknown as { retry(): void }).retry();
+        await settle();
+
+        vi.advanceTimersByTime(5000);
+        await settle();
+
+        expect(mark()).toBeNull();
+        venueReq().flush(freeBeach());
+      });
     });
 
     it('moves focus without scrolling the page away from the map', async () => {

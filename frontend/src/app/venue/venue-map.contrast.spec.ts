@@ -275,7 +275,8 @@ describe.each(THEMES)('Beach-map glass contrast — $name theme (WCAG AA, issue 
     expectAaOverStops(theme.cardInkBase, CARD_INK_FAINT_ALPHA, theme.cardGlass, theme.stops);
   });
 
-  it('accent ink (free count, scroll hint) meets AA on the card glass', () => {
+  // The date-change progress mark's arc is this same ink on this same glass, so 4.5:1 here is its 3:1 (WCAG 1.4.11).
+  it('accent ink (free count, scroll hint, progress mark) meets AA on the card glass', () => {
     expectAaOverStops(theme.accent, 1, theme.cardGlass, theme.stops);
   });
 });
