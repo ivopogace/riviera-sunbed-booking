@@ -4,6 +4,7 @@ import {
   Component,
   computed,
   effect,
+  ElementRef,
   inject,
   Injector,
   signal,
@@ -215,6 +216,9 @@ export class VenueMap {
   private readonly title = inject(Title);
   /** WCAG 2.4.3: a re-fetch failure tears down the map (which may hold focus) — move it (RV-FE-9). */
   private readonly moveFocus = focusMover();
+  /** For a route reset: moves focus only if the reset removed its holder. */
+  private readonly landIfTaken = focusMover({ onlyIfLost: true });
+  private readonly host = inject<ElementRef<HTMLElement>>(ElementRef);
 
   protected readonly venue = signal<VenueMapView | undefined>(undefined);
   /** What the way back to other beaches carries: the day, or the stay's first and last day. */
@@ -593,16 +597,14 @@ export class VenueMap {
     this.selectedSet.set(undefined);
     this.pickId.set(undefined);
     this.lensUnseeded = true;
-    // The reset takes any focus-trapped modal AND its trigger, so move focus deliberately (RV-FE-9).
-    const modalWasOpen =
-      this.pickerOpen() || this.lightboxIndex() !== undefined || this.partlySet() !== undefined;
     this.pickerOpen.set(false);
     this.lightboxIndex.set(undefined);
     this.partlySet.set(undefined);
     this.resetPlan();
     this.pendingSelectSetId = undefined;
-    if (modalWasOpen) {
-      this.moveFocus('map-loading');
+    // Everything under the back button is rebuilt. Not the skeleton: it is inert, so a browser drops the move (RV-FE-9).
+    if (this.host.nativeElement.contains(document.activeElement)) {
+      this.landIfTaken('venue-back');
     }
     this.lastTriggerId = undefined;
     const floor = defaultBookingDate(new Date());
@@ -688,6 +690,7 @@ export class VenueMap {
     this.planFailed.set(false);
     this.planOpen.set(false);
     this.planAnchorSet.set(undefined);
+    this.selectedPlan.set(undefined);
   }
 
   /** Open the plan the banner offered; focus lands on its title once rendered. */
