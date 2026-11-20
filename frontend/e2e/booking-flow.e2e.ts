@@ -6,6 +6,7 @@ import {
   completeDialog,
   fillDetailsAndContinue,
   mockFencedBookingCreate,
+  refuseBookingAsTaken,
   settle,
 } from './support/booking-dialog';
 import type { MockVenueMapView } from './support/venue-views';
@@ -292,21 +293,8 @@ test('the Review step scrolls to its pay button on a phone viewport', async ({ p
 });
 
 test('a taken-set rejection surfaces an accessible error in the dialog', async ({ page }) => {
-  // Overrides the beforeEach 201 route: the API rejects on the RFC-7807 contract —
-  // application/problem+json whose stable identity is the `code` extension.
-  await mockFencedBookingCreate(page, fence, (route) =>
-    route.fulfill({
-      status: 409,
-      contentType: 'application/problem+json',
-      json: {
-        type: 'about:blank',
-        title: 'Conflict',
-        status: 409,
-        detail: 'The set is already taken for this date.',
-        code: 'SET_TAKEN',
-      },
-    }),
-  );
+  // Overrides the beforeEach 201 route.
+  await refuseBookingAsTaken(page, fence);
 
   await page.goto('/venues/1');
   await page
@@ -320,6 +308,38 @@ test('a taken-set rejection surfaces an accessible error in the dialog', async (
   await expect(dialog.getByRole('alert')).toContainText('someone just booked this set');
   await expect(page).not.toHaveURL(/\/booking\/confirmation/);
   await expectNoSeriousAxeViolations(page, 'booking dialog (SET_TAKEN error)');
+});
+
+test('closing the dialog on a taken-set rejection re-reads the map, which stops offering the set (#1809)', async ({
+  page,
+}) => {
+  await refuseBookingAsTaken(page, fence);
+  let reads = 0;
+  // The first read still shows set 2 free; every later one shows what the server just said.
+  await page.route(/\/api\/venues\/1(\?.*)?$/, (route) => {
+    reads += 1;
+    const sets = VENUE.sets.map((set) =>
+      set.id === 2 && reads > 1 ? { ...set, availability: 'TAKEN' as const } : set,
+    );
+    return route.fulfill({ json: { ...VENUE, sets } });
+  });
+
+  await page.goto('/venues/1');
+  const bookable = page.getByRole('button', { name: /Select to book/ });
+  await bookable.first().click();
+  const dialog = page.getByRole('dialog');
+  await completeDialog(dialog, 'Continue to payment');
+  await expect(dialog.getByRole('alert')).toContainText('someone just booked this set');
+
+  await page.keyboard.press('Escape');
+
+  await expect(dialog).toHaveCount(0);
+  await expect(bookable).toHaveCount(0);
+  await expect(page.getByRole('listitem', { name: /spot 2, .*taken/i })).toBeVisible();
+  // The tile's button held focus and is gone: focus lands on the map, not on <body>.
+  await expect(page.getByTestId('beach-grid')).toBeFocused();
+  expect(reads).toBe(2);
+  await expectNoSeriousAxeViolations(page, 'beach map refreshed after a taken set');
 });
 
 test('stripe-profile payment flow is accessible end-to-end (Stripe mocked)', async ({ page }) => {

@@ -792,6 +792,32 @@ describe('BookingDialog (2-step Liquid Glass modal)', () => {
     expect(dismissed).toBe(2);
   });
 
+  it('says whether it closed on a taken set: only while that refusal is its standing answer (#1809)', async () => {
+    const closes: boolean[] = [];
+    dialog.dismissed.subscribe((dismissal) => closes.push(dismissal.setTaken));
+    const close = (): void =>
+      host().querySelector<HTMLButtonElement>('[data-testid="dialog-close"]')!.click();
+    const refuse = async (status: number, code: string): Promise<void> => {
+      submitForm();
+      await fixture.whenStable();
+      httpMock
+        .expectOne(`${environment.apiBaseUrl}/api/bookings`)
+        .flush({ status, code }, { status, statusText: 'Refused' });
+      await fixture.whenStable();
+      await fixture.whenStable();
+    };
+
+    close();
+    await goToReview();
+    await refuse(409, 'SET_TAKEN');
+    close();
+    // A later, different refusal replaces it: the map is not known stale from this one.
+    await refuse(400, 'INVALID_REQUEST');
+    close();
+
+    expect(closes).toEqual([false, true, false]);
+  });
+
   it('maps every server error code to a human message', () => {
     const p = probe();
     const cases: Record<string, string> = {

@@ -1,7 +1,8 @@
 import { expect, type Locator, type Page, test } from '@playwright/test';
 
+import { mockChallengeFence } from './support/auth-mocks';
 import { expectNoSeriousAxeViolations } from './support/axe';
-import { settle } from './support/booking-dialog';
+import { completeDialog, refuseBookingAsTaken, settle } from './support/booking-dialog';
 import { miramarMapVenue } from './support/miramar-map';
 import { expectTouchTargets } from './support/touch-targets';
 import type { MockVenueMapView } from './support/venue-views';
@@ -174,6 +175,37 @@ test('the bar books the pick: its action opens the dialog, and dismissing keeps 
   // A second tap clears the pick and the bar.
   await tile(page, 'A', 4).click();
   await expect(page.getByTestId('pick-bar')).toHaveCount(0);
+});
+
+test('a pick the dialog reports just taken goes when the dialog closes: no bar, no solid cell, focus on the open row (#1809)', async ({
+  page,
+}) => {
+  await refuseBookingAsTaken(page, await mockChallengeFence(page, 'on'));
+  const venue = miramarMapVenue();
+  await openMap(page, venue);
+  // Every read after the first shows A4 as the server now has it.
+  const sets = venue.sets.map((set) =>
+    set.rowLabel === 'A' && set.positionNo === 4 ? { ...set, availability: 'TAKEN' as const } : set,
+  );
+  await page.route(/\/api\/venues\/1(\?.*)?$/, (route) =>
+    route.fulfill({ json: { ...venue, sets } }),
+  );
+  await tile(page, 'A', 4).click();
+  await page.getByTestId('pick-book').click();
+  const dialog = page.getByRole('dialog');
+  await completeDialog(dialog, 'Continue to payment');
+  await expect(dialog.getByRole('alert')).toContainText('someone just booked this set');
+
+  await page.keyboard.press('Escape');
+
+  await expect(dialog).toHaveCount(0);
+  await expect(page.getByTestId('pick-bar')).toHaveCount(0);
+  await expect(tile(page, 'A', 4)).toHaveCount(0);
+  await expect(page.locator('[data-testid="lens-cell"][data-state="pick"]')).toHaveCount(0);
+  await expect(page.getByTestId('pick-status')).toHaveText('');
+  // The bar's action held focus and went with the bar: the open row takes it and names its count.
+  await expect(openRow(page, 'A')).toBeFocused();
+  await expectNoSeriousAxeViolations(page, 'tourist row lens refreshed after a taken pick');
 });
 
 test('the pick stays solid on the overview while its row is closed, and every row clears the bar', async ({
