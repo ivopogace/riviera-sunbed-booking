@@ -27,4 +27,5 @@ create a duplicate booking or charge.
 Business errors are `ProblemDetail` (`application/problem+json`) with a stable `code` (`409
 SET_TAKEN`, `BOOKING_CLOSED`, `SET_NOT_BOOKABLE_ONLINE`), built by `ApiProblem` + `ApiErrorHandler`
 (`riviera-java-conventions/references/error-contract.md`); a new rejection ships its own `code`; the
-FE maps each `code` to a message and, for `SET_TAKEN`, refreshes the map (RV-FE-2).
+FE maps each `code` to a message and, for a refusal that leaves the map stale (`SET_TAKEN`
+and the venue, set and days refusals), refreshes the map (RV-FE-2).

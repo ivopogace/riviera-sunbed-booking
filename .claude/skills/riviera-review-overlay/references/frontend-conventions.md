@@ -24,8 +24,8 @@ contract values; client validation is UX only — price, date/cutoff and availab
 decided server-side.
 
 ### RV-FE-2. Beach-map availability goes stale (#2) — Major (Minor for no periodic refresh)
-Map refetches availability for the selected date; submit handles `409 SET_TAKEN` by refreshing
-the map and telling the user; no optimistic "selected" state without reconciliation; taken
+Map refetches availability for the selected date; a create refused `409 SET_TAKEN`, or for the
+venue, set or days, tells the user and refreshes the map on close; no optimistic "selected" state without reconciliation; taken
 sets visually distinct and unselectable.
 
 ### RV-FE-3. Money and dates from the wire shape (#5, #6) — Major
