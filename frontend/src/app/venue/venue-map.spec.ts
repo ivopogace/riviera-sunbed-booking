@@ -1399,7 +1399,7 @@ describe('VenueMap', () => {
 
       await dismissDialog(true);
 
-      // One request, the read already on its way; its failure still tears down as any load's does.
+      // One request: the read already on its way answers, and no refresh is sent beside it.
       await land(venueRequest(), withTaken(miramar(), id));
       expect(tileButton(id)).toBeNull();
     });
