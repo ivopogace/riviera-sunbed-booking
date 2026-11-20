@@ -217,12 +217,10 @@ export class VenueMap {
   private readonly title = inject(Title);
   /** WCAG 2.4.3: a re-fetch failure tears down the map (which may hold focus) — move it (RV-FE-9). */
   private readonly moveFocus = focusMover();
-  /** A route reset's landing: moves focus only if the reset took its holder, and scrolls to it. */
-  private readonly landIfTaken = focusMover({ onlyIfLost: true });
+  /** For a refresh, which no visitor asked for, and a route reset: moves focus only if the render took its holder. */
+  private readonly rescueFocus = focusMover({ onlyIfLost: true });
   /** A date change's landing: the same, without scrolling, as the visitor may be far down the map. */
   private readonly parkIfTaken = focusMover({ onlyIfLost: true, preventScroll: true });
-  /** For a refresh, which no visitor asked for: moves focus only if the render took its holder. */
-  private readonly rescueFocus = focusMover({ onlyIfLost: true });
   private readonly destroyRef = inject(DestroyRef);
   private readonly host = inject<ElementRef<HTMLElement>>(ElementRef);
 
@@ -619,7 +617,7 @@ export class VenueMap {
     this.pendingSelectSetId = undefined;
     // Everything under the back button is rebuilt. Not the skeleton: it is inert, so a browser drops the move (RV-FE-9).
     if (this.holdsFocus()) {
-      this.landIfTaken('venue-back');
+      this.rescueFocus('venue-back');
     }
     this.lastTriggerId = undefined;
     const floor = defaultBookingDate(new Date());

@@ -442,6 +442,7 @@ describe('VenueMap: reloading under the visitor (#1810)', () => {
         refresh.flush({ ...freeBeach(), name: 'Stale Miramar' });
         await settle();
 
+        expect(dom().querySelector('h1')!.textContent).not.toContain('Stale Miramar');
         expect(map().hasAttribute('inert')).toBe(true);
         venueReq().flush(freeBeach());
         await settle();
