@@ -1,5 +1,7 @@
 import { expect, type Page, test } from '@playwright/test';
 
+import { mockChallengeFence } from './support/auth-mocks';
+import { completeDialog, refuseBookingAsTaken } from './support/booking-dialog';
 import type { MockSetView, MockVenueMapView } from './support/venue-views';
 
 /**
@@ -336,6 +338,31 @@ test('on a phone, focus on the pick bar’s action lands on "All beaches"', asyn
   await expect(venueName(page, 'Riviera Blue')).toBeVisible();
   await expect(page.getByTestId('pick-bar')).toHaveCount(0);
   await expect(back(page)).toBeFocused();
+});
+
+test('a refresh that turns the focused tile partly free keeps focus on that set (#1817)', async ({
+  page,
+}) => {
+  await refuseBookingAsTaken(page, await mockChallengeFence(page, 'on'));
+  await mockVenues(page);
+  let reads = 0;
+  // Someone took set 1's last day while the dialog was open: every read after the first says so.
+  await page.route(/\/api\/venues\/1(\?.*)?$/, (route) => {
+    reads += 1;
+    const sets = reads > 1 ? [set(1, 'PARTLY_FREE', [LAST]), ...FREE.slice(1)] : FREE;
+    return route.fulfill({ json: venue(1, sets) });
+  });
+  await page.goto(`/venues/1?${STAY}`);
+  await tile(page, 1).click();
+  const dialog = page.getByRole('dialog');
+  await completeDialog(dialog, 'Continue to payment');
+  await expect(dialog.getByRole('alert')).toBeVisible();
+
+  await page.keyboard.press('Escape');
+
+  // The "book" button is gone and a "which days" button stands in its place: focus is on it, not on the map card.
+  await expect(tile(page, 1)).toHaveAccessibleName(/Select to see which days/);
+  await expect(tile(page, 1)).toBeFocused();
 });
 
 test('focus outside the page stays where it is', async ({ page }) => {
