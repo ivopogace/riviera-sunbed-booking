@@ -290,6 +290,8 @@ export class VenueMap {
    * read under a map that stays on screen and usable, and it waits a load out rather than supersede it.
    */
   private loadInFlight = false;
+  /** The {@link epoch} of the read a focus-holding "Try again" press started, while it is the latest. */
+  private retryEpoch: number | undefined;
 
   /**
    * The map on screen is for the days just left: inert and dimmed until a read answers, while the
@@ -829,6 +831,8 @@ export class VenueMap {
           this.failed.set(true);
           if (toreDownMap) {
             this.moveFocus('map-error');
+          } else if (epoch === this.retryEpoch && this.parkedOnBack()) {
+            this.moveFocus('map-retry');
           }
         }
       },
@@ -867,9 +871,23 @@ export class VenueMap {
     });
   }
 
-  /** Retry after a load failure: re-fetch the current date's map. */
+  /**
+   * Retry after a load failure. The press destroys its own button for an inert skeleton, so focus
+   * waits on "All beaches", and a read that fails again hands it to the new button (#1816, RV-FE-9).
+   */
   protected retry(): void {
+    const parks = this.holdsFocus();
+    if (parks) {
+      this.rescueFocus('venue-back');
+    }
     this.load();
+    this.retryEpoch = parks ? this.epoch : undefined;
+  }
+
+  /** Whether focus is still where {@link retry} parked it: a visitor who moved on is left alone. */
+  private parkedOnBack(): boolean {
+    const back = this.host.nativeElement.querySelector('[data-testid="venue-back"]');
+    return back !== null && document.activeElement === back;
   }
 
   /** Back to the discovery list. */

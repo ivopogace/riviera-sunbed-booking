@@ -8,8 +8,10 @@ import type { MockSetView, MockVenueMapView } from './support/venue-views';
  * under the "All beaches" button, focus the reset would take lands on that button, and a plan's
  * booking dialog does not carry over. A date change: the old days' map stays on screen, dimmed, and
  * takes no tap and no focus until the read for the new days answers, while the availability line
- * says it is checking (#1815). A real browser is the proof here:
- * it ignores `focus()` and clicks on an `inert` element, jsdom does not. Mocked API, CI-safe.
+ * says it is checking (#1815). And a reload the visitor asks for (#1816): "Try again" on the
+ * failure panel, whose press destroys its own button for an inert skeleton. A real browser is the
+ * proof here: it ignores `focus()` and clicks on an `inert` element, jsdom does not. Mocked API,
+ * CI-safe.
  */
 
 function isoDay(offset: number): string {
@@ -190,6 +192,50 @@ for (const { name, width } of WIDTHS) {
 
       await expect(page.getByTestId('map-date')).toHaveAttribute('data-date', isoDay(20));
       await expect(back(page)).toBeFocused();
+    });
+
+    /**
+     * Open the page on a read that fails, then press "Try again" from the keyboard. The retry's read
+     * is held until the returned function is called with how it answers.
+     */
+    async function retryWithHeldRead(page: Page): Promise<(answer: 'map' | 'down') => void> {
+      let release: (answer: 'map' | 'down') => void = () => undefined;
+      const held = new Promise<'map' | 'down'>((resolve) => (release = resolve));
+      let reads = 0;
+      await mockVenues(page);
+      await page.route(/\/api\/venues\/1(\?.*)?$/, async (route) => {
+        const answer = ++reads === 1 ? 'down' : await held;
+        return answer === 'map'
+          ? route.fulfill({ json: venue(1, FREE) })
+          : route.fulfill({ status: 503, json: {} });
+      });
+      await page.goto(`/venues/1?${STAY}`);
+      const retry = page.getByRole('button', { name: 'Try again' });
+      await retry.focus();
+      await page.keyboard.press('Enter');
+      await expect(page.getByTestId('map-loading')).toBeAttached();
+      return release;
+    }
+
+    test('"Try again" hands focus to "All beaches", which keeps it when the map lands', async ({
+      page,
+    }) => {
+      const release = await retryWithHeldRead(page);
+      await expect(back(page)).toBeFocused();
+
+      release('map');
+
+      await expect(venueName(page, 'Miramar Beach Club')).toBeVisible();
+      await expect(back(page)).toBeFocused();
+    });
+
+    test('"Try again" takes focus back when its read fails again', async ({ page }) => {
+      const release = await retryWithHeldRead(page);
+      await expect(back(page)).toBeFocused();
+
+      release('down');
+
+      await expect(page.getByRole('button', { name: 'Try again' })).toBeFocused();
     });
 
     /**
