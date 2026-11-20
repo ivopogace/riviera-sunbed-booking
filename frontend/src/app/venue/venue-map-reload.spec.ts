@@ -22,8 +22,9 @@ import { VenueMap } from './venue-map';
  * The two ways the venue page reloads under the visitor (#1810). An in-place route change: the
  * router reuses the page when `:id`, `?date` or `?lastDate` change, and the reset rebuilds everything
  * under the "All beaches" button. A date change: the old days' map stays on screen, inert, until
- * the read for the new days answers. jsdom focuses an `inert` element and delivers it clicks, so
- * `e2e/venue-map-reload.e2e.ts` owns the proof in a browser.
+ * the read for the new days answers. And "Try again" on the failure panel (#1816). jsdom focuses
+ * an `inert` element and delivers it clicks, so `e2e/venue-map-reload.e2e.ts` owns the proof in a
+ * browser.
  */
 const first = addDays(defaultBookingDate(new Date()), 3);
 const last = addDays(first, 2);
@@ -352,6 +353,102 @@ describe('VenueMap: reloading under the visitor (#1810)', () => {
       await settle();
 
       expect(dom().querySelector('app-booking-dialog')).toBeNull();
+    });
+  });
+
+  describe('"Try again" on the failure panel (#1816)', () => {
+    const down = { status: 503, statusText: 'Service Unavailable' };
+
+    /** The first read failed: the panel is up, and focus is on its button unless `focused` is false. */
+    async function failThenFocusRetry(focused = true): Promise<void> {
+      await mount();
+      venueReq().flush('down', down);
+      await settle();
+      if (focused) {
+        one('map-retry').focus();
+      }
+    }
+
+    it('hands focus to "All beaches" while the read is in flight, and leaves it there on the map', async () => {
+      await failThenFocusRetry();
+
+      await tap(one('map-retry'));
+
+      expect(one('map-loading')).not.toBeNull();
+      expect(document.activeElement).toBe(one('venue-back'));
+
+      venueReq().flush(freeBeach());
+      await settle();
+
+      expect(document.activeElement).toBe(one('venue-back'));
+    });
+
+    it('returns focus to the new button when the read fails again', async () => {
+      await failThenFocusRetry();
+      const pressed = one('map-retry');
+
+      await tap(pressed);
+      venueReq().flush('down', down);
+      await settle();
+
+      expect(one('map-retry')).not.toBe(pressed);
+      expect(document.activeElement).toBe(one('map-retry'));
+    });
+
+    it('leaves focus the visitor moved out of the page while it loaded', async () => {
+      await failThenFocusRetry();
+      const outside = document.body.appendChild(document.createElement('button'));
+      try {
+        await tap(one('map-retry'));
+        expect(document.activeElement).toBe(one('venue-back'));
+        outside.focus();
+
+        venueReq().flush('down', down);
+        await settle();
+
+        expect(document.activeElement).toBe(outside);
+      } finally {
+        outside.remove();
+      }
+    });
+
+    it('moves no focus for a press that left it on <body>, as a pointer press may', async () => {
+      await failThenFocusRetry(false);
+      expect(document.activeElement).toBe(document.body);
+
+      await tap(one('map-retry'));
+      expect(document.activeElement).toBe(document.body);
+
+      venueReq().flush('down', down);
+      await settle();
+
+      expect(one('map-retry')).not.toBeNull();
+      expect(document.activeElement).toBe(document.body);
+    });
+
+    it('leaves focus on "All beaches" when the retry finds the venue gone', async () => {
+      await failThenFocusRetry();
+
+      await tap(one('map-retry'));
+      venueReq().flush('gone', { status: 404, statusText: 'Not Found' });
+      await settle();
+
+      expect(one('map-not-found')).not.toBeNull();
+      expect(document.activeElement).toBe(one('venue-back'));
+    });
+
+    it('a route change during the retry owns the next failure: focus stays on "All beaches"', async () => {
+      await failThenFocusRetry();
+      await tap(one('map-retry'));
+      const superseded = venueReq();
+
+      await switchVenue();
+      expect(superseded.cancelled).toBe(false);
+      venueReq(2).flush('down', down);
+      await settle();
+
+      expect(one('map-error')).not.toBeNull();
+      expect(document.activeElement).toBe(one('venue-back'));
     });
   });
 
