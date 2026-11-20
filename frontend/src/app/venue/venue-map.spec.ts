@@ -18,6 +18,7 @@ import { BehaviorSubject } from 'rxjs';
 import { vi } from 'vitest';
 
 import { environment } from '../../environments/environment';
+import { BookingDialog } from '../booking/booking-dialog';
 import { lightboxPhotoView, photoView, photoViews } from '../../testing/photo-views';
 import { uniformDays } from '../../testing/calendar-days';
 import { expectCellsFillCanvasRow } from '../../testing/beach-map-height';
@@ -1287,9 +1288,177 @@ describe('VenueMap', () => {
     await settle();
     expect(el().querySelector('app-booking-dialog')).not.toBeNull();
 
-    (fixture.componentInstance as unknown as { onDialogClose(): void }).onDialogClose();
-    await settle();
+    await dismissDialog(false);
     expect(el().querySelector('app-booking-dialog')).toBeNull();
+    // A close that reports no taken set asks the server nothing.
+    httpMock.expectNone((req) => req.url === `${environment.apiBaseUrl}/api/venues/1`);
+  });
+
+  /** Close the open booking dialog as it reports a close: on a taken set, or not. */
+  async function dismissDialog(setTaken: boolean): Promise<void> {
+    const dialog = fixture.debugElement.query(By.directive(BookingDialog));
+    (dialog.componentInstance as BookingDialog).dismissed.emit({ setTaken });
+    await settle();
+  }
+
+  describe('a booking dialog closed on a taken set (#1809)', () => {
+    function withTaken(venue: VenueMapView, id: number): VenueMapView {
+      return {
+        ...venue,
+        sets: venue.sets.map((set) => (set.id === id ? { ...set, availability: 'TAKEN' } : set)),
+      };
+    }
+
+    const tileButton = (id: number): HTMLButtonElement | null =>
+      el().querySelector<HTMLButtonElement>(`button[data-set-id="${id}"]`);
+
+    /** Load the map and open the dialog on its first bookable set; answers that set's id. */
+    async function openDialog(): Promise<number> {
+      flushVenue();
+      await settle();
+      const button = el().querySelector<HTMLButtonElement>('.set-button')!;
+      button.click();
+      await settle();
+      return Number(button.dataset['setId']);
+    }
+
+    async function land(request: TestRequest, venue: VenueMapView): Promise<void> {
+      request.flush(venue);
+      await settle();
+      fixture.detectChanges();
+    }
+
+    it('re-reads the map once for the same days, and the set renders taken', async () => {
+      const first = venueRequest();
+      first.flush(miramar());
+      await settle();
+      const button = el().querySelector<HTMLButtonElement>('.set-button')!;
+      const id = Number(button.dataset['setId']);
+      const bookable = el().querySelectorAll('.set-button').length;
+      button.click();
+      await settle();
+
+      await dismissDialog(true);
+
+      const refresh = venueRequest();
+      expect(refresh.request.params.toString()).toBe(first.request.params.toString());
+      // The map stands while the refresh is in flight: no skeleton, no announcement of a load.
+      expect(tileButton(id)).not.toBeNull();
+      await land(refresh, withTaken(miramar(), id));
+
+      expect(tileButton(id)).toBeNull();
+      expect(el().querySelectorAll('.set-button')).toHaveLength(bookable - 1);
+    });
+
+    it('keeps the map on screen and usable while the refresh is in flight: another set still opens its dialog', async () => {
+      const id = await openDialog();
+      await dismissDialog(true);
+      const refresh = venueRequest();
+
+      // A same-days refresh is not a load: no skeleton, and every other set can still be booked.
+      expect(el().querySelector('[data-testid="map-loading"]')).toBeNull();
+      const other = [...el().querySelectorAll<HTMLButtonElement>('.set-button')].find(
+        (button) => Number(button.dataset['setId']) !== id,
+      )!;
+      other.click();
+      await settle();
+      const open = (): BookingDialog | undefined =>
+        fixture.debugElement.query(By.directive(BookingDialog))?.componentInstance as
+          BookingDialog | undefined;
+      expect(open()?.set()?.id).toBe(Number(other.dataset['setId']));
+
+      // Its answer lands under the open dialog and leaves it be.
+      await land(refresh, withTaken(miramar(), id));
+      expect(open()?.set()?.id).toBe(Number(other.dataset['setId']));
+      expect(tileButton(id)).toBeNull();
+      await dismissDialog(false);
+    });
+
+    it('moves focus to the map when the refresh takes the tile that held it', async () => {
+      const id = await openDialog();
+      await dismissDialog(true);
+      expect(document.activeElement).toBe(tileButton(id));
+
+      await land(venueRequest(), withTaken(miramar(), id));
+
+      expect(document.activeElement).toBe(el().querySelector('[data-testid="beach-grid"]'));
+    });
+
+    it('moves no focus that no tile held: on another control, or on nothing', async () => {
+      const id = await openDialog();
+      await dismissDialog(true);
+      dateTrigger().focus();
+      await land(venueRequest(), withTaken(miramar(), id));
+      expect(document.activeElement).toBe(dateTrigger());
+
+      // A visitor who clicked the page away holds no focus: the refresh must not put it on the map.
+      const other = Number(el().querySelector<HTMLButtonElement>('.set-button')!.dataset['setId']);
+      el().querySelector<HTMLButtonElement>('.set-button')!.click();
+      await settle();
+      await dismissDialog(true);
+      tileButton(other)!.blur();
+      await land(venueRequest(), withTaken(withTaken(miramar(), id), other));
+      expect(document.activeElement).toBe(document.body);
+    });
+
+    it.each([
+      [503, 'Service Unavailable'],
+      [404, 'Not Found'],
+    ])('a refresh that fails with %i keeps the map and focus', async (status, statusText) => {
+      const id = await openDialog();
+      await dismissDialog(true);
+
+      venueRequest().flush('down', { status, statusText });
+      await settle();
+      fixture.detectChanges();
+
+      expect(el().querySelector('[data-testid="map-error"]')).toBeNull();
+      expect(el().querySelector('[data-testid="map-not-found"]')).toBeNull();
+      expect(document.activeElement).toBe(tileButton(id));
+    });
+
+    it('never supersedes a read in flight: that read answers for the same days', async () => {
+      const id = await openDialog();
+      (fixture.componentInstance as unknown as { retry(): void }).retry();
+
+      await dismissDialog(true);
+
+      // One request: the read already on its way answers, and no refresh is sent beside it.
+      await land(venueRequest(), withTaken(miramar(), id));
+      expect(tileButton(id)).toBeNull();
+    });
+
+    it('a date change supersedes a refresh: its answer is dropped', async () => {
+      const id = await openDialog();
+      await dismissDialog(true);
+      await openPicker();
+      pickDay('2026-06-16');
+
+      const [refresh, otherDay] = httpMock.match(
+        (req) => req.url === `${environment.apiBaseUrl}/api/venues/1`,
+      );
+      expect(otherDay.request.params.get('date')).toBe('2026-06-16');
+      await land(otherDay, miramar());
+      await land(refresh, withTaken(miramar(), id));
+
+      expect(tileButton(id)).not.toBeNull();
+    });
+
+    it('a refresh that fails after a date change was dispatched changes nothing', async () => {
+      await openDialog();
+      await dismissDialog(true);
+      await openPicker();
+      pickDay('2026-06-16');
+
+      const [refresh, otherDay] = httpMock.match(
+        (req) => req.url === `${environment.apiBaseUrl}/api/venues/1`,
+      );
+      refresh.flush('down', { status: 503, statusText: 'Service Unavailable' });
+      await land(otherDay, miramar());
+
+      expect(el().querySelector('[data-testid="map-error"]')).toBeNull();
+      expect(el().querySelector('.set-button')).not.toBeNull();
+    });
   });
 
   /** Drag the shared canvas's pan viewport 40px (> the 6px threshold) via real DOM events. */
@@ -2332,6 +2501,69 @@ describe('VenueMap — date carried from the discovery page (#294)', () => {
       fixture.detectChanges();
 
       expect(itineraryReq().request.params.get('anchorSetId')).toBe('2');
+    });
+
+    /** The stay fixture with set 3 free on every day, so one set covers the stay and is bookable. */
+    function withSetThreeFree(): VenueMapView {
+      const base = stayMiramar(first, last);
+      return {
+        ...base,
+        sets: base.sets.map((set) =>
+          set.id === 3 ? { ...set, availability: 'FREE', freeDays: 3, takenDates: [] } : set,
+        ),
+      };
+    }
+
+    async function closeOnTakenSet(): Promise<void> {
+      const dialog = fixture.debugElement.query(By.directive(BookingDialog));
+      (dialog.componentInstance as BookingDialog).dismissed.emit({ setTaken: true });
+      await settle();
+    }
+
+    it('a refresh after a taken set leaves an open stay plan alone (#1809)', async () => {
+      await setup({ date: first, lastDate: last });
+      venueReq().flush(withSetThreeFree());
+      await settle();
+      fixture.detectChanges();
+      dom().querySelector<HTMLButtonElement>('button[data-set-id="2"]')!.click();
+      fixture.detectChanges();
+      dom().querySelector<HTMLButtonElement>('[data-testid="plan-around"]')!.click();
+      fixture.detectChanges();
+      itineraryReq().flush({ ...stitched(), anchor: 'START' });
+      fixture.detectChanges();
+      dom().querySelector<HTMLButtonElement>('button[data-set-id="3"]')!.click();
+      await settle();
+
+      await closeOnTakenSet();
+      venueReq().flush(stayMiramar(first, last));
+      await settle();
+      fixture.detectChanges();
+
+      // No set covers the stay now, but the plan the tourist is reading is not re-asked or replaced.
+      httpMock.expectNone((req) => req.url.endsWith('/itinerary'));
+      expect(dom().querySelector('button[data-set-id="3"]')).toBeNull();
+      expect(dom().querySelectorAll('[data-testid="stay-plan-stop"]')).toHaveLength(2);
+      expect(dom().querySelectorAll('.set-tile[data-plan-index]')).toHaveLength(2);
+    });
+
+    it('a refresh that leaves no set covering the stay asks for the plan the banner offers (#1809)', async () => {
+      await setup({ date: first, lastDate: last });
+      venueReq().flush(withSetThreeFree());
+      await settle();
+      fixture.detectChanges();
+      dom().querySelector<HTMLButtonElement>('button[data-set-id="3"]')!.click();
+      await settle();
+
+      await closeOnTakenSet();
+      venueReq().flush(stayMiramar(first, last));
+      await settle();
+      fixture.detectChanges();
+
+      const request = itineraryReq();
+      expect(request.request.params.has('anchorSetId')).toBe(false);
+      request.flush(stitched());
+      fixture.detectChanges();
+      expect(dom().querySelector('[data-testid="no-cover-plan"]')).not.toBeNull();
     });
   });
 

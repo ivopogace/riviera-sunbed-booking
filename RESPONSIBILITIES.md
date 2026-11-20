@@ -1556,6 +1556,13 @@ The SPA rules whose TSDoc points here; structure is `riviera-frontend`'s, stylin
   its skeleton) sits in a 12px gutter there. Rows scroll with the page, never inside the lens.
   An open row wider than its viewport shows a thumb, never an edge fade, and keeps the tile its row
   names (`keepWhole`, the pick here) whole with its badge, as it does a tile focused from the keyboard.
+- **A booking dialog closed on `SET_TAKEN` refreshes the map; no other dismissal does** (`BookingDismissal`
+  in `booking/booking-dialog.ts`, `VenueMap.refresh`, #1809): the dialog knows the outcome, so the map never
+  pays a request per close. The refresh is not `load()`. Nobody asked for it, so its failure keeps the map it
+  had. It waits out a `load()` in flight rather than superseding it: a refresh that superseded a date change
+  and then failed would leave the old days' map under the new header. It re-asks no open stay plan, and it
+  does not reseed the lens, so no row re-pans and a pick that stands is not announced again. The plan dialog's
+  close keeps re-reading through `load()`: a plan is re-planned whole.
 - **The rails' label ellipsis and `rowName()`'s non-letter branch stay, defensive only** (#1626): the
   rails render active sets only (`active_set_position`, `JdbcVenueCatalog`), so no live map reaches a
   long label; the unit specs keep the classes, `loading-skeletons.e2e.ts` the capped rail's width under
