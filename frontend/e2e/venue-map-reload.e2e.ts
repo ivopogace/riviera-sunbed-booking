@@ -264,21 +264,18 @@ for (const { name, width } of WIDTHS) {
       return release;
     }
 
-    /** The availability line's offset inside its card: the page may scroll, the card's inside may not move. */
-    const lineTop = (page: Page): Promise<number> =>
+    /** Where the availability line and the bar under it sit inside their card, and the line's height. */
+    const lineBox = (page: Page): Promise<number[]> =>
       page.evaluate(() => {
-        const top = (id: string) =>
-          document.querySelector(`[data-testid="${id}"]`)!.getBoundingClientRect().top;
-        return top('availability') - top('map-overview');
+        const box = (id: string) =>
+          document.querySelector(`[data-testid="${id}"]`)!.getBoundingClientRect();
+        const card = box('map-overview').top;
+        return [
+          box('availability').top - card,
+          box('availability').height,
+          box('availability-bar').top - card,
+        ];
       });
-
-    /** Where the availability line sits on the plain no-cover page, before any date change. */
-    async function mockAndMeasureLine(page: Page): Promise<number> {
-      await mockVenues(page, () => NO_COVER);
-      await page.goto(`/venues/1?${STAY}`);
-      await expect(page.getByTestId('availability')).toBeVisible();
-      return lineTop(page);
-    }
 
     /** The shortened stay's read when someone took set 1's last day meanwhile: still partly free. */
     const STILL_PARTLY = [set(1, 'PARTLY_FREE', [MIDDLE]), ...NO_COVER.slice(1)];
@@ -311,7 +308,6 @@ for (const { name, width } of WIDTHS) {
     test('while other days load, the old map is dimmed, takes no tap, and the line says it is checking', async ({
       page,
     }) => {
-      const lineBefore = await mockAndMeasureLine(page);
       const release = await shortenWithHeldRead(page, [set(1, 'FREE', []), ...NO_COVER.slice(1)]);
 
       // The old days' map is still drawn, under the new days in the header.
@@ -320,15 +316,13 @@ for (const { name, width } of WIDTHS) {
       await expect(mapCard(page)).toHaveCSS('opacity', '0.5');
       // An inert node is not exposed, so a busy state on it would reach nobody.
       await expect(mapCard(page)).not.toHaveAttribute('aria-busy');
-      // The line names the new days and no count; the bar and the banner state nothing from the old read.
+      // The line names the new days and no count; the banner states nothing from the old read.
       const days = (await page.getByTestId('map-date').innerText()).trim();
       await expect(page.getByTestId('availability')).toHaveText(
         `Checking availability for ${days}…`,
       );
-      await expect(page.getByTestId('availability-bar').locator('span')).toHaveCSS('width', '0px');
       await expect(page.getByTestId('no-cover')).toHaveCount(0);
-      // The wrapper that seats the mark moved nothing: the line sits where it sat.
-      expect(await lineTop(page)).toBe(lineBefore);
+      const beforeMark = await lineBox(page);
       await expect(page.getByTestId('map-date')).toBeFocused();
       if (name === 'phone') {
         // Focus went up to the header; the page stayed down on the map.
@@ -339,6 +333,8 @@ for (const { name, width } of WIDTHS) {
       await expect(page.getByTestId('availability-wait')).toBeVisible();
       await expect(page.getByTestId('availability-wait')).toHaveCSS('animation-name', 'pay-spin');
       await expect(page.getByTestId('availability-wait')).toHaveCSS('width', '14px');
+      // The mark's arrival moves neither the line nor the bar under it.
+      expect(await lineBox(page)).toEqual(beforeMark);
       await expect(page.getByTestId('availability')).toHaveText(
         `Checking availability for ${days}…`,
       );

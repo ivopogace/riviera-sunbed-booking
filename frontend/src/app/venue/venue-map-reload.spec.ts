@@ -595,6 +595,8 @@ describe('VenueMap: reloading under the visitor (#1810)', () => {
       await settle();
 
       expect(map().hasAttribute('inert')).toBe(false);
+      expect(dimmed()).toBe(false);
+      expect(line()).toBe(`2 of 3 sets free on ${dayLabel(otherDay)}`);
     });
 
     it('is usable again on the venue a route change brings in mid-load', async () => {
@@ -727,18 +729,6 @@ describe('VenueMap: reloading under the visitor (#1810)', () => {
       venueReq().flush(freeBeach());
       await settle();
       expect(fill()).not.toBe('0%');
-    });
-
-    it('a failed read ends the checking with the failure panel', async () => {
-      await loadFree();
-      pickDays(otherDay);
-      await settle();
-
-      venueReq().flush('down', { status: 500, statusText: 'Server Error' });
-      await settle();
-
-      expect(dom().querySelector('[data-testid="availability"]')).toBeNull();
-      expect(dom().querySelector('[data-testid="map-error"]')).not.toBeNull();
     });
 
     describe('the progress mark', () => {

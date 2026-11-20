@@ -24,7 +24,7 @@ Seam for all: the rendered `VenueMap` page (DOM in jsdom, computed style and foc
 - [ ] **AC-3:** Given AC-1's window, then the availability bar shows no proportion and the no-cover banner is not shown; both return with the answer. *Pinned by:* `venue-map-reload.spec.ts` › "the bar shows no proportion…", "takes the no-cover banner with it…"
 - [ ] **AC-4:** Given AC-1's window, then the map card is at half opacity at both widths and back to full when the read answers or fails. *Pinned by:* `venue-map-reload.e2e.ts` › "while other days load…" (computed `opacity`)
 - [ ] **AC-5:** Given AC-1's window, then no progress mark is shown before one second, one is shown after, and none once the read answers. *Pinned by:* `venue-map-reload.spec.ts` › "the progress mark" (fake timers, the threshold); `venue-map-reload.e2e.ts` (the mark arrives while the read is held, and goes)
-- [ ] **AC-6:** The mark's arc reaches 3:1 on the card glass in all three themes; it does not spin under reduced motion. *Pinned by:* `venue-map.contrast.spec.ts`; `venue-map-reload.e2e.ts` (reduced motion, `animation-name`)
+- [ ] **AC-6:** The mark's arc reaches 3:1 on the card glass in all three themes; it does not spin under reduced motion. *Pinned by:* `venue-map.contrast.spec.ts` › "accent ink (free count, scroll hint, progress mark) meets AA on the card glass"; `venue-map-reload.e2e.ts` (reduced motion, `animation-name`)
 - [ ] **AC-7:** `aria-busy` is on no inert element. *Pinned by:* `venue-map-reload.spec.ts` › "is inert until the read answers"
 - [ ] **AC-8:** A same-days re-read (Retry, the #1809 refresh) changes neither the line nor the map's look. *Pinned by:* `venue-map-reload.spec.ts` › "stays usable through a re-read for the same days", "the map is not inert while that same-days read is in flight"
 - [ ] **AC-9:** The new copy is translated in `sq`, `it`, `de`. *Pinned by:* the build (`npm run build` fails on a marked message without a target).
@@ -58,9 +58,9 @@ Seam for all: the rendered `VenueMap` page (DOM in jsdom, computed style and foc
 
 ## Execution status
 
-**Stage pointer:** PR draft — CI, then ready for review
+**Stage pointer:** review — round 1 findings fixed (docs and tests only)
 
-**Next action:** check the push's CI run, mark ready, run the review gate
+**Next action:** green CI on the fix push, Sonar measures, remove this plan, READY TO MERGE
 
 | Phase | Status | Commits |
 |-------|--------|---------|

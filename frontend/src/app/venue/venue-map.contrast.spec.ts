@@ -244,11 +244,6 @@ describe.each(THEMES)('Beach-map glass contrast — $name theme (WCAG AA, issue 
 
   // The mode-pill / "New"-pill proof that stood here MOVED to shared/semantic-chip.contrast.spec.ts. It composited --riv-chip-bg over this panel's glass over every background stop, once per theme; the pills now wear an opaque solid fill, so a single ink/fill pair proves them on every surface and in both themes at once. Moved rather than dropped — and the successor is the stronger claim, because it cannot be invalidated by a change to the panel beneath.
 
-  it('the date-change progress mark’s arc (accent ink) reaches 3:1 on the card glass (WCAG 1.4.11)', () => {
-    // The 25% ring behind the arc is decoration; the arc is the mark, and it is not inactive content.
-    expectAaOverStops(theme.accent, 1, theme.cardGlass, theme.stops, AA_LARGE);
-  });
-
   it('date field text (dark ink) meets AA on the near-opaque field over the header glass', () => {
     for (const stop of theme.stops) {
       const panel = surfaceOver(theme.headerGlass, stop);
@@ -280,7 +275,8 @@ describe.each(THEMES)('Beach-map glass contrast — $name theme (WCAG AA, issue 
     expectAaOverStops(theme.cardInkBase, CARD_INK_FAINT_ALPHA, theme.cardGlass, theme.stops);
   });
 
-  it('accent ink (free count, scroll hint) meets AA on the card glass', () => {
+  // The date-change progress mark's arc is this same ink on this same glass, so 4.5:1 here is its 3:1 (WCAG 1.4.11).
+  it('accent ink (free count, scroll hint, progress mark) meets AA on the card glass', () => {
     expectAaOverStops(theme.accent, 1, theme.cardGlass, theme.stops);
   });
 });
