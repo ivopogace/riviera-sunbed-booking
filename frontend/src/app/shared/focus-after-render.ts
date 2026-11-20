@@ -7,8 +7,8 @@ import { afterNextRender, ElementRef, inject, Injector } from '@angular/core';
  */
 export function focusMover(options?: {
   readonly preventScroll?: boolean;
-  /** Act only if focus is already on `<body>` at the call, or that render removed or hid the
-   *  host-internal element focused then; focus held outside the host stays put. */
+  /** Act only if focus is already on `<body>` at the call, or that render removed, hid or made inert
+   *  the host-internal element focused then; focus held outside the host stays put. */
   readonly onlyIfLost?: boolean;
 }): (testId: string, fallbackTestId?: string) => void {
   const host = inject<ElementRef<HTMLElement>>(ElementRef);
@@ -43,7 +43,7 @@ export function focusMover(options?: {
 }
 
 function isStillFocusable(element: HTMLElement): boolean {
-  return element.isConnected && element.closest('[hidden]') === null;
+  return element.isConnected && element.closest('[hidden], [inert]') === null;
 }
 
 function landingSpot(host: HTMLElement, testId: string, fallbackTestId?: string): HTMLElement {

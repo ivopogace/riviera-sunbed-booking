@@ -4,6 +4,7 @@
     appTouchTarget
     class="back-pill inline-flex items-center gap-2 text-riv-ink text-[14px] font-semibold cursor-pointer px-3.5 py-2 rounded-full mb-4 min-[1280px]:[margin-inline-start:calc((100%_-_1100px)/2)] [transition:filter_0.15s_ease] hover:brightness-[0.96] motion-reduce:transition-none focus-visible:outline-[3px] focus-visible:outline-white focus-visible:outline-offset-2"
     appPanelGlass
+    data-testid="venue-back"
     (click)="onBack()"
   >
     <app-arrow-left-icon class="[&_svg]:size-[14px]" />
@@ -289,6 +290,7 @@
             <div
               class="mt-3 rounded-[16px] border border-riv-field-border bg-riv-field-solid px-4 py-3 text-[14px] text-riv-card-ink"
               data-testid="no-cover"
+              [attr.inert]="staleDays() ? '' : null"
             >
               @if (plan(); as offered) {
                 <!-- A stitched plan fits the move budget: the banner leads with it (D13); the longest single run stays as the way not to move. -->
@@ -511,6 +513,8 @@
           [(open)]="lensOpen"
           [panAgain]="lensSeed()"
           focusOnOpen=".bookable button"
+          [attr.inert]="staleDays() ? '' : null"
+          [attr.aria-busy]="staleDays()"
         >
           <!-- Swatches wear the overview looks the cells below them wear, on the wash's first stop. -->
           <ul
@@ -562,6 +566,8 @@
           i18n-label
           railCodes="capped-labels"
           priceChips="capped-spans"
+          [attr.inert]="staleDays() ? '' : null"
+          [attr.aria-busy]="staleDays()"
         >
           <!-- The legend leads the card (#701): the tourist decodes the colours BEFORE reading the tiles, so it is projected above the grid rather than trailing it. Swatches wear the SAME appMapTile appearance as the tiles they stand for AND sit on the wash's own first stop, so a translucent swatch composites over the same ground its tiles do — matching computed styles is not the same as looking alike. The canvas owns the band's vertical spacing. -->
           <ul

@@ -3,14 +3,16 @@ import {
   afterNextRender,
   Component,
   computed,
+  DestroyRef,
   effect,
+  ElementRef,
   inject,
   Injector,
   signal,
   untracked,
 } from '@angular/core';
 import { NgTemplateOutlet } from '@angular/common';
-import { toSignal } from '@angular/core/rxjs-interop';
+import { takeUntilDestroyed, toSignal } from '@angular/core/rxjs-interop';
 import { Title } from '@angular/platform-browser';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 
@@ -215,8 +217,12 @@ export class VenueMap {
   private readonly title = inject(Title);
   /** WCAG 2.4.3: a re-fetch failure tears down the map (which may hold focus) — move it (RV-FE-9). */
   private readonly moveFocus = focusMover();
-  /** For a refresh, which no visitor asked for: moves focus only if the render took its holder. */
+  /** For a refresh, which no visitor asked for, and a route reset: moves focus only if the render took its holder. */
   private readonly rescueFocus = focusMover({ onlyIfLost: true });
+  /** A date change's landing: the same, without scrolling, as the visitor may be far down the map. */
+  private readonly parkIfTaken = focusMover({ onlyIfLost: true, preventScroll: true });
+  private readonly destroyRef = inject(DestroyRef);
+  private readonly host = inject<ElementRef<HTMLElement>>(ElementRef);
 
   protected readonly venue = signal<VenueMapView | undefined>(undefined);
   /** What the way back to other beaches carries: the day, or the stay's first and last day. */
@@ -281,6 +287,9 @@ export class VenueMap {
    * read under a map that stays on screen and usable, and it waits a load out rather than supersede it.
    */
   private loadInFlight = false;
+
+  /** The map on screen is for the days just left: inert until a read answers. A same-days re-read never sets it. */
+  protected readonly staleDays = signal(false);
 
   /** Whether the availability calendar is open over the header's date field. */
   protected readonly pickerOpen = signal(false);
@@ -597,19 +606,18 @@ export class VenueMap {
   private resetForVenue(id: number | undefined): void {
     this.epoch++;
     this.venue.set(undefined);
+    this.staleDays.set(false);
     this.selectedSet.set(undefined);
     this.pickId.set(undefined);
     this.lensUnseeded = true;
-    // The reset takes any focus-trapped modal AND its trigger, so move focus deliberately (RV-FE-9).
-    const modalWasOpen =
-      this.pickerOpen() || this.lightboxIndex() !== undefined || this.partlySet() !== undefined;
     this.pickerOpen.set(false);
     this.lightboxIndex.set(undefined);
     this.partlySet.set(undefined);
     this.resetPlan();
     this.pendingSelectSetId = undefined;
-    if (modalWasOpen) {
-      this.moveFocus('map-loading');
+    // Everything under the back button is rebuilt. Not the skeleton: it is inert, so a browser drops the move (RV-FE-9).
+    if (this.holdsFocus()) {
+      this.rescueFocus('venue-back');
     }
     this.lastTriggerId = undefined;
     const floor = defaultBookingDate(new Date());
@@ -623,6 +631,11 @@ export class VenueMap {
       return;
     }
     this.load();
+  }
+
+  /** Whether focus is inside the page: focus on `<body>` or in the shell is never moved by a reload. */
+  private holdsFocus(): boolean {
+    return this.host.nativeElement.contains(document.activeElement);
   }
 
   /** Build the render+a11y view of one set (invariant #3: only free ONLINE sets are bookable). */
@@ -669,7 +682,14 @@ export class VenueMap {
     }
     const epoch = ++this.planEpoch;
     this.planFailed.set(false);
-    this.venues.itinerary(id, this.selectedDate(), this.selectedLastDate(), anchorSetId).subscribe({
+    const read = this.venues.itinerary(
+      id,
+      this.selectedDate(),
+      this.selectedLastDate(),
+      anchorSetId,
+    );
+    // Dropped with the page: an answer after it is left would move focus on a destroyed view.
+    read.pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
       next: (itinerary) => {
         if (this.planEpoch === epoch) {
           this.itinerary.set(itinerary);
@@ -696,6 +716,7 @@ export class VenueMap {
     this.planFailed.set(false);
     this.planOpen.set(false);
     this.planAnchorSet.set(undefined);
+    this.selectedPlan.set(undefined);
   }
 
   /** Open the plan the banner offered; focus lands on its title once rendered. */
@@ -755,11 +776,13 @@ export class VenueMap {
     // The per-dispatch generation: any later dispatch or reset supersedes this response.
     const epoch = ++this.epoch;
     this.loadInFlight = true;
-    this.venues.getVenueMap(id, this.selectedDate(), this.selectedLastDate()).subscribe({
+    const read = this.venues.getVenueMap(id, this.selectedDate(), this.selectedLastDate());
+    read.pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
       next: (venue) => {
         if (this.epoch === epoch) {
           this.loadInFlight = false;
           this.venue.set(venue);
+          this.staleDays.set(false);
           this.settleLens();
           this.openPendingSelection(venue);
           if (this.planOpen() || this.noSetCovers()) {
@@ -776,6 +799,7 @@ export class VenueMap {
         // A stale map under a new date header misleads — the panel must win over the old view.
         const toreDownMap = this.venue() !== undefined;
         this.venue.set(undefined);
+        this.staleDays.set(false);
         // The teardown takes the header, and with it the trigger — close without chasing it.
         this.pickerOpen.set(false);
         this.lightboxIndex.set(undefined);
@@ -839,8 +863,8 @@ export class VenueMap {
 
   /**
    * After a shortened stay's map arrives: open the dialog on the set the offer was made for, if
-   * it is still free for those days — the server decides (invariant #2); otherwise the tile keeps
-   * focus and the new map speaks for itself.
+   * it is still free for those days — the server decides (invariant #2); otherwise focus still
+   * waiting on the date field moves to the set's tile, and the new map speaks for itself.
    */
   private openPendingSelection(venue: VenueMapView): void {
     const id = this.pendingSelectSetId;
@@ -848,12 +872,21 @@ export class VenueMap {
       return;
     }
     this.pendingSelectSetId = undefined;
+    // The visitor opened the calendar or the photos meanwhile: neither a dialog nor a focus move over it.
+    if (this.pickerOpen() || this.lightboxIndex() !== undefined) {
+      return;
+    }
     const set = venue.sets.find((s) => s.id === id);
     if (set !== undefined && this.toTile(set).bookable) {
       this.select(set);
-    } else {
+    } else if (this.dateField()?.contains(document.activeElement)) {
+      // Focus still waits where the date change parked it; focus the visitor moved on stays theirs.
       this.focusTile(id);
     }
+  }
+
+  private dateField(): HTMLElement | null {
+    return this.host.nativeElement.querySelector<HTMLElement>('[data-testid="map-date"]');
   }
 
   /** Re-fetch availability for newly chosen days (closing any open dialog or sheet first). */
@@ -869,6 +902,13 @@ export class VenueMap {
     this.resetPlan();
     this.selectedDate.set(days.first);
     this.selectedLastDate.set(days.last);
+    if (this.venue() !== undefined) {
+      // The old days' map stays on screen but inert: focus it held lands on the field naming the new days (RV-FE-9).
+      this.staleDays.set(true);
+      if (this.holdsFocus()) {
+        this.parkIfTaken('map-date');
+      }
+    }
     this.load();
   }
 
@@ -1044,8 +1084,11 @@ export class VenueMap {
   protected shortenTo(set: SetView, days: DateRange): void {
     this.partlySet.set(undefined);
     this.lastTriggerId = set.id;
-    // The sheet held focus: land on its tile now (RV-FE-9); the dialog takes it once the map is here.
-    this.focusTile(set.id);
+    // The sheet held focus. The same days re-read nothing: it lands on its tile. Other days land it on the date field.
+    if (days.first === this.selectedDate() && days.last === this.selectedLastDate()) {
+      this.focusTile(set.id);
+      return;
+    }
     this.onDatesChange(days);
     // Set after the dispatch: a date change clears it, so it can only fire for this load.
     this.pendingSelectSetId = set.id;
@@ -1055,17 +1098,12 @@ export class VenueMap {
     if (setId === undefined) {
       return;
     }
-    if (!this.phone()) {
-      queueMicrotask(() => {
-        document.querySelector<HTMLElement>(`[data-set-id="${setId}"]`)?.focus();
-      });
-      return;
-    }
-    // On a phone the tile exists only while its row is open: open it, then focus once rendered.
+    // On a phone the tile exists only while its row is open: open it first.
     const row = this.rows().find((r) => r.tiles.some((tile) => tile.set.id === setId));
-    if (row !== undefined && !this.lensOpen().includes(row.code)) {
+    if (this.phone() && row !== undefined && !this.lensOpen().includes(row.code)) {
       this.lensOpen.set([row.code]);
     }
+    // After the render at every width: a map just re-read is inert until then.
     afterNextRender(
       { write: () => document.querySelector<HTMLElement>(`[data-set-id="${setId}"]`)?.focus() },
       { injector: this.injector },

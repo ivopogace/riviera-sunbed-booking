@@ -1525,7 +1525,8 @@ The SPA rules whose TSDoc points here; structure is `riviera-frontend`'s, stylin
   destroys the element just activated, stranding focus on `<body>` (WCAG 2.4.3), and the target
   rarely exists yet at decision time — hence lookup in `earlyRead`, `focus()` in `write`. A swap the
   server drives (the pay page's poll and re-check) passes `onlyIfLost`: focus moves only if it was
-  already on `<body>` or the render took its holder, so a control the swap keeps is never robbed.
+  already on `<body>` or the render took its holder (removed, hidden or made `inert`), so a control
+  the swap keeps is never robbed.
 - **A lazy chunk that fails to load is answered with one full reload, then a card**
   (`core/chunk-load-recovery.ts`, the eager `pages/page-load-failed`): a browser memoises a failed
   module fetch, so an in-app retry of the same `import()` fails without refetching, and the router

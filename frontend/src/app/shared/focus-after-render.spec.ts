@@ -168,6 +168,9 @@ describe('focusMover (#604)', () => {
     <div data-testid="frame-host" [hidden]="step() !== 'card'">
       <button type="button" data-testid="framed">Card field</button>
     </div>
+    <div [attr.inert]="step() === 'card' ? null : ''">
+      <button type="button" data-testid="stale">Old content</button>
+    </div>
   `,
 })
 class SwapHost {
@@ -213,6 +216,12 @@ describe('focusMover onlyIfLost (#1410)', () => {
 
   it('moves focus when the render hid the focused control', async () => {
     await finishFrom(byId('framed'));
+
+    expect(document.activeElement).toBe(byId('title'));
+  });
+
+  it('moves focus when the render made the focused control inert', async () => {
+    await finishFrom(byId('stale'));
 
     expect(document.activeElement).toBe(byId('title'));
   });
