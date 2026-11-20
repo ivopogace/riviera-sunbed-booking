@@ -217,9 +217,9 @@ export class VenueMap {
   private readonly title = inject(Title);
   /** WCAG 2.4.3: a re-fetch failure tears down the map (which may hold focus) — move it (RV-FE-9). */
   private readonly moveFocus = focusMover();
-  /** For a refresh, which no visitor asked for, and a route reset: moves focus only if the render took its holder. */
+  /** For a route reset and a refresh's teardown: moves focus only if the render took its holder. */
   private readonly rescueFocus = focusMover({ onlyIfLost: true });
-  /** A date change's landing: the same, without scrolling, as the visitor may be far down the map. */
+  /** A date change's or a refresh's landing: the same, without scrolling, as the visitor may be far down the map. */
   private readonly parkIfTaken = focusMover({ onlyIfLost: true, preventScroll: true });
   private readonly destroyRef = inject(DestroyRef);
   private readonly host = inject<ElementRef<HTMLElement>>(ElementRef);
@@ -287,6 +287,11 @@ export class VenueMap {
    * read under a map that stays on screen and usable, and it waits a load out rather than supersede it.
    */
   private loadInFlight = false;
+  /**
+   * A stale-map close arrived under a {@link load} in flight, which may have been computed before
+   * the refusal: its answer is followed by one {@link refresh}. Any later load drops the debt.
+   */
+  private refreshOwed = false;
 
   /** The map on screen is for the days just left: inert until a read answers. A same-days re-read never sets it. */
   protected readonly staleDays = signal(false);
@@ -776,6 +781,7 @@ export class VenueMap {
     // The per-dispatch generation: any later dispatch or reset supersedes this response.
     const epoch = ++this.epoch;
     this.loadInFlight = true;
+    this.refreshOwed = false;
     const read = this.venues.getVenueMap(id, this.selectedDate(), this.selectedLastDate());
     read.pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
       next: (venue) => {
@@ -787,6 +793,9 @@ export class VenueMap {
           this.openPendingSelection(venue);
           if (this.planOpen() || this.noSetCovers()) {
             this.loadItinerary(this.planAnchorSet()?.id);
+          }
+          if (this.refreshOwed) {
+            this.refresh();
           }
         }
       },
@@ -820,35 +829,82 @@ export class VenueMap {
   }
 
   /**
-   * Re-read the shown map for the same days, in place (#1809): a failure keeps the map it had, an
-   * open plan is not re-asked, and a {@link load} in flight answers instead. Rationale:
+   * Re-read the shown map for the same days, in place (#1809): only a 404 takes the map it had, an
+   * open plan is not re-asked, and a {@link load} in flight answers first. Rationale:
    * RESPONSIBILITIES.md §Frontend.
    */
   private refresh(): void {
     const id = this.venueId();
-    if (id === undefined || this.venue() === undefined || this.loadInFlight) {
+    if (id === undefined || this.venue() === undefined) {
+      return;
+    }
+    this.refreshOwed = this.loadInFlight;
+    if (this.loadInFlight) {
       return;
     }
     const epoch = ++this.epoch;
-    this.venues.getVenueMap(id, this.selectedDate(), this.selectedLastDate()).subscribe({
+    const read = this.venues.getVenueMap(id, this.selectedDate(), this.selectedLastDate());
+    read.pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
       next: (venue) => {
         if (this.epoch !== epoch) {
           return;
         }
-        // A set that stops being bookable loses its button, and with it any focus the button held.
-        if (document.activeElement?.hasAttribute('data-set-id')) {
-          this.rescueFocus('lens-open', 'beach-grid');
-        }
+        const held = this.focusedTile();
         this.venue.set(venue);
         this.settleLens();
+        if (held !== undefined) {
+          this.keepTileFocus(held);
+        }
         if (!this.planOpen() && this.noSetCovers()) {
           this.loadItinerary();
         }
       },
-      error: () => {
-        // The map it had stands: nobody asked for this read, so its failure is nobody's news.
+      error: (error: unknown) => {
+        // Any other failure keeps the map: nobody asked for this read. A 404 no retry can mend.
+        if (this.epoch !== epoch || !(error instanceof HttpErrorResponse) || error.status !== 404) {
+          return;
+        }
+        this.venue.set(undefined);
+        this.pickerOpen.set(false);
+        this.lightboxIndex.set(undefined);
+        this.notFound.set(true);
+        this.rescueFocus('map-not-found');
       },
     });
+  }
+
+  /** The map tile holding focus, if one does. */
+  private focusedTile(): { readonly setId: number; readonly button: Element } | undefined {
+    const button = document.activeElement;
+    return button?.hasAttribute('data-set-id') && this.host.nativeElement.contains(button)
+      ? { setId: Number(button.getAttribute('data-set-id')), button }
+      : undefined;
+  }
+
+  /**
+   * After a refresh's render: focus the render took from a tile goes to the same set's button if it
+   * still has one (free to partly free swaps it), else to the map. Unscrolled: nobody asked (#1817).
+   */
+  private keepTileFocus(held: { readonly setId: number; readonly button: Element }): void {
+    const tile = this.rows()
+      .flatMap((row) => row.tiles)
+      .find((candidate) => candidate.set.id === held.setId);
+    if (!tile?.partly && !tile?.bookable) {
+      this.parkIfTaken('lens-open', 'beach-grid');
+      return;
+    }
+    afterNextRender(
+      {
+        write: () => {
+          if (!held.button.isConnected) {
+            this.host.nativeElement
+              .querySelector<HTMLElement>(`[data-set-id="${held.setId}"]`)
+              ?.focus({ preventScroll: true });
+          }
+        },
+      },
+      { injector: this.injector },
+    );
   }
 
   /** Retry after a load failure: re-fetch the current date's map. */
@@ -1122,7 +1178,7 @@ export class VenueMap {
     this.moveFocus(this.lightboxTriggerTestId);
   }
 
-  /** The dialog closed without booking; closed on a taken set, the map is refreshed to show it. */
+  /** The dialog closed without booking; closed on a refusal that leaves the map stale, the map is refreshed. */
   protected onDialogClose(dismissal: BookingDismissal): void {
     const set = this.selectedSet();
     this.selectedSet.set(undefined);
@@ -1132,7 +1188,7 @@ export class VenueMap {
     } else {
       this.focusTile(this.lastTriggerId);
     }
-    if (dismissal.setTaken) {
+    if (dismissal.mapStale) {
       this.refresh();
     }
   }

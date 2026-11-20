@@ -54,18 +54,26 @@ export async function refuseBookingAsTaken(
   page: Page,
   fence: Pick<ChallengeFence, 'screen'>,
 ): Promise<void> {
+  await refuseBooking(page, fence, {
+    status: 409,
+    title: 'Conflict',
+    detail: 'The set is already taken for this date.',
+    code: 'SET_TAKEN',
+  });
+}
+
+/** Refuse the fenced create with the server's problem body for `code` (`Rejections.java`: 422 but for `SET_TAKEN` and `NO_SUCH_SET`). */
+export async function refuseBooking(
+  page: Page,
+  fence: Pick<ChallengeFence, 'screen'>,
+  problem: { status: number; title: string; detail: string; code: string },
+): Promise<void> {
   // The RFC-7807 contract: application/problem+json whose stable identity is the `code` extension.
   await mockFencedBookingCreate(page, fence, (route) =>
     route.fulfill({
-      status: 409,
+      status: problem.status,
       contentType: 'application/problem+json',
-      json: {
-        type: 'about:blank',
-        title: 'Conflict',
-        status: 409,
-        detail: 'The set is already taken for this date.',
-        code: 'SET_TAKEN',
-      },
+      json: { type: 'about:blank', ...problem },
     }),
   );
 }

@@ -398,17 +398,53 @@ describe('VenueMap: reloading under the visitor (#1810)', () => {
       venueReq().flush(freeBeach());
     });
 
-    describe('beside the refresh after a set was just taken (#1809)', () => {
-      /** Open the dialog on set 1 and close it as the reserve does on `409 SET_TAKEN`. */
-      async function closeOnSetTaken(): Promise<TestRequest> {
-        await loadFree();
+    describe('beside the refresh after a refused booking (#1809, #1812)', () => {
+      /** Open the dialog on set 1 and close it as it does after a refusal that leaves the map stale. */
+      async function closeOnSetTaken(query: Record<string, string> = {}): Promise<TestRequest> {
+        await mount(query);
+        venueReq().flush(freeBeach());
+        await settle();
         await tap(tile(1));
         const dialog = fixture.debugElement.query(By.directive(BookingDialog))
           .componentInstance as BookingDialog;
-        dialog.dismissed.emit({ setTaken: true });
+        dialog.dismissed.emit({ mapStale: true });
         await settle();
         return venueReq();
       }
+
+      it('ends with the page: a refresh in flight when the visitor leaves is dropped (#1817)', async () => {
+        const refresh = await closeOnSetTaken();
+
+        fixture.destroy();
+
+        expect(refresh.cancelled).toBe(true);
+      });
+
+      it('keeps focus on a tile that turns partly free: its "which days" button takes it, unscrolled (#1817)', async () => {
+        const refresh = await closeOnSetTaken({ date: first, lastDate: last });
+        const bookButton = tile(1);
+        expect(document.activeElement).toBe(bookButton);
+
+        refresh.flush(
+          venue(1, [set(1, 'PARTLY_FREE', [last]), set(2, 'FREE', []), set(3, 'TAKEN', [first])]),
+        );
+        await settle();
+
+        expect(tile(1)).not.toBe(bookButton);
+        expect(tile(1).getAttribute('aria-label')).toContain('Select to see which days');
+        expect(document.activeElement).toBe(tile(1));
+      });
+
+      it('leaves focus alone when the refresh keeps the tile’s button', async () => {
+        const refresh = await closeOnSetTaken();
+        const focus = vi.spyOn(tile(1), 'focus');
+
+        refresh.flush(freeBeach());
+        await settle();
+
+        expect(document.activeElement).toBe(tile(1));
+        expect(focus).not.toHaveBeenCalled();
+      });
 
       it('the map is not inert while that same-days read is in flight', async () => {
         const refresh = await closeOnSetTaken();

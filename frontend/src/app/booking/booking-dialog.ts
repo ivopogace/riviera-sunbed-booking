@@ -45,9 +45,19 @@ import { PrimaryCta } from '../shared/primary-cta';
 
 /** How the dialog closed without booking. */
 export interface BookingDismissal {
-  /** Its standing answer was `SET_TAKEN`: what the host shows of that set is stale (#1809). */
-  readonly setTaken: boolean;
+  /** A reserve was refused for the venue, the set or the days: what the host shows is stale (#1812). */
+  readonly mapStale: boolean;
 }
+
+/** The refusals that say so. A malformed request, an unknown failure and proof of work say nothing of the map. */
+const STALING_REFUSALS: ReadonlySet<string> = new Set<BookingErrorCode>([
+  'SET_TAKEN',
+  'SET_NOT_BOOKABLE_ONLINE',
+  'BOOKING_CLOSED',
+  'VENUE_CLOSED',
+  'STAY_TOO_LONG',
+  'NO_SUCH_SET',
+]);
 
 /** What a set includes — the product's fixed unit (CLAUDE.md: 2 loungers + umbrella, full day). */
 const SET_INCLUDES = $localize`2 loungers + umbrella · full day`;
@@ -514,6 +524,8 @@ export class BookingDialog implements OnInit {
   protected readonly submitAttempted = signal(false);
   protected readonly submitting = signal(false);
   private readonly errorCode = signal<BookingErrorCode | ChallengeRejection | undefined>(undefined);
+  /** Kept once true: a later refusal of another kind leaves the host's map no fresher. */
+  private mapStale = false;
 
   protected readonly isRequest = computed(() => this.mode() === 'REQUEST');
   protected readonly isPlan = computed(() => this.plan() !== undefined);
@@ -638,7 +650,7 @@ export class BookingDialog implements OnInit {
   }
 
   protected requestClose(): void {
-    this.dismissed.emit({ setTaken: this.errorCode() === 'SET_TAKEN' });
+    this.dismissed.emit({ mapStale: this.mapStale });
   }
 
   /** The one primary action; branches on the step (advance on Details, submit on Review). */
@@ -720,6 +732,7 @@ export class BookingDialog implements OnInit {
       } catch (error) {
         const outcome = bookingErrorOf(error);
         this.errorCode.set(outcome);
+        this.mapStale ||= STALING_REFUSALS.has(outcome);
         if (isChallengeRejection(outcome)) {
           this.challenge()?.refresh();
         }

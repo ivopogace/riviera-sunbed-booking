@@ -1290,18 +1290,18 @@ describe('VenueMap', () => {
 
     await dismissDialog(false);
     expect(el().querySelector('app-booking-dialog')).toBeNull();
-    // A close that reports no taken set asks the server nothing.
+    // A close that reports no stale map asks the server nothing.
     httpMock.expectNone((req) => req.url === `${environment.apiBaseUrl}/api/venues/1`);
   });
 
-  /** Close the open booking dialog as it reports a close: on a taken set, or not. */
-  async function dismissDialog(setTaken: boolean): Promise<void> {
+  /** Close the open booking dialog as it reports a close: after a refusal that leaves the map stale, or not. */
+  async function dismissDialog(mapStale: boolean): Promise<void> {
     const dialog = fixture.debugElement.query(By.directive(BookingDialog));
-    (dialog.componentInstance as BookingDialog).dismissed.emit({ setTaken });
+    (dialog.componentInstance as BookingDialog).dismissed.emit({ mapStale });
     await settle();
   }
 
-  describe('a booking dialog closed on a taken set (#1809)', () => {
+  describe('a booking dialog closed on a refusal that leaves the map stale (#1809, #1812)', () => {
     function withTaken(venue: VenueMapView, id: number): VenueMapView {
       return {
         ...venue,
@@ -1378,10 +1378,14 @@ describe('VenueMap', () => {
       const id = await openDialog();
       await dismissDialog(true);
       expect(document.activeElement).toBe(tileButton(id));
+      const card = el().querySelector<HTMLElement>('[data-testid="beach-grid"]')!;
+      const focus = vi.spyOn(card, 'focus');
 
       await land(venueRequest(), withTaken(miramar(), id));
 
-      expect(document.activeElement).toBe(el().querySelector('[data-testid="beach-grid"]'));
+      expect(document.activeElement).toBe(card);
+      // Nobody asked for the read: the page does not jump to the map under the visitor (#1817).
+      expect(focus).toHaveBeenCalledWith({ preventScroll: true });
     });
 
     it('moves no focus that no tile held: on another control, or on nothing', async () => {
@@ -1401,14 +1405,11 @@ describe('VenueMap', () => {
       expect(document.activeElement).toBe(document.body);
     });
 
-    it.each([
-      [503, 'Service Unavailable'],
-      [404, 'Not Found'],
-    ])('a refresh that fails with %i keeps the map and focus', async (status, statusText) => {
+    it('a refresh that fails with 503 keeps the map and focus', async () => {
       const id = await openDialog();
       await dismissDialog(true);
 
-      venueRequest().flush('down', { status, statusText });
+      venueRequest().flush('down', { status: 503, statusText: 'Service Unavailable' });
       await settle();
       fixture.detectChanges();
 
@@ -1417,15 +1418,64 @@ describe('VenueMap', () => {
       expect(document.activeElement).toBe(tileButton(id));
     });
 
-    it('never supersedes a read in flight: that read answers for the same days', async () => {
+    it('a refresh answered 404 shows the not-available panel, which takes the focus the map held', async () => {
+      await openDialog();
+      await dismissDialog(true);
+
+      venueRequest().flush('gone', { status: 404, statusText: 'Not Found' });
+      await settle();
+      fixture.detectChanges();
+
+      const panel = el().querySelector('[data-testid="map-not-found"]');
+      expect(panel).not.toBeNull();
+      expect(el().querySelectorAll('[data-testid="set-tile"]')).toHaveLength(0);
+      expect(document.activeElement).toBe(panel);
+    });
+
+    it('a refresh answered 404 leaves focus held outside the page where it is', async () => {
+      await openDialog();
+      await dismissDialog(true);
+      const outside = document.createElement('button');
+      document.body.append(outside);
+      outside.focus();
+
+      venueRequest().flush('gone', { status: 404, statusText: 'Not Found' });
+      await settle();
+      fixture.detectChanges();
+
+      expect(el().querySelector('[data-testid="map-not-found"]')).not.toBeNull();
+      expect(document.activeElement).toBe(outside);
+      outside.remove();
+    });
+
+    it('a read in flight is not superseded: one refresh follows its answer', async () => {
       const id = await openDialog();
       (fixture.componentInstance as unknown as { retry(): void }).retry();
 
       await dismissDialog(true);
 
-      // One request: the read already on its way answers, and no refresh is sent beside it.
+      // The read on its way may be older than the refusal: it answers alone, then the refresh is sent.
+      await land(venueRequest(), miramar());
+      expect(tileButton(id)).not.toBeNull();
       await land(venueRequest(), withTaken(miramar(), id));
       expect(tileButton(id)).toBeNull();
+      httpMock.expectNone((req) => req.url === `${environment.apiBaseUrl}/api/venues/1`);
+    });
+
+    it('a date change drops the refresh owed: the new days’ read is newer than the refusal', async () => {
+      await openDialog();
+      (fixture.componentInstance as unknown as { retry(): void }).retry();
+      await dismissDialog(true);
+      await openPicker();
+      pickDay('2026-06-16');
+
+      const [superseded, otherDay] = httpMock.match(
+        (req) => req.url === `${environment.apiBaseUrl}/api/venues/1`,
+      );
+      await land(superseded, miramar());
+      await land(otherDay, miramar());
+
+      httpMock.expectNone((req) => req.url === `${environment.apiBaseUrl}/api/venues/1`);
     });
 
     it('a date change supersedes a refresh: its answer is dropped', async () => {
@@ -2516,7 +2566,7 @@ describe('VenueMap — date carried from the discovery page (#294)', () => {
 
     async function closeOnTakenSet(): Promise<void> {
       const dialog = fixture.debugElement.query(By.directive(BookingDialog));
-      (dialog.componentInstance as BookingDialog).dismissed.emit({ setTaken: true });
+      (dialog.componentInstance as BookingDialog).dismissed.emit({ mapStale: true });
       await settle();
     }
 

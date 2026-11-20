@@ -6,6 +6,7 @@ import {
   completeDialog,
   fillDetailsAndContinue,
   mockFencedBookingCreate,
+  refuseBooking,
   refuseBookingAsTaken,
   settle,
 } from './support/booking-dialog';
@@ -340,6 +341,40 @@ test('closing the dialog on a taken-set rejection re-reads the map, which stops 
   await expect(page.getByTestId('beach-grid')).toBeFocused();
   expect(reads).toBe(2);
   await expectNoSeriousAxeViolations(page, 'beach map refreshed after a taken set');
+});
+
+test('closing the dialog on a sales-closed rejection re-reads the map, which says so and offers no set (#1812)', async ({
+  page,
+}) => {
+  await refuseBooking(page, fence, {
+    status: 422,
+    title: 'Unprocessable Content',
+    detail: 'Booking has closed for this date.',
+    code: 'BOOKING_CLOSED',
+  });
+  let reads = 0;
+  // The first read was made before the cutoff; every later one answers what the server just said.
+  await page.route(/\/api\/venues\/1(\?.*)?$/, (route) => {
+    reads += 1;
+    return route.fulfill({ json: reads > 1 ? { ...VENUE, salesOpen: false } : VENUE });
+  });
+
+  await page.goto('/venues/1');
+  const bookable = page.getByRole('button', { name: /Select to book/ });
+  await bookable.first().click();
+  const dialog = page.getByRole('dialog');
+  await completeDialog(dialog, 'Continue to payment');
+  await expect(dialog.getByRole('alert')).toContainText(/have closed|has closed/);
+
+  await page.keyboard.press('Escape');
+
+  await expect(dialog).toHaveCount(0);
+  await expect(page.getByTestId('map-sales-closed')).toBeVisible();
+  await expect(bookable).toHaveCount(0);
+  // Every tile lost its button, the one holding focus included: focus lands on the map, not on <body>.
+  await expect(page.getByTestId('beach-grid')).toBeFocused();
+  expect(reads).toBe(2);
+  await expectNoSeriousAxeViolations(page, 'beach map refreshed after a sales-closed refusal');
 });
 
 test('stripe-profile payment flow is accessible end-to-end (Stripe mocked)', async ({ page }) => {

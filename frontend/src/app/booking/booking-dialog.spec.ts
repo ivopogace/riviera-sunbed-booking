@@ -792,9 +792,8 @@ describe('BookingDialog (2-step Liquid Glass modal)', () => {
     expect(dismissed).toBe(2);
   });
 
-  it('says whether it closed on a taken set: only while that refusal is its standing answer (#1809)', async () => {
-    const closes: boolean[] = [];
-    dialog.dismissed.subscribe((dismissal) => closes.push(dismissal.setTaken));
+  describe('what its close says of the map (#1809, #1812)', () => {
+    let closes: boolean[];
     const close = (): void =>
       host().querySelector<HTMLButtonElement>('[data-testid="dialog-close"]')!.click();
     const refuse = async (status: number, code: string): Promise<void> => {
@@ -807,15 +806,47 @@ describe('BookingDialog (2-step Liquid Glass modal)', () => {
       await fixture.whenStable();
     };
 
-    close();
-    await goToReview();
-    await refuse(409, 'SET_TAKEN');
-    close();
-    // A later, different refusal replaces it: the map is not known stale from this one.
-    await refuse(400, 'INVALID_REQUEST');
-    close();
+    beforeEach(() => {
+      closes = [];
+      dialog.dismissed.subscribe((dismissal) => closes.push(dismissal.mapStale));
+    });
 
-    expect(closes).toEqual([false, true, false]);
+    it.each([
+      [409, 'SET_TAKEN'],
+      [422, 'BOOKING_CLOSED'],
+      [422, 'VENUE_CLOSED'],
+      [422, 'SET_NOT_BOOKABLE_ONLINE'],
+      [404, 'NO_SUCH_SET'],
+      [422, 'STAY_TOO_LONG'],
+    ])('says the map is stale after %i %s, and not before', async (status, code) => {
+      close();
+      await goToReview();
+      await refuse(status, code);
+      close();
+
+      expect(closes).toEqual([false, true]);
+    });
+
+    it.each([
+      [400, 'INVALID_REQUEST'],
+      [500, 'BOOM'],
+      [403, 'CHALLENGE_REQUIRED'],
+    ])('says nothing of the map after %i %s', async (status, code) => {
+      await goToReview();
+      await refuse(status, code);
+      close();
+
+      expect(closes).toEqual([false]);
+    });
+
+    it('keeps saying so after a later refusal of another kind: the map got no fresher', async () => {
+      await goToReview();
+      await refuse(409, 'SET_TAKEN');
+      await refuse(400, 'INVALID_REQUEST');
+      close();
+
+      expect(closes).toEqual([true]);
+    });
   });
 
   it('maps every server error code to a human message', () => {
