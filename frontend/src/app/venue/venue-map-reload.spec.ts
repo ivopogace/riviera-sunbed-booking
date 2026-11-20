@@ -17,9 +17,11 @@ import { ItineraryView, SetView, VenueMapView } from '../shared/venue-views';
 import { VenueMap } from './venue-map';
 
 /**
- * An in-place route change (#1810): the router reuses the page when `:id`, `?date` or `?lastDate`
- * change, and the reset rebuilds everything under the "All beaches" button. jsdom focuses an
- * `inert` element, so `e2e/venue-route-change.e2e.ts` owns the proof that the landing takes focus.
+ * The two ways the venue page reloads under the visitor (#1810). An in-place route change: the
+ * router reuses the page when `:id`, `?date` or `?lastDate` change, and the reset rebuilds everything
+ * under the "All beaches" button. A date change: the old days' map stays on screen, inert, until
+ * the read for the new days answers. jsdom focuses an `inert` element and delivers it clicks, so
+ * `e2e/venue-map-reload.e2e.ts` owns the proof in a browser.
  */
 const first = addDays(defaultBookingDate(new Date()), 3);
 const last = addDays(first, 2);
@@ -95,7 +97,7 @@ class FakeProofOfWork {
   readonly enabled = signal<boolean | undefined>(false);
 }
 
-describe('VenueMap: an in-place route change (#1810)', () => {
+describe('VenueMap: reloading under the visitor (#1810)', () => {
   let fixture: ComponentFixture<VenueMap>;
   let httpMock: HttpTestingController;
   let params$: BehaviorSubject<ParamMap>;
@@ -193,7 +195,7 @@ describe('VenueMap: an in-place route change (#1810)', () => {
     await settle();
   }
 
-  describe('focus the reset would strand lands on the "All beaches" button', () => {
+  describe('an in-place route change: focus the reset would strand lands on "All beaches"', () => {
     it('from the open calendar', async () => {
       await loadFree();
       await tap(one('map-date'));
@@ -278,7 +280,7 @@ describe('VenueMap: an in-place route change (#1810)', () => {
     });
   });
 
-  describe('focus the reset does not take stays where it is', () => {
+  describe('an in-place route change: focus the reset does not take stays where it is', () => {
     it('outside the page', async () => {
       await loadFree();
       const outside = document.createElement('button');
@@ -312,7 +314,7 @@ describe('VenueMap: an in-place route change (#1810)', () => {
     });
   });
 
-  describe('a plan chosen for booking', () => {
+  describe('an in-place route change: a plan chosen for booking', () => {
     async function openPlanDialog(): Promise<void> {
       await loadNoCover();
       await tap(one('no-cover-plan'));
@@ -343,6 +345,122 @@ describe('VenueMap: an in-place route change (#1810)', () => {
       await settle();
 
       expect(dom().querySelector('app-booking-dialog')).toBeNull();
+    });
+  });
+
+  describe('a date change: the old days’ map while the new days load', () => {
+    const otherDay = addDays(first, 7);
+    const map = (): HTMLElement =>
+      dom().querySelector<HTMLElement>('app-beach-map-canvas, app-beach-row-lens')!;
+    const pickDays = (firstDay: string, lastDay = firstDay): void => {
+      (
+        fixture.componentInstance as unknown as {
+          onDatesChange(days: { first: string; last: string }): void;
+        }
+      ).onDatesChange({ first: firstDay, last: lastDay });
+    };
+
+    for (const phone of [false, true]) {
+      it(`is inert and busy until the read answers (${phone ? 'the lens' : 'the canvas'})`, async () => {
+        await loadFree(phone);
+        expect(map().hasAttribute('inert')).toBe(false);
+        expect(map().getAttribute('aria-busy')).toBe('false');
+
+        pickDays(otherDay);
+        await settle();
+
+        expect(map().hasAttribute('inert')).toBe(true);
+        expect(map().getAttribute('aria-busy')).toBe('true');
+
+        venueReq().flush(freeBeach());
+        await settle();
+
+        expect(map().hasAttribute('inert')).toBe(false);
+        expect(map().getAttribute('aria-busy')).toBe('false');
+      });
+    }
+
+    it('stays usable through a re-read for the same days', async () => {
+      await loadFree();
+
+      (fixture.componentInstance as unknown as { retry(): void }).retry();
+      await settle();
+
+      expect(map().hasAttribute('inert')).toBe(false);
+      expect(map().getAttribute('aria-busy')).toBe('false');
+      venueReq().flush(freeBeach());
+    });
+
+    it('is usable again on the map a retry brings back after the read failed', async () => {
+      await loadFree();
+      pickDays(otherDay);
+      venueReq().flush('down', { status: 503, statusText: 'Service Unavailable' });
+      await settle();
+      expect(map()).toBeNull();
+
+      await tap(one('map-retry'));
+      venueReq().flush(freeBeach());
+      await settle();
+
+      expect(map().hasAttribute('inert')).toBe(false);
+    });
+
+    it('is usable again on the venue a route change brings in mid-load', async () => {
+      await loadFree();
+      pickDays(otherDay);
+      const superseded = venueReq();
+
+      await switchVenue();
+      superseded.flush(freeBeach());
+      venueReq(2).flush(freeBeach(2));
+      await settle();
+
+      expect(dom().querySelector('h1')!.textContent).toContain('Riviera Blue');
+      expect(map().hasAttribute('inert')).toBe(false);
+    });
+
+    it('hands focus it held to the date field', async () => {
+      await loadFree();
+      tile(2).focus();
+
+      pickDays(otherDay);
+      await settle();
+
+      expect(document.activeElement).toBe(one('map-date'));
+      venueReq().flush(freeBeach());
+    });
+
+    it('leaves focus on a control that stays usable', async () => {
+      await loadNoCover();
+      const others = one('no-cover-others');
+      others.focus();
+
+      pickDays(otherDay, addDays(otherDay, 2));
+      await settle();
+
+      expect(document.activeElement).toBe(others);
+      venueReq().flush(noCoverBeach());
+      await settle();
+      itineraryReq().flush(stitched());
+    });
+
+    it('shortening from the sheet parks focus on the date field, then on the tile if it is still not free', async () => {
+      await loadNoCover();
+      await tap(tile(1));
+      await tap(one('shorten-stay'));
+
+      expect(dom().querySelector('app-partly-free-sheet')).toBeNull();
+      expect(map().hasAttribute('inert')).toBe(true);
+      expect(document.activeElement).toBe(one('map-date'));
+
+      // Someone took the spot meanwhile: the re-read still shows it partly free, so no dialog opens.
+      venueReq().flush(noCoverBeach());
+      await settle();
+      itineraryReq().flush(stitched());
+      await settle();
+
+      expect(dom().querySelector('app-booking-dialog')).toBeNull();
+      expect(document.activeElement).toBe(tile(1));
     });
   });
 });

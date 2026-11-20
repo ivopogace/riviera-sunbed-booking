@@ -3,11 +3,12 @@ import { expect, type Page, test } from '@playwright/test';
 import type { MockSetView, MockVenueMapView } from './support/venue-views';
 
 /**
- * An in-place route change on the venue page (#1810): the router reuses the page when the venue or
- * the days in the URL change, and the reset rebuilds everything under the "All beaches" button.
- * Focus that the reset would take lands on that button, and a plan's booking dialog does not carry
- * over. A real browser is the proof here: it ignores `focus()` on an `inert` element, jsdom does not.
- * Mocked API, CI-safe.
+ * The two ways the venue page reloads under the visitor (#1810). An in-place route change: the
+ * router reuses the page when the venue or the days in the URL change, the reset rebuilds everything
+ * under the "All beaches" button, focus the reset would take lands on that button, and a plan's
+ * booking dialog does not carry over. A date change: the old days' map stays on screen but takes
+ * no tap and no focus until the read for the new days answers. A real browser is the proof here:
+ * it ignores `focus()` and clicks on an `inert` element, jsdom does not. Mocked API, CI-safe.
  */
 
 function isoDay(offset: number): string {
@@ -119,6 +120,9 @@ const venueName = (page: Page, name: string) => page.getByRole('heading', { leve
 const tile = (page: Page, spot: number) =>
   page.getByRole('button', { name: new RegExp(`^A · spot ${spot},`) });
 
+/** The page's map card: the canvas from `sm` up, the row lens below. */
+const mapCard = (page: Page) => page.locator('app-beach-map-canvas, app-beach-row-lens');
+
 const WIDTHS = [
   { name: 'desktop', width: 1280 },
   { name: 'phone', width: 390 },
@@ -185,6 +189,49 @@ for (const { name, width } of WIDTHS) {
 
       await expect(page.getByTestId('map-date')).toHaveAttribute('data-date', isoDay(20));
       await expect(back(page)).toBeFocused();
+    });
+
+    test('while other days load, the old map takes no tap and focus waits on the date field', async ({
+      page,
+    }) => {
+      // The stay's read answers at once; the shortened stay's read is held until released.
+      let release: () => void = () => undefined;
+      const held = new Promise<void>((resolve) => (release = resolve));
+      await mockVenues(page);
+      await page.route(/\/api\/venues\/1(\?.*)?$/, async (route) => {
+        const shortened = new URL(route.request().url()).searchParams.get('lastDate') === MIDDLE;
+        if (shortened) {
+          await held;
+        }
+        return route.fulfill({
+          json: venue(1, shortened ? [set(1, 'FREE', []), ...NO_COVER.slice(1)] : NO_COVER),
+        });
+      });
+      await page.goto(`/venues/1?${STAY}`);
+      if (name === 'phone') {
+        // No row has a free set, so the lens opens none: open the row the tiles are in.
+        await page.locator('[data-lens-row="A"]').click();
+      }
+      await tile(page, 1).click();
+      await page.getByTestId('shorten-stay').click();
+
+      // The old days' map is still drawn, under the new days in the header.
+      await expect(page.getByTestId('map-date')).toHaveAttribute('data-last-date', MIDDLE);
+      await expect(mapCard(page)).toHaveAttribute('inert', '');
+      await expect(mapCard(page)).toHaveAttribute('aria-busy', 'true');
+      await expect(page.getByTestId('map-date')).toBeFocused();
+
+      // A tap where the other partly-free tile is drawn reaches nothing.
+      const box = (await tile(page, 2).boundingBox())!;
+      await page.mouse.click(box.x + box.width / 2, box.y + box.height / 2);
+
+      release();
+
+      // A tap that had reached the old tile would leave its sheet open beside the dialog.
+      await expect(page.getByRole('dialog')).toBeVisible();
+      await expect(page.getByTestId('partly-free-sheet')).toHaveCount(0);
+      await expect(mapCard(page)).not.toHaveAttribute('inert');
+      await expect(mapCard(page)).toHaveAttribute('aria-busy', 'false');
     });
   });
 }

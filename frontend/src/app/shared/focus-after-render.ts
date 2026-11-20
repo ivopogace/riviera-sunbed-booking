@@ -43,7 +43,7 @@ export function focusMover(options?: {
 }
 
 function isStillFocusable(element: HTMLElement): boolean {
-  return element.isConnected && element.closest('[hidden]') === null;
+  return element.isConnected && element.closest('[hidden], [inert]') === null;
 }
 
 function landingSpot(host: HTMLElement, testId: string, fallbackTestId?: string): HTMLElement {

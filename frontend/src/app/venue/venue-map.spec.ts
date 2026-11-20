@@ -2125,8 +2125,8 @@ describe('VenueMap — date carried from the discovery page (#294)', () => {
       await new Promise((resolve) => queueMicrotask(() => resolve(undefined)));
 
       expect(dom().querySelector('[data-testid="partly-free-sheet"]')).toBeNull();
-      // The sheet is gone before the map answers: focus lands on its tile meanwhile (RV-FE-9).
-      expect(document.activeElement).toBe(dom().querySelector('button[data-set-id="2"]'));
+      // The sheet is gone and the old days' map is inert until the read answers: focus waits on the date field (RV-FE-9).
+      expect(document.activeElement).toBe(dom().querySelector('[data-testid="map-date"]'));
       const request = venueReq();
       expect(request.request.params.get('date')).toBe(first);
       expect(request.request.params.get('lastDate')).toBe(addDays(first, 1));

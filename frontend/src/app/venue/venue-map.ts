@@ -279,6 +279,9 @@ export class VenueMap {
    *  instead. */
   private epoch = 0;
 
+  /** The map on screen is for the days just left: inert until a read answers. A same-days re-read never sets it. */
+  protected readonly staleDays = signal(false);
+
   /** Whether the availability calendar is open over the header's date field. */
   protected readonly pickerOpen = signal(false);
 
@@ -594,6 +597,7 @@ export class VenueMap {
   private resetForVenue(id: number | undefined): void {
     this.epoch++;
     this.venue.set(undefined);
+    this.staleDays.set(false);
     this.selectedSet.set(undefined);
     this.pickId.set(undefined);
     this.lensUnseeded = true;
@@ -603,9 +607,7 @@ export class VenueMap {
     this.resetPlan();
     this.pendingSelectSetId = undefined;
     // Everything under the back button is rebuilt. Not the skeleton: it is inert, so a browser drops the move (RV-FE-9).
-    if (this.host.nativeElement.contains(document.activeElement)) {
-      this.landIfTaken('venue-back');
-    }
+    this.landHeldFocus('venue-back');
     this.lastTriggerId = undefined;
     const floor = defaultBookingDate(new Date());
     this.minDate.set(floor);
@@ -617,6 +619,13 @@ export class VenueMap {
       return;
     }
     this.load();
+  }
+
+  /** Focus held inside the page lands on `testId` if the next render removes or disables its holder. */
+  private landHeldFocus(testId: string): void {
+    if (this.host.nativeElement.contains(document.activeElement)) {
+      this.landIfTaken(testId);
+    }
   }
 
   /** Build the render+a11y view of one set (invariant #3: only free ONLINE sets are bookable). */
@@ -753,6 +762,7 @@ export class VenueMap {
       next: (venue) => {
         if (this.epoch === epoch) {
           this.venue.set(venue);
+          this.staleDays.set(false);
           this.settleLens();
           this.openPendingSelection(venue);
           if (this.planOpen() || this.noSetCovers()) {
@@ -768,6 +778,7 @@ export class VenueMap {
         // A stale map under a new date header misleads — the panel must win over the old view.
         const toreDownMap = this.venue() !== undefined;
         this.venue.set(undefined);
+        this.staleDays.set(false);
         // The teardown takes the header, and with it the trigger — close without chasing it.
         this.pickerOpen.set(false);
         this.lightboxIndex.set(undefined);
@@ -829,6 +840,11 @@ export class VenueMap {
     this.resetPlan();
     this.selectedDate.set(days.first);
     this.selectedLastDate.set(days.last);
+    if (this.venue() !== undefined) {
+      // The old days' map stays on screen but inert: focus it held lands on the field naming the new days (RV-FE-9).
+      this.staleDays.set(true);
+      this.landHeldFocus('map-date');
+    }
     this.load();
   }
 
@@ -1004,8 +1020,10 @@ export class VenueMap {
   protected shortenTo(set: SetView, days: DateRange): void {
     this.partlySet.set(undefined);
     this.lastTriggerId = set.id;
-    // The sheet held focus: land on its tile now (RV-FE-9); the dialog takes it once the map is here.
-    this.focusTile(set.id);
+    // The sheet held focus: other days land it on the date field (the map is inert), the same days on its tile.
+    if (days.first === this.selectedDate() && days.last === this.selectedLastDate()) {
+      this.focusTile(set.id);
+    }
     this.onDatesChange(days);
     // Set after the dispatch: a date change clears it, so it can only fire for this load.
     this.pendingSelectSetId = set.id;
@@ -1015,17 +1033,12 @@ export class VenueMap {
     if (setId === undefined) {
       return;
     }
-    if (!this.phone()) {
-      queueMicrotask(() => {
-        document.querySelector<HTMLElement>(`[data-set-id="${setId}"]`)?.focus();
-      });
-      return;
-    }
-    // On a phone the tile exists only while its row is open: open it, then focus once rendered.
+    // On a phone the tile exists only while its row is open: open it first.
     const row = this.rows().find((r) => r.tiles.some((tile) => tile.set.id === setId));
-    if (row !== undefined && !this.lensOpen().includes(row.code)) {
+    if (this.phone() && row !== undefined && !this.lensOpen().includes(row.code)) {
       this.lensOpen.set([row.code]);
     }
+    // After the render at every width: a map just re-read is inert until then.
     afterNextRender(
       { write: () => document.querySelector<HTMLElement>(`[data-set-id="${setId}"]`)?.focus() },
       { injector: this.injector },
