@@ -276,7 +276,10 @@ export class VenueMap {
    *  (id or date) passes again after an A→B→A round trip, so continuations compare this
    *  instead. */
   private epoch = 0;
-  /** True while a {@link load} is unanswered: a {@link refresh} waits it out, never supersedes it. */
+  /**
+   * True while a {@link load} is unanswered, never for a {@link refresh}: that one is a same-days
+   * read under a map that stays on screen and usable, and it waits a load out rather than supersede it.
+   */
   private loadInFlight = false;
 
   /** Whether the availability calendar is open over the header's date field. */

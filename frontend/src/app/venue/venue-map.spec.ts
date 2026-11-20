@@ -1350,6 +1350,30 @@ describe('VenueMap', () => {
       expect(el().querySelectorAll('.set-button')).toHaveLength(bookable - 1);
     });
 
+    it('keeps the map on screen and usable while the refresh is in flight: another set still opens its dialog', async () => {
+      const id = await openDialog();
+      await dismissDialog(true);
+      const refresh = venueRequest();
+
+      // A same-days refresh is not a load: no skeleton, and every other set can still be booked.
+      expect(el().querySelector('[data-testid="map-loading"]')).toBeNull();
+      const other = [...el().querySelectorAll<HTMLButtonElement>('.set-button')].find(
+        (button) => Number(button.dataset['setId']) !== id,
+      )!;
+      other.click();
+      await settle();
+      const open = (): BookingDialog | undefined =>
+        fixture.debugElement.query(By.directive(BookingDialog))?.componentInstance as
+          BookingDialog | undefined;
+      expect(open()?.set()?.id).toBe(Number(other.dataset['setId']));
+
+      // Its answer lands under the open dialog and leaves it be.
+      await land(refresh, withTaken(miramar(), id));
+      expect(open()?.set()?.id).toBe(Number(other.dataset['setId']));
+      expect(tileButton(id)).toBeNull();
+      await dismissDialog(false);
+    });
+
     it('moves focus to the map when the refresh takes the tile that held it', async () => {
       const id = await openDialog();
       await dismissDialog(true);
