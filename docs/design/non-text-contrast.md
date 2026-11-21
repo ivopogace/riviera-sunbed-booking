@@ -9,10 +9,9 @@ position moves.
 
 WCAG SC 1.4.11 (Non-text Contrast, AA; the text is word for word the same in 2.1 and 2.2) asks
 that *visual information required to identify user interface components and states* reach 3:1
-against **adjacent** colour(s). The Liquid
-Glass design puts pale fills on pale glass, so the question "is this boundary a violation or
-is it decoration?" recurs on nearly every token family. This file answers it once, so token
-comments cite a rule instead of re-deferring.
+against **adjacent** colour(s). The Liquid Glass design puts pale fills on pale glass, so the
+question "is this boundary a violation or is it decoration?" recurs on nearly every token family.
+This file answers it once, so token comments cite a rule instead of re-deferring.
 
 Neither of the project's frameworks has a position to inherit here, which is why the rule is
 ours to write: Angular's a11y guide is scoped to ARIA, native-element augmentation and focus
@@ -110,6 +109,11 @@ from the same page:
 > of this success criterion.
 
 That is the 1px caveat above, from the source: not required, but discouraged.
+
+Every citation of rule 1 inherits the "adjacent" caveat above, not only the CTA's: where a
+hairline does not help identify its control, the source's method measures fill against host, and
+rule 1 does not rescue that family. Such a family is argued under rule 2 (with its own measured
+assertion), never by citing rule 1.
 
 ## Rule 2 — A control identified by its own content is not required to carry a 3:1 boundary
 
@@ -209,8 +213,8 @@ background". What it does require: the component "must not lose contrast with th
 colors", and the indicators of other states (selected, focused, a checkbox's check) must reach 3:1
 against their adjacent colours. So a *selected* fill is reached by the SC on its face; a *hover*
 fill is not, and measuring it against the state it replaces (below, and
-`--riv-wash-hover-border`) is a choice this project makes, kept because the specs already
-assert it. Do not cite 1.4.11 as the reason for that second adjacency.
+`--riv-wash-hover-border`, asserted in `app/booking/booking-dialog.contrast.spec.ts`) is a choice
+this project makes, kept because that spec and the families' specs already assert it. Do not cite 1.4.11 as the reason for that second adjacency.
 
 `booking-dialog`'s `#31798a` close button is the sharpest case and is covered here rather than
 by rule 1: on its own teal header gradient the fill reaches 1.12–1.46:1 and the hairline
