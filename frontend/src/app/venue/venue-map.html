@@ -215,11 +215,19 @@
                   <!-- The count's empty twin: its 19px box keeps the line as tall as the count made it, with the text on the same baseline. -->
                   <span class="text-[19px] font-bold" aria-hidden="true"></span>
                 }
-                <ng-container i18n="The venue page's availability line while newly picked days load"
+                <!-- Below sm the full sentence can wrap to a line more than the count it replaced and move the map (#1847): it is only heard there, and the short copy, which the date field above completes, is only seen. -->
+                <span
+                  class="max-sm:sr-only"
+                  i18n="The venue page's availability line while newly picked days load"
                   >Checking availability for
                   {{
                     triggerLabel()  // i18n(ph="days")
-                  }}…</ng-container
+                  }}…</span
+                ><span
+                  class="sm:hidden"
+                  aria-hidden="true"
+                  i18n="The venue page's availability line while newly picked days load, on a phone"
+                  >Checking availability…</span
                 >
               } @else if (totalCount() && isStay()) {
                 <ng-container i18n
