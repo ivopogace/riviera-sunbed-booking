@@ -207,6 +207,13 @@ class RegistryMailBulkheadIT {
 		assertThat(ids)
 				.as("republication matches listener_id string-equal; drift dead-letters every outstanding row")
 				.contains(BookingMailFixtures.LISTENER_ID);
+
+		transport.failEverySend(false);
+		incompletePublications.resubmitIncompletePublications(publication ->
+				publication.getEvent() instanceof BookingConfirmed confirmed
+						&& confirmed.bookingId().value() == bookingId);
+		Awaitility.await("the row is delivered, so the venue can leave").atMost(WAIT)
+				.until(() -> fixtures.outstandingMailPublications(new BookingId(bookingId)) == 0L);
 	}
 
 	/**
