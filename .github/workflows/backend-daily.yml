@@ -36,10 +36,13 @@ permissions:
 
 jobs:
   backend:
-    name: Backend suite (scheduled, main)
+    name: Backend suite (two passes)
     runs-on: ubuntu-latest
-    # The same cap as ci.yml's backend job, for the reason ci.yml spells out.
-    timeout-minutes: 30
+    # Both passes share this job, about 7 minutes each (about 14 for the job in the runs of 2026-11-21), so
+    # 30 is no longer the margin `ci.yml`'s backend job has for its one pass. 45 is about three times a green
+    # run; the job is not a required context, so the cap gates nothing. Raise it again if either pass grows
+    # into it (#1861); splitting into two jobs would repeat the setup for nothing.
+    timeout-minutes: 45
     defaults:
       run:
         working-directory: platform
