@@ -72,11 +72,15 @@ export const DARK_PANEL_WASH_HOVER: Glass = { color: WHITE, alpha: 0.16 };
 /** Dark `--riv-field-fill` / `--riv-field-border` (light themes: the FIELD_*_ALPHA constants). */
 export const DARK_FIELD_FILL: Glass = { color: hexToRgb('020a16'), alpha: 0.45 };
 export const DARK_FIELD_BORDER: Glass = { color: WHITE, alpha: 0.5 };
+/** `--riv-field-solid` in the light themes — the near-opaque banner inside the venue map's card. */
+export const FIELD_SOLID: Glass = { color: WHITE, alpha: 0.9 };
 /** `--riv-field-solid` in dark — the slate banner inside the venue map's card. */
 export const DARK_FIELD_SOLID: Glass = { color: hexToRgb('0f172a'), alpha: 0.92 };
 /** Dark `--riv-card-track` (light themes: CARD_INK at CARD_TRACK_ALPHA). */
 export const DARK_CARD_TRACK: Glass = { color: WHITE, alpha: 0.18 };
-/** `--riv-dialog-glass` per ink family (light themes: white 0.82). */
+/** `--riv-dialog-glass` in the light themes: the booking and find dialogs' panel. */
+export const DIALOG_GLASS: Glass = { color: WHITE, alpha: 0.82 };
+/** `--riv-dialog-glass` per ink family (light themes: DIALOG_GLASS above). */
 export const DARK_DIALOG_GLASS: Glass = { color: hexToRgb('101a2e'), alpha: 0.94 };
 /** Dark `--riv-wash-fill` / `--riv-inset-fill` (light themes: white 0.5 / INSET_FILL below). */
 export const DARK_WASH_FILL: Glass = { color: WHITE, alpha: 0.08 };
@@ -313,11 +317,16 @@ export const WORST_PHOTOS: readonly Rgb[] = [
 /** Every ground a dark-theme overlay can sit over once real content (a photo, the map) may lie
  *  under it: the dark page stops plus the photo extremes. */
 export const DARK_UNDER_CONTENT: readonly Rgb[] = [...DARK_STOPS, ...WORST_PHOTOS];
+/** The light themes' counterparts: each theme's page stops plus the photo extremes. */
+export const PORCELAIN_UNDER_CONTENT: readonly Rgb[] = [...PORCELAIN_STOPS, ...WORST_PHOTOS];
+export const RIVIERA_UNDER_CONTENT: readonly Rgb[] = [...RIVIERA_STOPS, ...WORST_PHOTOS];
 
 /** The modal scrims, theme-invariant literals: the booking dialog's and the find modal's
  *  `bg-[rgba(6,30,40,0.45)]`, and the calendar's and the partly-free sheet's at 0.35. */
 export const DIALOG_SCRIM: Glass = { color: hexToRgb('061e28'), alpha: 0.45 };
 export const POPOVER_SCRIM: Glass = { color: hexToRgb('061e28'), alpha: 0.35 };
+/** The porcelain console's `bg-riv-console-scrim/45` behind the set editor's bottom sheet. */
+export const CONSOLE_SCRIM: Glass = { color: hexToRgb('061e28'), alpha: 0.45 };
 /** The dark console's `bg-riv-console-scrim/45` behind the set editor's bottom sheet. */
 export const DARK_CONSOLE_SCRIM: Glass = { color: hexToRgb('020a16'), alpha: 0.45 };
 
