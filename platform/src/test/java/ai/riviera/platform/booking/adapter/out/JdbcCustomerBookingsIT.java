@@ -1,6 +1,7 @@
 package ai.riviera.platform.booking.adapter.out;
 
 import java.time.LocalDate;
+import java.util.ArrayList;
 import java.util.List;
 
 import org.junit.jupiter.api.AfterEach;
@@ -50,9 +51,14 @@ class JdbcCustomerBookingsIT {
 		venue = StayFixtures.venue(jdbc, "INSTANT", null, false);
 	}
 
+	/** The guests this test inserted: one with no booking is named by none, so the venue's cleanup misses it. */
+	private final List<Long> guests = new ArrayList<>();
+
 	@AfterEach
 	void removeVenue() {
 		StayFixtures.cleanupNow(jdbc, venue.id());
+		guests.forEach(guest -> jdbc.sql("DELETE FROM customer c WHERE c.id = :c AND NOT EXISTS "
+				+ "(SELECT 1 FROM booking b WHERE b.customer_id = c.id)").param("c", guest).update());
 	}
 
 	@Test
@@ -122,9 +128,11 @@ class JdbcCustomerBookingsIT {
 	}
 
 	private CustomerId insertCustomer(String email) {
-		return new CustomerId(jdbc.sql("INSERT INTO customer (email, full_name, phone) "
+		long guest = jdbc.sql("INSERT INTO customer (email, full_name, phone) "
 						+ "VALUES (:e, 'Guest', '+355600') RETURNING id")
-				.param("e", email).query(Long.class).single());
+				.param("e", email).query(Long.class).single();
+		guests.add(guest);
+		return new CustomerId(guest);
 	}
 
 	private long onlineSetId() {
