@@ -84,7 +84,10 @@ jobs:
         run: |
           export RIVIERA_TEST_TRAVEL_TO="$(date -u -d "+${TRAVEL_YEARS} years" +%Y-%m-%dT10:00:00Z)"
           echo "RIVIERA_TEST_TRAVEL_TO=${RIVIERA_TEST_TRAVEL_TO}"
-          ./gradlew test --rerun structuredLoggingTest --rerun --no-daemon
+          # A cleared report and --continue: both test tasks run even when the first goes red, so the
+          # upload below never carries the first pass's XML as the travelled one.
+          rm -rf build/test-results
+          ./gradlew --continue test --rerun structuredLoggingTest --rerun --no-daemon
 
       - name: Upload the travelled pass's test-report XML
         if: ${{ !cancelled() && steps.travel.outcome != 'skipped' }}
