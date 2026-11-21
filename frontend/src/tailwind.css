@@ -248,9 +248,11 @@
       it. Declared ONCE, no dark override. Non-text chrome (WCAG 1.4.11) at 2.08-2.48:1 over its own
       fills — decorative, and measured rather than assumed exempt. WHICH layer carries the
       affordance boundary against the host card swaps by theme: the fill in the light themes,
-      3.80-7.24:1 against the card glass, and THIS hairline in the dark, 5.52-6.77:1. The fill's
-      2.23-3.16:1 there is a pairing with a surface it does not touch — this hairline sits between
-      them. Rule 1 of docs/design/non-text-contrast.md.
+      3.80-7.24:1 against the card glass, and THIS hairline in the dark, 5.52-6.77:1. That is rule 1
+      of docs/design/non-text-contrast.md, the project's reading. The fill's 2.23-3.16:1 there is
+      what a reader who subsumes this hairline into the fill measures, and the dark CTA does not
+      depend on which reading wins: its white label carries the identity at 5.56-7.24:1 (5.05-6.64:1
+      hovered), so the boundary is decorative under rule 2 of the same file (#1840).
       Proof: shared/cta-border-token.contrast.spec.ts (the declaration guard, the measured exemption
       and the themed-alternative bound) + e2e/cta-border-token-skin.e2e.ts (the computed border under
       a forced dark document theme, and that the element tracks the token rather than a literal of
