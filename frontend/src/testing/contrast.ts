@@ -40,6 +40,11 @@ export function contrastRatio(foreground: string, background: string): number {
   return (lighter + 0.05) / (darker + 0.05);
 }
 
+/** White's ratio on the lighter fill that sits at exactly 3:1 against a host of this luminance. */
+export function whiteOnThreeToOneFill(hostLuminance: number): number {
+  return 1.05 / (AA_LARGE * (hostLuminance + 0.05));
+}
+
 /*
  * Alpha-compositing helpers for TRANSLUCENT Liquid Glass surfaces: a glass
  * rgba over a gradient stop has no single hex, so specs composite the effective colour first

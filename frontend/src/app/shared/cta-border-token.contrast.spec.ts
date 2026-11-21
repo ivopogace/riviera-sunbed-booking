@@ -10,6 +10,7 @@ import {
   relativeLuminance,
   rgbToHex,
   type Rgb,
+  whiteOnThreeToOneFill,
 } from '../../testing/contrast';
 import {
   BANNER_FILLS,
@@ -17,18 +18,21 @@ import {
   CTA_GRAD_STOPS,
   DARK_CARD_BORDER,
   DARK_CARD_GLASS,
+  DARK_CONSOLE_SCRIM,
   DARK_DIALOG_GLASS,
   DARK_FIELD_SOLID,
   DARK_HEADER_GLASS,
   DARK_POP_SURFACE,
   DARK_STOPS,
+  DARK_UNDER_CONTENT,
   DIALOG_CLOSE_FILL,
+  DIALOG_SCRIM,
   type Glass,
   PORCELAIN_CARD_GLASS,
   PORCELAIN_STOPS,
   RIVIERA_CARD_GLASS,
   RIVIERA_STOPS,
-  WORST_PHOTOS,
+  stackOver,
   surfaceOver,
 } from '../../testing/glass-tokens';
 import { baseBlock, declarationsOf, themeBlock } from '../../testing/stylesheet-tokens';
@@ -90,20 +94,19 @@ const THEMED_CARD_GLASS = [
   ['dark', DARK_CARD_GLASS, DARK_STOPS],
 ] as const;
 
-/** Real content (a photo, the map) can pass under these hosts, so they are measured over its extremes too. */
-const UNDER_CONTENT = [...DARK_STOPS, ...WORST_PHOTOS] as const;
-
 /**
- * A dark surface the CTA stands on (#1845): the glass layers between the page and the button,
- * outermost first, over the grounds they can sit on. A scrim under a dialog, popover or sheet is
- * left out: it only darkens the host, which raises the fill's ratio, so omitting it is the
- * conservative number. `sites` are call-site files; the sweep below fails on a file on no host.
+ * A dark surface the CTA stands on (#1845): the glass layers between the ground and the button,
+ * outermost first, a modal's scrim included. A host that real content (a photo, the map) can lie
+ * under is measured over `DARK_UNDER_CONTENT`; a card in the page's flow, over the page stops.
+ * `sites` are call-site files, each named in `CTA_SITE_COUNTS` with its number of CTAs.
  */
 interface DarkHost {
   readonly host: string;
   readonly layers: readonly Glass[];
   readonly grounds: readonly Rgb[];
   readonly sites: readonly string[];
+  /** The scrim utility every site paints under the host, when `layers` opens with one. */
+  readonly scrim?: string;
   /** The fill-vs-host band, to two decimals. */
   readonly band: readonly [number, number];
   /** Whether a fill lightened to 3:1 against this host would still keep the white label at AA. */
@@ -149,17 +152,18 @@ const DARK_HOSTS: readonly DarkHost[] = [
     lighterFillKeepsLabel: true,
   },
   {
-    host: 'H3 --riv-dialog-glass',
-    layers: [DARK_DIALOG_GLASS],
-    grounds: DARK_STOPS,
+    host: 'H3 --riv-dialog-glass, over its scrim',
+    layers: [DIALOG_SCRIM, DARK_DIALOG_GLASS],
+    grounds: DARK_UNDER_CONTENT,
     sites: ['booking/booking-dialog.ts', 'booking/find-booking.ts'],
-    band: [2.33, 3.15],
+    scrim: 'bg-[rgba(6,30,40,0.45)]',
+    band: [2.2, 3.16],
     lighterFillKeepsLabel: true,
   },
   {
     host: 'H5 the floating --riv-pop-surface pick bar, over the map',
     layers: [DARK_POP_SURFACE],
-    grounds: UNDER_CONTENT,
+    grounds: DARK_UNDER_CONTENT,
     sites: ['venue/venue-map.html'],
     band: [2.17, 3.16],
     lighterFillKeepsLabel: true,
@@ -167,23 +171,24 @@ const DARK_HOSTS: readonly DarkHost[] = [
   {
     host: "H6 --riv-header-glass, then the failure panel's card glass",
     layers: [DARK_HEADER_GLASS, DARK_CARD_GLASS],
-    grounds: UNDER_CONTENT,
+    grounds: DARK_UNDER_CONTENT,
     sites: ['pages/home/home.html'],
     band: [2.17, 3.16],
     lighterFillKeepsLabel: true,
   },
   {
     host: 'H7 the console bottom sheet below lg, card glass over the console scrim',
-    layers: [DARK_CARD_GLASS],
-    grounds: DARK_STOPS,
+    layers: [DARK_CONSOLE_SCRIM, DARK_CARD_GLASS],
+    grounds: DARK_UNDER_CONTENT,
     sites: ['operator/set-editor.html'],
-    band: [2.23, 3.16],
+    scrim: 'bg-riv-console-scrim/45',
+    band: [1.96, 3.22],
     lighterFillKeepsLabel: true,
   },
   {
     host: 'H8 the sticky card-glass save bar, over the scrolling page',
     layers: [DARK_CARD_GLASS],
-    grounds: UNDER_CONTENT,
+    grounds: DARK_UNDER_CONTENT,
     sites: ['operator/venue-tab.html', 'operator/layout-editor.html'],
     band: [1.58, 3.25],
     lighterFillKeepsLabel: false,
@@ -199,6 +204,42 @@ const POPOVER_HOST = {
   measuredIn: 'shared/availability-calendar.contrast.spec.ts',
   sites: ['shared/availability-calendar.html', 'venue/partly-free-sheet.ts'],
 } as const;
+
+/**
+ * How many CTAs each call-site file holds, so a CTA added to a file already named fails the sweep
+ * until it is placed on a host. A file can sit on two hosts at once (set-editor's sheet is H1 from
+ * lg up and H7 below), so the count belongs to the file, not to a host.
+ */
+const CTA_SITE_COUNTS: Readonly<Record<string, number>> = {
+  'admin/admin-operators.ts': 1,
+  'auth/auth-page.ts': 2,
+  'auth/forgot-password.ts': 1,
+  'auth/operator-password.ts': 1,
+  'auth/reset-password.ts': 1,
+  'auth/set-password.ts': 2,
+  'booking/booking-confirmation.ts': 1,
+  'booking/booking-dialog.ts': 1,
+  'booking/booking-pay.ts': 1,
+  'booking/booking-view.ts': 1,
+  'booking/find-booking.ts': 1,
+  'booking/manage-booking-link.ts': 1,
+  'booking/my-bookings.ts': 2,
+  'booking/request-confirmation.ts': 1,
+  'operator/daily-view-tab.html': 1,
+  'operator/layout-editor.html': 2,
+  'operator/operator-home.ts': 1,
+  'operator/set-editor.html': 3,
+  'operator/venue-create-card.html': 1,
+  'operator/venue-tab.html': 1,
+  'pages/for-venues/for-venues.html': 1,
+  'pages/home/home.html': 1,
+  'pages/page-load-failed/page-load-failed.ts': 1,
+  'shared/availability-calendar.html': 1,
+  'venue/partly-free-sheet.ts': 1,
+  'venue/stay-plan.ts': 1,
+  'venue/venue-map.html': 8,
+  'venue/venue-reviews.ts': 1,
+};
 
 /** H9: booking-view's Pay now stands on the awaiting banner's fixed `#ddf4f8`, in every theme. */
 const LIGHT_BANNER_HOST = {
@@ -309,32 +350,38 @@ function darkFillAgainstCard(): readonly number[] {
   );
 }
 
-/** A host's painted colour over one ground: each glass layer composited over the one below. */
-function hostOver(layers: readonly Glass[], ground: Rgb): Rgb {
-  return layers.reduce<Rgb>((below, glass) => surfaceOver(glass, below), ground);
-}
-
 /** The CTA fill against a dark host, over every ground it can sit on and both gradient stops. */
 function fillAgainst({ layers, grounds }: DarkHost): readonly number[] {
   return grounds.flatMap((ground) =>
-    CTA_GRAD_STOPS.map((fill) => contrastRatio(rgbToHex(fill), rgbToHex(hostOver(layers, ground)))),
+    CTA_GRAD_STOPS.map((fill) =>
+      contrastRatio(rgbToHex(fill), rgbToHex(stackOver(layers, ground))),
+    ),
   );
 }
 
 /** White on the fill a host would need for 3:1 against its lightest composite: the untaken option. */
 function labelAtLighterFill({ layers, grounds }: DarkHost): number {
-  const lightest = Math.max(
-    ...grounds.map((ground) => relativeLuminance(rgbToHex(hostOver(layers, ground)))),
+  return whiteOnThreeToOneFill(
+    Math.max(...grounds.map((ground) => relativeLuminance(rgbToHex(stackOver(layers, ground))))),
   );
-  return 1.05 / (AA_LARGE * (lightest + 0.05));
 }
 
-/** Every call-site file standing a CTA on a host: an element wearing the skin, or a retry button. */
-function ctaSites(): readonly string[] {
-  return allSources()
-    .map((path) => path.replaceAll('\\', '/'))
-    .filter((path) => !path.endsWith('.spec.ts') && !SKIN_SOURCES.includes(path))
-    .filter((path) => /<(?:button|a)\b[^>]*\bappPrimaryCta\b|<app-retry-button\s/.test(read(path)));
+/**
+ * A CTA in markup: a `<button>`/`<a>` whose opening tag carries `appPrimaryCta` (quoted attribute
+ * values skipped, so a `>` inside a binding does not end the tag), or a `<app-retry-button`.
+ */
+const CTA_IN_MARKUP =
+  /<(?:button|a)\b(?:[^>"']|"[^"]*"|'[^']*')*?\bappPrimaryCta\b|<app-retry-button[\s/]/g;
+
+/** Every call-site file standing a CTA on a host, with how many it holds. */
+function ctaSiteCounts(): Readonly<Record<string, number>> {
+  return Object.fromEntries(
+    allSources()
+      .map((path) => path.replaceAll('\\', '/'))
+      .filter((path) => !path.endsWith('.spec.ts') && !SKIN_SOURCES.includes(path))
+      .map((path) => [path, [...read(path).matchAll(CTA_IN_MARKUP)].length] as const)
+      .filter(([, count]) => count > 0),
+  );
 }
 
 /** A fill under the skin's hover `brightness()`, which multiplies each sRGB channel. */
@@ -525,19 +572,37 @@ describe('--riv-cta-border — the CTA hairline (#853)', () => {
     }
   });
 
-  it('every file standing a CTA on a host is named in the dark host population, and only those', () => {
+  it('every CTA call site is counted, and every counted file is named on a host', () => {
     const named = new Set([
       ...DARK_HOSTS.flatMap((host) => host.sites),
       ...POPOVER_HOST.sites,
       LIGHT_BANNER_HOST.site,
     ]);
 
-    expect([...ctaSites()].sort(), 'a call site no host names').toEqual([...named].sort());
+    expect(ctaSiteCounts(), 'a CTA added or removed: place it on a host, then count it').toEqual(
+      CTA_SITE_COUNTS,
+    );
+    expect(Object.keys(CTA_SITE_COUNTS).sort(), 'a counted file no host names').toEqual(
+      [...named].sort(),
+    );
   });
 
-  it('the popover host (H4) is the one surface its measuring spec composites', () => {
+  it('every site of a host measured over its scrim paints that scrim', () => {
+    for (const { host, sites, scrim } of DARK_HOSTS.filter((entry) => entry.scrim)) {
+      for (const site of sites) {
+        expect(read(site), `${host}: ${site}`).toContain(scrim);
+      }
+    }
+    expect(themeBlock('dark'), 'the console scrim').toContain(
+      `--riv-console-scrim: ${rgbToHex(DARK_CONSOLE_SCRIM.color)};`,
+    );
+  });
+
+  it('the popover host (H4): each site stands its CTA inside the popover surface', () => {
     for (const site of POPOVER_HOST.sites) {
-      expect(read(site), `${site} wears the popover surface`).toContain('bg-riv-pop-surface');
+      expect(read(site), `${site}: the CTA inside the pop-surface dialog`).toMatch(
+        /bg-riv-pop-surface(?:(?!<\/dialog>)[\s\S])*(?:\bappPrimaryCta\b|<app-retry-button[\s/])/,
+      );
     }
     expect(read(POPOVER_HOST.measuredIn)).toContain(
       'the Apply rests on rule 2 in the dark palette',
@@ -549,7 +614,11 @@ describe('--riv-cta-border — the CTA hairline (#853)', () => {
    * hovered, as it does against the card in the light themes.
    */
   it("on booking-view's fixed light banner (H9) the fill clears 3:1 by itself", () => {
-    expect(read(LIGHT_BANNER_HOST.site)).toMatch(/bannerAwaiting:[^\n]*bg-\[#ddf4f8\]/);
+    const source = read(LIGHT_BANNER_HOST.site);
+    expect(source).toMatch(/bannerAwaiting:[^\n]*bg-\[#ddf4f8\]/);
+    expect(source, 'Pay now inside the awaiting banner').toMatch(
+      /\[class\]="cls\.bannerAwaiting"(?:(?!<\/section>)[\s\S])*data-testid="pay-now"/,
+    );
     const banner = rgbToHex(LIGHT_BANNER_HOST.fill);
 
     for (const fill of CTA_GRAD_STOPS) {

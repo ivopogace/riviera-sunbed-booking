@@ -8,7 +8,9 @@ import {
   composite,
   contrastRatio,
   hexToRgb,
+  relativeLuminance,
   rgbToHex,
+  whiteOnThreeToOneFill,
 } from '../../testing/contrast';
 import {
   CALENDAR_PALETTE,
@@ -20,9 +22,12 @@ import {
   CTA_BORDER,
   CTA_GRAD_STOPS,
   DARK_POP_INK_DISABLED,
+  DARK_UNDER_CONTENT,
   Glass,
   POP_INK_DISABLED,
+  POPOVER_SCRIM,
   expectAaOverStops,
+  stackOver,
   surfaceOver,
 } from '../../testing/glass-tokens';
 import { baseBlock, declarationsOf, themeBlock } from '../../testing/stylesheet-tokens';
@@ -231,20 +236,30 @@ describe('Availability calendar contrast (WCAG AA) — venue/day-availability.ts
 
   /**
    * Rule 2, the dark CTA's ground (#1840): the label carries the identity at AA and the fill-vs-host
-   * number stays measured. This popover (H4 in `cta-border-token.contrast.spec.ts`) is also the
-   * surface the partly-free sheet's retry stands on; the scrim under both is left out, as it only darkens.
+   * number stays measured. This popover (H4 in `cta-border-token.contrast.spec.ts`) is also the one
+   * the partly-free sheet's retry stands on; both float over their scrim and whatever page lies under.
    */
-  it('the Apply rests on rule 2 in the dark palette: a measured sub-3:1 fill band, an AA label', () => {
-    const ratios = DARK_CALENDAR_PALETTE.stops.flatMap((stop) => {
-      const behind = rgbToHex(surfaceOver(DARK_CALENDAR_PALETTE.surface, stop));
-      return CTA_GRAD_STOPS.map((fill) => contrastRatio(rgbToHex(fill), behind));
-    });
+  it('the Apply rests on rule 2 in the dark palette: a measured fill band with its floor under 3:1, an AA label', () => {
+    expect(read('shared/availability-calendar.ts'), 'the scrim').toContain(
+      'bg-[rgba(6,30,40,0.35)]',
+    );
+    const hosts = DARK_UNDER_CONTENT.map((ground) =>
+      stackOver([POPOVER_SCRIM, DARK_CALENDAR_PALETTE.surface], ground),
+    );
+    const ratios = hosts.flatMap((host) =>
+      CTA_GRAD_STOPS.map((fill) => contrastRatio(rgbToHex(fill), rgbToHex(host))),
+    );
 
-    expect(Math.min(...ratios), 'the band floor, under 3:1').toBeCloseTo(2.35, 2);
-    expect(Math.max(...ratios), 'the band ceiling').toBeCloseTo(3.13, 2);
+    expect(Math.min(...ratios), 'the band floor, under 3:1').toBeCloseTo(2.25, 2);
+    expect(Math.max(...ratios), 'the band ceiling').toBeCloseTo(3.16, 2);
     for (const fill of CTA_GRAD_STOPS) {
       expect(contrastRatio('#ffffff', rgbToHex(fill))).toBeGreaterThanOrEqual(AA_NORMAL);
     }
+    const lightest = Math.max(...hosts.map((host) => relativeLuminance(rgbToHex(host))));
+    expect(
+      whiteOnThreeToOneFill(lightest),
+      'the untaken lighter fill keeps the label at AA here',
+    ).toBeGreaterThanOrEqual(AA_NORMAL);
   });
 
   /**

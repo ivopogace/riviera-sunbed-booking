@@ -310,6 +310,17 @@ export const WORST_PHOTOS: readonly Rgb[] = [
   hexToRgb('000000'),
 ];
 
+/** Every ground a dark-theme overlay can sit over once real content (a photo, the map) may lie
+ *  under it: the dark page stops plus the photo extremes. */
+export const DARK_UNDER_CONTENT: readonly Rgb[] = [...DARK_STOPS, ...WORST_PHOTOS];
+
+/** The modal scrims, theme-invariant literals: the booking dialog's and the find modal's
+ *  `bg-[rgba(6,30,40,0.45)]`, and the calendar's and the partly-free sheet's at 0.35. */
+export const DIALOG_SCRIM: Glass = { color: hexToRgb('061e28'), alpha: 0.45 };
+export const POPOVER_SCRIM: Glass = { color: hexToRgb('061e28'), alpha: 0.35 };
+/** The dark console's `bg-riv-console-scrim/45` behind the set editor's bottom sheet. */
+export const DARK_CONSOLE_SCRIM: Glass = { color: hexToRgb('020a16'), alpha: 0.45 };
+
 /** `--riv-mode-chip-glass` — the white glass under the step chips, on both slideshow hosts.
  *  Named for the Discover mode chip, which does not wear it (it takes an opaque fill,
  *  which needs no backing); the step chips are now the token's whole population. */
@@ -324,6 +335,11 @@ export const PHOTO_CHROME_EDGE_ALPHA = 0.6;
 /** Effective surface of a glass layer over an opaque stop. */
 export function surfaceOver(glass: Glass, stop: Rgb): Rgb {
   return composite(glass.color, glass.alpha, stop);
+}
+
+/** Effective surface of a stack of glass layers, outermost first, over an opaque ground. */
+export function stackOver(layers: readonly Glass[], ground: Rgb): Rgb {
+  return layers.reduce<Rgb>((below, glass) => surfaceOver(glass, below), ground);
 }
 
 /**
