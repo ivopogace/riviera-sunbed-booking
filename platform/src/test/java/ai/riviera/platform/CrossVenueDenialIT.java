@@ -3,6 +3,7 @@ package ai.riviera.platform;
 import java.awt.image.BufferedImage;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
+import java.time.Clock;
 import java.util.List;
 
 import javax.imageio.ImageIO;
@@ -72,6 +73,8 @@ class CrossVenueDenialIT {
 	MockMvc mvc;
 	@Autowired
 	JdbcClient jdbc;
+	@Autowired
+	Clock clock;
 
 	/** Stub only the identity seam; the ownership check itself is the real DB-backed bean. */
 	@MockitoSpyBean
@@ -504,13 +507,14 @@ class CrossVenueDenialIT {
 
 	@Test
 	void ownerCanMarkAndReleaseItsOwnSet() throws Exception {
+		String aDayAhead = TiraneDaytimeClock.today(clock).plusDays(30).toString();
 		actingAs(operatorB);
 		mvc.perform(post("/api/venues/{v}/sets/{s}/availability", venueOwnedByB, bSetId)
 						.cookie(operatorSession).with(csrf())
-						.contentType(MediaType.APPLICATION_JSON).content("{\"date\":\"2036-03-03\"}"))
+						.contentType(MediaType.APPLICATION_JSON).content("{\"date\":\"" + aDayAhead + "\"}"))
 				.andExpect(status().isOk());
 		mvc.perform(delete("/api/venues/{v}/sets/{s}/availability", venueOwnedByB, bSetId)
-						.cookie(operatorSession).with(csrf()).param("date", "2036-03-03"))
+						.cookie(operatorSession).with(csrf()).param("date", aDayAhead))
 				.andExpect(status().isNoContent());
 	}
 

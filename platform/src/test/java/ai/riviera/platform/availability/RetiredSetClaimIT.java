@@ -1,5 +1,6 @@
 package ai.riviera.platform.availability;
 
+import java.time.Clock;
 import java.time.LocalDate;
 import java.time.OffsetDateTime;
 
@@ -12,6 +13,7 @@ import org.springframework.jdbc.core.simple.JdbcClient;
 import ai.riviera.platform.EnabledIfDockerAvailable;
 import ai.riviera.platform.OwnershipFixtures;
 import ai.riviera.platform.TestcontainersConfiguration;
+import ai.riviera.platform.TiraneDaytimeClock;
 import ai.riviera.platform.availability.api.AvailabilityClaim;
 import ai.riviera.platform.availability.application.MarkOutcome;
 import ai.riviera.platform.availability.application.StaffAvailability;
@@ -36,8 +38,6 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 @SpringBootTest
 class RetiredSetClaimIT {
 
-	private static final LocalDate DAY = LocalDate.of(2031, 7, 14);
-
 	@Autowired
 	AvailabilityClaim claim;
 
@@ -49,6 +49,14 @@ class RetiredSetClaimIT {
 
 	@Autowired
 	JdbcClient jdbc;
+
+	@Autowired
+	Clock clock;
+
+	/** A day both claim paths would accept on a live set, so the refusal is the retirement's (#4). */
+	private LocalDate aDayOnSale() {
+		return TiraneDaytimeClock.today(clock).plusDays(30);
+	}
 
 	private SetId retiredSetOnANewVenue(String venueName) {
 		long venue = jdbc.sql("""
@@ -83,7 +91,7 @@ class RetiredSetClaimIT {
 	void theOnlineClaimRefusesARetiredSet() {
 		SetId retired = retiredSetOnANewVenue("Retired Online Club");
 
-		assertEquals(ClaimOutcome.NO_SUCH_SET, claim.claim(retired, DAY));
+		assertEquals(ClaimOutcome.NO_SUCH_SET, claim.claim(retired, aDayOnSale()));
 		assertEquals(0, holdsOn(retired), "a refused claim writes no hold");
 	}
 
@@ -92,7 +100,7 @@ class RetiredSetClaimIT {
 		SetId retired = retiredSetOnANewVenue("Retired Walk-in Club");
 		OperatorId bootstrap = operators.operatorFor("operator").orElseThrow();
 
-		assertEquals(MarkOutcome.NO_SUCH_SET, staff.mark(bootstrap, venueOf(retired), retired, DAY));
+		assertEquals(MarkOutcome.NO_SUCH_SET, staff.mark(bootstrap, venueOf(retired), retired, aDayOnSale()));
 		assertEquals(0, holdsOn(retired), "a refused mark writes no hold");
 	}
 }

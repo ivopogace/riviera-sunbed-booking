@@ -1,7 +1,10 @@
 package ai.riviera.platform.availability;
 
+import java.time.Clock;
 import java.time.LocalDate;
 
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -10,12 +13,13 @@ import org.springframework.jdbc.core.simple.JdbcClient;
 
 import ai.riviera.platform.EnabledIfDockerAvailable;
 import ai.riviera.platform.TestcontainersConfiguration;
+import ai.riviera.platform.TiraneDaytimeClock;
 import ai.riviera.platform.availability.api.AvailabilityClaim;
 import ai.riviera.platform.availability.vocabulary.ClaimOutcome;
 import ai.riviera.platform.availability.application.MarkOutcome;
 import ai.riviera.platform.availability.application.ReleaseOutcome;
 import ai.riviera.platform.availability.application.StaffAvailability;
-import ai.riviera.platform.operator.api.OperatorDirectory;
+import ai.riviera.platform.booking.StayFixtures;
 import ai.riviera.platform.operator.vocabulary.OperatorId;
 import ai.riviera.platform.venue.vocabulary.SetId;
 import ai.riviera.platform.venue.vocabulary.VenueId;
@@ -23,18 +27,15 @@ import ai.riviera.platform.venue.vocabulary.VenueId;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
 /**
- * Verifies the staff mark/release outcomes (AC-2..AC-7) against the seeded Miramar
- * map. Marking a free set succeeds and blocks an online claim, marking a taken set is rejected,
- * release frees only a staff mark (never an online row), a past date is rejected, and an unknown
- * set is rejected. Each test uses a distinct far-future {@code booking_date} so methods are
- * independent of one another and of the other availability ITs sharing the Testcontainers context.
+ * The staff mark/release outcomes (AC-2..AC-7): marking a free set succeeds and blocks an online claim,
+ * marking a taken set is rejected, release frees only a staff mark (never an online row), a past date
+ * is rejected, and an unknown set is rejected. Each test runs on a venue of its own, on a day read from
+ * the context clock.
  */
 @EnabledIfDockerAvailable
 @Import(TestcontainersConfiguration.class)
 @SpringBootTest
 class StaffAvailabilityIT {
-
-	private static final VenueId MIRAMAR = new VenueId(1L);
 
 	@Autowired
 	StaffAvailability staff;
@@ -46,25 +47,35 @@ class StaffAvailabilityIT {
 	JdbcClient jdbc;
 
 	@Autowired
-	OperatorDirectory operators;
+	Clock clock;
 
-	/** The interim bootstrap operator (owns every venue, incl. Miramar) — resolves the guard. */
-	private OperatorId bootstrap() {
-		return operators.operatorFor("operator").orElseThrow();
+	private StayFixtures.Venue fixture;
+	private VenueId venue;
+	private OperatorId owner;
+
+	@BeforeEach
+	void seedVenue() {
+		fixture = StayFixtures.venue(jdbc, "INSTANT", null, true);
+		venue = new VenueId(fixture.id());
+		owner = StayFixtures.ownerOf(jdbc, fixture);
+	}
+
+	@AfterEach
+	void removeVenue() {
+		StayFixtures.cleanupNow(jdbc, fixture.id());
 	}
 
 	private SetId anyOnlineSet() {
-		return miramarSet("ONLINE");
+		return fixture.online().getFirst();
 	}
 
 	private SetId anyWalkInSet() {
-		return miramarSet("WALK_IN");
+		return fixture.walkIn();
 	}
 
-	private SetId miramarSet(String pool) {
-		return new SetId(jdbc.sql("""
-				SELECT id FROM set_position WHERE venue_id = :v AND pool = :pool ORDER BY id LIMIT 1
-				""").param("v", MIRAMAR.value()).param("pool", pool).query(Long.class).single());
+	/** A day the staff mark accepts whatever the hour: not before today in Europe/Tirane (#6). */
+	private LocalDate aDayAhead() {
+		return TiraneDaytimeClock.today(clock).plusDays(30);
 	}
 
 	private String stateOf(SetId set, LocalDate date) {
@@ -76,9 +87,9 @@ class StaffAvailabilityIT {
 	@Test
 	void markingFreeSetSucceeds() {
 		SetId set = anyWalkInSet();
-		LocalDate date = LocalDate.of(2030, 7, 1);
+		LocalDate date = aDayAhead();
 
-		assertEquals(MarkOutcome.MARKED, staff.mark(bootstrap(), MIRAMAR, set, date));
+		assertEquals(MarkOutcome.MARKED, staff.mark(owner, venue, set, date));
 		assertEquals("STAFF_MARKED", stateOf(set, date));
 	}
 
@@ -87,28 +98,28 @@ class StaffAvailabilityIT {
 		// Pool-agnostic by decision: an ONLINE-pool set can be staff-marked — the
 		// collision-relevant case (marking removes it from the online pool).
 		SetId set = anyOnlineSet();
-		LocalDate date = LocalDate.of(2030, 7, 2);
+		LocalDate date = aDayAhead();
 
-		assertEquals(MarkOutcome.MARKED, staff.mark(bootstrap(), MIRAMAR, set, date));
+		assertEquals(MarkOutcome.MARKED, staff.mark(owner, venue, set, date));
 		assertEquals("STAFF_MARKED", stateOf(set, date));
 	}
 
 	@Test
 	void markingTakenSetIsRejected() {
 		SetId set = anyWalkInSet();
-		LocalDate date = LocalDate.of(2030, 7, 3);
+		LocalDate date = aDayAhead();
 
-		assertEquals(MarkOutcome.MARKED, staff.mark(bootstrap(), MIRAMAR, set, date));
-		assertEquals(MarkOutcome.ALREADY_TAKEN, staff.mark(bootstrap(), MIRAMAR, set, date), "re-mark must lose");
+		assertEquals(MarkOutcome.MARKED, staff.mark(owner, venue, set, date));
+		assertEquals(MarkOutcome.ALREADY_TAKEN, staff.mark(owner, venue, set, date), "re-mark must lose");
 	}
 
 	@Test
 	void staffMarkBlocksOnlineClaim() {
 		// AC-6: once staff-marked, a tourist cannot claim the same (set, date) online.
 		SetId set = anyOnlineSet();
-		LocalDate date = LocalDate.of(2030, 7, 4);
+		LocalDate date = aDayAhead();
 
-		assertEquals(MarkOutcome.MARKED, staff.mark(bootstrap(), MIRAMAR, set, date));
+		assertEquals(MarkOutcome.MARKED, staff.mark(owner, venue, set, date));
 		assertEquals(ClaimOutcome.ALREADY_TAKEN, claim.claim(set, date));
 		assertEquals("STAFF_MARKED", stateOf(set, date), "the online claim must not overwrite the staff mark");
 	}
@@ -116,10 +127,10 @@ class StaffAvailabilityIT {
 	@Test
 	void releasingStaffMarkedSetFreesIt() {
 		SetId set = anyWalkInSet();
-		LocalDate date = LocalDate.of(2030, 7, 5);
-		assertEquals(MarkOutcome.MARKED, staff.mark(bootstrap(), MIRAMAR, set, date));
+		LocalDate date = aDayAhead();
+		assertEquals(MarkOutcome.MARKED, staff.mark(owner, venue, set, date));
 
-		assertEquals(ReleaseOutcome.RELEASED, staff.release(bootstrap(), MIRAMAR, set, date));
+		assertEquals(ReleaseOutcome.RELEASED, staff.release(owner, venue, set, date));
 		assertEquals("FREE", stateOf(set, date), "release must delete the STAFF_MARKED row");
 	}
 
@@ -127,19 +138,19 @@ class StaffAvailabilityIT {
 	void releaseNeverDeletesOnlineRow() {
 		// AC-5 (the guard): a staff release must never free an online booking's row.
 		SetId set = anyOnlineSet();
-		LocalDate date = LocalDate.of(2030, 7, 6);
+		LocalDate date = aDayAhead();
 		assertEquals(ClaimOutcome.CLAIMED, claim.claim(set, date));
 
-		assertEquals(ReleaseOutcome.NOT_MARKED, staff.release(bootstrap(), MIRAMAR, set, date), "online row is not staff-marked");
+		assertEquals(ReleaseOutcome.NOT_MARKED, staff.release(owner, venue, set, date), "online row is not staff-marked");
 		assertEquals("BOOKED_ONLINE", stateOf(set, date), "the online row must remain intact");
 	}
 
 	@Test
 	void releaseWhenNothingMarkedIsNoOp() {
 		SetId set = anyWalkInSet();
-		LocalDate date = LocalDate.of(2030, 7, 7);
+		LocalDate date = aDayAhead();
 
-		assertEquals(ReleaseOutcome.NOT_MARKED, staff.release(bootstrap(), MIRAMAR, set, date));
+		assertEquals(ReleaseOutcome.NOT_MARKED, staff.release(owner, venue, set, date));
 		assertEquals("FREE", stateOf(set, date));
 	}
 
@@ -149,15 +160,15 @@ class StaffAvailabilityIT {
 		SetId set = anyWalkInSet();
 		LocalDate past = LocalDate.of(2020, 1, 1);
 
-		assertEquals(MarkOutcome.DATE_IN_PAST, staff.mark(bootstrap(), MIRAMAR, set, past));
+		assertEquals(MarkOutcome.DATE_IN_PAST, staff.mark(owner, venue, set, past));
 		assertEquals("FREE", stateOf(set, past), "a rejected past-date mark must create no row");
 	}
 
 	@Test
 	void markingUnknownSetIsRejected() {
 		SetId set = new SetId(999_999L);
-		LocalDate date = LocalDate.of(2030, 7, 8);
+		LocalDate date = aDayAhead();
 
-		assertEquals(MarkOutcome.NO_SUCH_SET, staff.mark(bootstrap(), MIRAMAR, set, date));
+		assertEquals(MarkOutcome.NO_SUCH_SET, staff.mark(owner, venue, set, date));
 	}
 }
