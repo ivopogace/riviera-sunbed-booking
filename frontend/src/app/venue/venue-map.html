@@ -261,18 +261,13 @@
                 <ng-container i18n>No sets to book yet</ng-container>
               }
             </p>
-            @if (staleDays()) {
-              <!-- The mark's slot, held for the whole wait: a mark arriving in a new slot would narrow the line and re-wrap it. -->
-              <span class="size-3.5 shrink-0" aria-hidden="true">
-                @if (slowRead()) {
-                  <!-- The pay page's ring, in the count's own ink: on this card it clears 3:1 in every theme (venue-map.contrast.spec.ts, the accent-ink case). -->
-                  <span
-                    class="block size-3.5 animate-[pay-spin_0.8s_linear_infinite] rounded-full border-2 border-riv-accent-ink/25 border-t-riv-accent-ink motion-reduce:animate-none"
-                    data-testid="availability-wait"
-                    aria-hidden="true"
-                  ></span>
-                }
-              </span>
+            @if (slowRead()) {
+              <!-- The pay page's ring, in the count's own ink: on this card it clears 3:1 in every theme (venue-map.contrast.spec.ts, the accent-ink case). -->
+              <span
+                class="inline-block size-3.5 shrink-0 animate-[pay-spin_0.8s_linear_infinite] rounded-full border-2 border-riv-accent-ink/25 border-t-riv-accent-ink motion-reduce:animate-none"
+                data-testid="availability-wait"
+                aria-hidden="true"
+              ></span>
             }
           </div>
           @if (totalCount()) {

@@ -960,8 +960,6 @@ describe('VenueMap: reloading under the visitor (#1810)', () => {
     describe('the line’s box while it reads "Checking…" (#1836)', () => {
       /** The count's empty twin. That it holds the line's height is the browser's to prove (`e2e/venue-map-reload.e2e.ts`). */
       const twin = (): HTMLElement | null => one('availability').querySelector('span');
-      const markSlot = (): HTMLElement | null =>
-        one('availability').parentElement!.querySelector(':scope > span');
 
       it('is never shorter than the count line it replaced, and the floor goes with the wait', async () => {
         await loadFree();
@@ -978,9 +976,8 @@ describe('VenueMap: reloading under the visitor (#1810)', () => {
         expect(one('availability').style.minHeight).toBe('');
       });
 
-      it('carries the count’s empty twin and holds the mark’s slot from the start of the wait', async () => {
+      it('carries the count’s empty twin, silent and outside the reading order', async () => {
         await loadFree();
-        expect(markSlot()).toBeNull();
 
         pickDays(otherDay);
         await settle();
@@ -988,11 +985,9 @@ describe('VenueMap: reloading under the visitor (#1810)', () => {
         expect(twin()!.classList).toContain('text-[19px]');
         expect(twin()!.getAttribute('aria-hidden')).toBe('true');
         expect(twin()!.textContent).toBe('');
-        expect(markSlot()!.getAttribute('aria-hidden')).toBe('true');
-        expect(markSlot()!.childElementCount).toBe(0);
         venueReq().flush(freeBeach());
         await settle();
-        expect(markSlot()).toBeNull();
+        expect(twin()).toBeNull();
       });
 
       it('has no twin when the line it replaced showed no count', async () => {

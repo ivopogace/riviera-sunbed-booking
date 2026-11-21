@@ -523,8 +523,8 @@ async function pickDays(page: Page, days: readonly string[]): Promise<void> {
 }
 
 /**
- * The availability line's height, the height its text takes, where its 16px text starts under the
- * line's top, and the map card's top in the document.
+ * The availability line's height, where its 16px text starts under the line's top, and how far the
+ * map card sits under the overview card's top: the header above both names the days, so it may re-wrap.
  */
 const lineGeometry = (page: Page) =>
   page.evaluate(() => {
@@ -540,13 +540,12 @@ const lineGeometry = (page: Page) =>
         textTop = range.getClientRects()[0].top - top;
       }
     }
-    range.selectNodeContents(line);
     const map = document.querySelector('app-beach-map-canvas, app-beach-row-lens')!;
+    const card = document.querySelector('[data-testid="map-overview"]')!;
     return {
       height: line.getBoundingClientRect().height,
-      textHeight: range.getBoundingClientRect().height,
       textTop,
-      mapTop: map.getBoundingClientRect().top + window.scrollY,
+      mapUnderCard: map.getBoundingClientRect().top - card.getBoundingClientRect().top,
     };
   });
 
@@ -567,10 +566,12 @@ for (const width of [1280, 390, 344]) {
 
     const checking = await lineGeometry(page);
     expect(checking.height).toBe(rest.height);
-    expect(checking.mapTop).toBe(rest.mapTop);
-    // The mark's slot is held from the start of the wait: its arrival re-wraps nothing.
+    expect(checking.mapUnderCard).toBe(rest.mapUnderCard);
+    // The mark narrows the line and may re-wrap it: inside the held box, so nothing under it moves.
     await expect(page.getByTestId('availability-wait')).toBeVisible();
-    expect(await lineGeometry(page)).toEqual(checking);
+    const withMark = await lineGeometry(page);
+    expect(withMark.height).toBe(rest.height);
+    expect(withMark.mapUnderCard).toBe(rest.mapUnderCard);
 
     release();
 
@@ -589,12 +590,7 @@ test('a one-line count and the checking line that replaces it share a height and
 
   await pickDays(page, ['2026-08-20']);
 
-  const { height, textTop, mapTop } = await lineGeometry(page);
-  expect({ height, textTop, mapTop }).toEqual({
-    height: rest.height,
-    textTop: rest.textTop,
-    mapTop: rest.mapTop,
-  });
+  expect(await lineGeometry(page)).toEqual(rest);
   release();
 });
 
