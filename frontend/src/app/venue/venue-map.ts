@@ -998,10 +998,10 @@ export class VenueMap {
     this.selectedDate.set(days.first);
     this.selectedLastDate.set(days.last);
     if (this.venue() !== undefined) {
-      // The old days' map stays on screen but inert: focus it held lands on the field naming the new days (RV-FE-9).
       this.heldLineHeight.set(
         this.availabilityLine()?.nativeElement.getBoundingClientRect().height ?? 0,
       );
+      // The old days' map stays on screen but inert: focus it held lands on the field naming the new days (RV-FE-9).
       this.staleDays.set(true);
       if (this.holdsFocus()) {
         this.parkIfTaken('map-date');

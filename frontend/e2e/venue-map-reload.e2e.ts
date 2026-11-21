@@ -561,7 +561,7 @@ for (const width of [1280, 390, 344]) {
     );
     const rest = await lineGeometry(page);
 
-    // This stay's count line is the longer text at any width: only a held box keeps its height.
+    // This stay's count line is the longer text at any width: on a phone it wraps to more lines, and only the held floor keeps that height.
     await pickDays(page, ['2026-08-18', '2026-08-21']);
 
     const checking = await lineGeometry(page);
