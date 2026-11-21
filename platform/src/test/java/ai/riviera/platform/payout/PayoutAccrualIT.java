@@ -4,17 +4,21 @@ import java.time.Duration;
 import java.time.LocalDate;
 
 import org.awaitility.Awaitility;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.context.annotation.Import;
 import org.springframework.jdbc.core.simple.JdbcClient;
+import org.springframework.modulith.events.IncompleteEventPublications;
 import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.support.TransactionTemplate;
 
 import ai.riviera.platform.EnabledIfDockerAvailable;
 import ai.riviera.platform.TestcontainersConfiguration;
+import ai.riviera.platform.booking.StayFixtures;
 import ai.riviera.platform.booking.events.BookingConfirmed;
 import ai.riviera.platform.booking.vocabulary.BookingId;
 import ai.riviera.platform.booking.vocabulary.CancellationWindow;
@@ -28,7 +32,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
  * Registry (issue #9):
  * <ul>
  *   <li><strong>AC-2:</strong> a {@link BookingConfirmed} accrues exactly one {@code ACCRUAL} entry
- *       with {@code net = gross − commission} (the seeded Miramar rate, 1500 bps).</li>
+ *       with {@code net = gross − commission} (the venue's rate, 1500 bps).</li>
  *   <li><strong>AC-3:</strong> the same event delivered twice (registry/Stripe at-least-once) still
  *       yields exactly one entry — no double-accrual (invariant #9).</li>
  * </ul>
@@ -46,18 +50,33 @@ class PayoutAccrualIT {
 	JdbcClient jdbc;
 
 	@Autowired
+	IncompleteEventPublications incompletePublications;
+
+	@Autowired
 	ApplicationEventPublisher publisher;
 
 	@Autowired
 	PlatformTransactionManager txManager;
 
+	/** This test's own venue: its bookings and ledger rows reach no other class, and leave with it (#2, #9). */
+	private StayFixtures.Venue venue;
+
+	@BeforeEach
+	void ownVenue() {
+		venue = StayFixtures.venue(jdbc, "INSTANT", null, false);
+	}
+
+	@AfterEach
+	void removeVenue() {
+		StayFixtures.cleanup(jdbc, venue.id());
+	}
+
 	private record Ref(long bookingId, long venueId, long setId) {
 	}
 
-	/** Insert a real CONFIRMED booking (the FK target) on a seeded online set. */
+	/** Insert a real CONFIRMED booking (the FK target) on this test's own venue. */
 	private Ref insertConfirmedBooking(String code) {
-		var set = jdbc.sql("SELECT id, venue_id FROM set_position WHERE pool = 'ONLINE' ORDER BY id LIMIT 1")
-				.query((rs, n) -> new long[] {rs.getLong("id"), rs.getLong("venue_id")}).single();
+		long[] set = {venue.online().getFirst().value(), venue.id()};
 		long customer = jdbc.sql("INSERT INTO customer (email, full_name, phone) "
 						+ "VALUES (:e, 'Guest', '+355600') RETURNING id")
 				.param("e", code + "@example.com").query(Long.class).single();
@@ -119,5 +138,8 @@ class PayoutAccrualIT {
 				.untilAsserted(() -> assertEquals(1L, accrualRows(b.bookingId())));
 		Awaitility.await().during(Duration.ofSeconds(2)).atMost(WAIT)
 				.until(() -> accrualRows(b.bookingId()) == 1L);
+
+		// The identical second publish can lose its registry completion race; re-drive it so none stays open.
+		incompletePublications.resubmitIncompletePublications(publication -> event.equals(publication.getEvent()));
 	}
 }
