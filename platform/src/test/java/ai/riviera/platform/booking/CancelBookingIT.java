@@ -1,9 +1,12 @@
 package ai.riviera.platform.booking;
 
 import java.util.Optional;
+import java.time.Clock;
 import java.time.LocalDate;
 import java.util.List;
 
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -14,6 +17,7 @@ import org.springframework.test.context.event.RecordApplicationEvents;
 
 import ai.riviera.platform.EnabledIfDockerAvailable;
 import ai.riviera.platform.TestcontainersConfiguration;
+import ai.riviera.platform.TiraneDaytimeClock;
 import ai.riviera.platform.booking.events.BookingCancelled;
 import ai.riviera.platform.booking.application.reserve.BookingOutcome;
 import ai.riviera.platform.booking.application.cancel.CancelBooking;
@@ -68,11 +72,32 @@ class CancelBookingIT {
 	@Autowired
 	ai.riviera.platform.booking.application.checkin.MarkNoShows markNoShows;
 
+	@Autowired
+	Clock clock;
+
+	/** This test's own venue, so no other class holds a {@code (set, date)} it books (#2). */
+	private StayFixtures.Venue venue;
+
+	@BeforeEach
+	void seedVenue() {
+		venue = StayFixtures.venue(jdbc, "INSTANT", null, true);
+	}
+
+	@AfterEach
+	void removeVenue() {
+		StayFixtures.cleanup(jdbc, venue.id());
+	}
+
+	/** Thirty days out: on sale and inside the free cancellation window, so a cancel refunds in full. */
+	private LocalDate aDayAhead() {
+		return TiraneDaytimeClock.today(clock).plusDays(30);
+	}
+
 	private record Created(String code, long id, long setId, long amountMinor) {
 	}
 
 	private Created confirmBookingOn(LocalDate date) {
-		long setId = VisibleOnlineSets.newest(jdbc).id();
+		long setId = venue.online().getFirst().value();
 		BookingOutcome outcome =
 				createBooking.create(new CreateBookingCommand(new SetId(setId), date, GUEST));
 		BookingOutcome.Confirmed confirmed = assertInstanceOf(BookingOutcome.Confirmed.class, outcome);
@@ -91,7 +116,7 @@ class CancelBookingIT {
 
 	@Test
 	void cancelBeforeCutoffFullyRefundsReleasesAndPublishes() {
-		LocalDate date = LocalDate.of(2035, 3, 20); // far future → before cutoff → full refund
+		LocalDate date = aDayAhead();
 		Created booking = confirmBookingOn(date);
 		assertEquals(1, availabilityRows(booking.setId(), date), "the set is held before cancel");
 		StayFixtures.awaitAccrual(jdbc, booking.id());
@@ -124,7 +149,7 @@ class CancelBookingIT {
 	 */
 	@Test
 	void cancellationReasonRoundTripsOntoTheBookingDetail() {
-		Created booking = confirmBookingOn(LocalDate.of(2035, 5, 14));
+		Created booking = confirmBookingOn(aDayAhead());
 		StayFixtures.awaitAccrual(jdbc, booking.id());
 		cancelBooking.cancel(booking.code());
 
@@ -143,7 +168,7 @@ class CancelBookingIT {
 	 */
 	@Test
 	void aBookingWithNoRefundDecisionHasNoCancellationReason() {
-		Created booking = confirmBookingOn(LocalDate.of(2035, 5, 15));
+		Created booking = confirmBookingOn(aDayAhead());
 
 		BookingDetail detail = viewBooking.byCode(booking.code(), Optional.empty()).orElseThrow();
 
@@ -153,7 +178,7 @@ class CancelBookingIT {
 
 	@Test
 	void cancellingTwiceIsNotCancellableTheSecondTime() {
-		Created booking = confirmBookingOn(LocalDate.of(2035, 4, 10));
+		Created booking = confirmBookingOn(aDayAhead());
 		StayFixtures.awaitAccrual(jdbc, booking.id());
 
 		assertInstanceOf(CancelOutcome.Cancelled.class, cancelBooking.cancel(booking.code()));
@@ -167,7 +192,7 @@ class CancelBookingIT {
 
 	@Test
 	void noShowAnswersWindowClosedLikeAnUnsweptSpentDay() {
-		Created booking = confirmBookingOn(LocalDate.of(2035, 5, 12));
+		Created booking = confirmBookingOn(aDayAhead());
 		LocalDate spent = LocalDate.of(2021, 7, 4);
 		new ServiceDayBackdate(jdbc).moveToPast(booking.code(), spent);
 		markNoShows.sweep();
@@ -193,10 +218,9 @@ class CancelBookingIT {
 	@Test
 	void aCancelQuotedBeforeADayRefundWritesNothing() {
 		// The quote read 9000 remaining; a weather refund of day 2 (3000) landed before the write (#1210).
-		LocalDate first = LocalDate.of(2035, 7, 1);
-		long setId = VisibleOnlineSets.newest(jdbc).id();
-		long venueId = jdbc.sql("SELECT venue_id FROM set_position WHERE id = :s").param("s", setId)
-				.query(Long.class).single();
+		LocalDate first = aDayAhead();
+		long setId = venue.online().getFirst().value();
+		long venueId = venue.id();
 		long customer = jdbc.sql("INSERT INTO customer (email, full_name, phone) "
 						+ "VALUES ('storm-race@example.com', 'Guest', '+355600') RETURNING id")
 				.query(Long.class).single();
@@ -222,10 +246,9 @@ class CancelBookingIT {
 
 	@Test
 	void aCancellationAfterADayRefundRefundsTheRemainder() {
-		LocalDate first = LocalDate.of(2035, 7, 1);
-		long setId = VisibleOnlineSets.newest(jdbc).id();
-		long venueId = jdbc.sql("SELECT venue_id FROM set_position WHERE id = :s").param("s", setId)
-				.query(Long.class).single();
+		LocalDate first = aDayAhead();
+		long setId = venue.online().getFirst().value();
+		long venueId = venue.id();
 		long customer = jdbc.sql("INSERT INTO customer (email, full_name, phone) "
 						+ "VALUES ('storm-cancel@example.com', 'Guest', '+355600') RETURNING id")
 				.query(Long.class).single();
@@ -266,7 +289,7 @@ class CancelBookingIT {
 
 	@Test
 	void rejectsCancelAfterTheServiceDayHasPassed() {
-		LocalDate booked = LocalDate.of(2035, 5, 11);
+		LocalDate booked = aDayAhead();
 		Created booking = confirmBookingOn(booked);
 		LocalDate spent = LocalDate.of(2021, 6, 3);
 		new ServiceDayBackdate(jdbc).moveToPast(booking.code(), spent);
@@ -289,12 +312,11 @@ class CancelBookingIT {
 
 	/**
 	 * A {@code CONFIRMED} booking over {@code days} days of {@code amountMinor}, every day claimed, as the reserve
-	 * leaves one (dates in 2036, this class's own).
+	 * leaves one.
 	 */
 	private Created confirmedSpan(String code, LocalDate first, int days, long amountMinor) {
-		long setId = VisibleOnlineSets.newest(jdbc).id();
-		long venueId = jdbc.sql("SELECT venue_id FROM set_position WHERE id = :s").param("s", setId)
-				.query(Long.class).single();
+		long setId = venue.online().getFirst().value();
+		long venueId = venue.id();
 		long customer = jdbc.sql("INSERT INTO customer (email, full_name, phone) VALUES (:e, 'Guest', '+355600') RETURNING id")
 				.param("e", code + "@example.com").query(Long.class).single();
 		long id = jdbc.sql("""
@@ -327,7 +349,7 @@ class CancelBookingIT {
 	/** ADR-0026 §7 (#1381): with every day refunded there is nothing left — no cancel, no release, no mail, the row as it was. */
 	@Test
 	void aBookingWithEveryDayRefundedHasNothingLeftToCancel() {
-		LocalDate first = LocalDate.of(2036, 7, 11);
+		LocalDate first = aDayAhead();
 		Created booking = confirmedSpan("CANCELNL01", first, 3, 9000L);
 		for (int day = 0; day < 3; day++) {
 			refundDay(booking.id(), first.plusDays(day), 3000L);
@@ -352,7 +374,7 @@ class CancelBookingIT {
 	 */
 	@Test
 	void aZeroShareDayStillHeldIsNotNothingLeft() {
-		LocalDate first = LocalDate.of(2036, 7, 1);
+		LocalDate first = aDayAhead();
 		Created booking = confirmedSpan("CANCELNL02", first, 3, 2L);
 		refundDay(booking.id(), first, 2L);
 		refundDay(booking.id(), first.plusDays(1), 0L);

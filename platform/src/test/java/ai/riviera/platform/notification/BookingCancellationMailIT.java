@@ -7,6 +7,7 @@ import java.time.LocalDate;
 import java.util.List;
 
 import org.awaitility.Awaitility;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -27,6 +28,7 @@ import ai.riviera.platform.RegistryRows;
 import ai.riviera.platform.SessionLoginSupport;
 import ai.riviera.platform.TestcontainersConfiguration;
 import ai.riviera.platform.TiraneDaytimeClock;
+import ai.riviera.platform.booking.StayFixtures;
 import ai.riviera.platform.booking.application.remodel.NewReceipt;
 import ai.riviera.platform.booking.application.remodel.ReceiptOutcome;
 import ai.riviera.platform.booking.application.remodel.ReceiptOutcomeKind;
@@ -67,11 +69,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
  *       on — the live half of the two-link chain {@code MailOutboxScopeTest} holds the other end of.</li>
  * </ul>
  *
- * <p><strong>Dates are unique to this class, deliberately.</strong> Classes sharing this context
- * share one container and one online set, and a claimed {@code (set, date)} is never released
- * (invariant #2) — so a date another IT books would 409 whichever class ran second.
- * {@code BookingConfirmationMailIT} sits on 2029-06-12..15 and {@code plusYears(1).plusDays(23)};
- * this class takes 2029-07-xx and its own offset.
+ * <p>Each test runs on a venue of its own, so no date here can meet another class's claim (invariant #2).
  *
  * <p>Testcontainers; skipped where Docker is absent.
  */
@@ -115,10 +113,19 @@ class BookingCancellationMailIT {
 	private record SetRef(long setId, long venueId, String venueName) {
 	}
 
+	/** This test's own visible venue, so no booking of it sits on a set another class reads or claims. */
+	private StayFixtures.Venue venue;
+
 	@BeforeEach
 	void isolateOutbox() {
 		mailer.clear();
 		fixtures = new BookingMailFixtures(jdbc, txManager, publisher);
+		venue = StayFixtures.venue(jdbc, "INSTANT", null, true);
+	}
+
+	@AfterEach
+	void removeVenue() {
+		StayFixtures.cleanup(jdbc, venue.id());
 	}
 
 	/**
@@ -285,7 +292,7 @@ class BookingCancellationMailIT {
 	@Test
 	void aVenueCausedCancellationCarriesTheRebookLinkAndFallsBackToDiscovery() {
 		SetRef set = onlineSet();
-		LocalDate sellable = LocalDate.of(2029, 7, 15);
+		LocalDate sellable = TiraneDaytimeClock.today(clock).plusDays(30);
 		LocalDate unsellable = LocalDate.of(2020, 7, 15);
 		String onOpenDay = "remodelled-open@example.com";
 		String onClosedDay = "remodelled-closed@example.com";
@@ -344,13 +351,8 @@ class BookingCancellationMailIT {
 	}
 
 	private SetRef onlineSet() {
-		return jdbc.sql("""
-				SELECT sp.id, sp.venue_id, v.name
-				FROM set_position sp JOIN venue v ON v.id = sp.venue_id
-				WHERE sp.pool = 'ONLINE' ORDER BY sp.id LIMIT 1
-				""")
-				.query((rs, n) -> new SetRef(rs.getLong("id"), rs.getLong("venue_id"), rs.getString("name")))
-				.single();
+		return new SetRef(venue.online().getFirst().value(), venue.id(),
+				jdbc.sql("SELECT name FROM venue WHERE id = :v").param("v", venue.id()).query(String.class).single());
 	}
 
 	private long countTo(String email) {

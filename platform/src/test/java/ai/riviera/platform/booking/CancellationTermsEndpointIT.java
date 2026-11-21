@@ -1,5 +1,6 @@
 package ai.riviera.platform.booking;
 
+import java.time.Clock;
 import java.time.LocalDate;
 import java.time.ZoneId;
 
@@ -14,6 +15,7 @@ import org.springframework.test.web.servlet.MockMvc;
 
 import ai.riviera.platform.EnabledIfDockerAvailable;
 import ai.riviera.platform.TestcontainersConfiguration;
+import ai.riviera.platform.TiraneDaytimeClock;
 
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
@@ -45,6 +47,13 @@ class CancellationTermsEndpointIT {
 	@Autowired
 	JdbcClient jdbc;
 
+	@Autowired
+	Clock clock;
+
+	private LocalDate today() {
+		return TiraneDaytimeClock.today(clock);
+	}
+
 	/** A midnight-cutoff venue offering a 40% late share, with one online set; returns the set id. */
 	private long seedMidnightCutoffSet(String venueName) {
 		long venueId = jdbc.sql("""
@@ -64,7 +73,7 @@ class CancellationTermsEndpointIT {
 	@Test
 	void quotesFreeWindowWithDeadlineForAFarFutureDate() throws Exception {
 		long setId = seedMidnightCutoffSet("Terms Free Club");
-		LocalDate date = LocalDate.of(2034, 6, 6);
+		LocalDate date = today().plusDays(30);
 
 		mvc.perform(get("/api/bookings/cancellation-terms")
 						.param("setId", String.valueOf(setId)).param("date", date.toString()))
@@ -78,7 +87,7 @@ class CancellationTermsEndpointIT {
 	@Test
 	void quotesLateWindowWithVenueShareForTomorrow() throws Exception {
 		long setId = seedMidnightCutoffSet("Terms Late Club");
-		LocalDate tomorrow = LocalDate.now(TIRANE).plusDays(1);
+		LocalDate tomorrow = today().plusDays(1);
 
 		mvc.perform(get("/api/bookings/cancellation-terms")
 						.param("setId", String.valueOf(setId)).param("date", tomorrow.toString()))
@@ -90,7 +99,7 @@ class CancellationTermsEndpointIT {
 	@Test
 	void quotesClosedWindowForToday() throws Exception {
 		long setId = seedMidnightCutoffSet("Terms Closed Club");
-		LocalDate today = LocalDate.now(TIRANE);
+		LocalDate today = today();
 
 		mvc.perform(get("/api/bookings/cancellation-terms")
 						.param("setId", String.valueOf(setId)).param("date", today.toString()))

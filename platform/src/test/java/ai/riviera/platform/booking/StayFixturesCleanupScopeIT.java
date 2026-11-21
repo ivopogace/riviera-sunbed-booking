@@ -33,8 +33,8 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 /**
  * {@link StayFixtures#cleanup} waits only on {@link StayFixtures#pendingPublicationsOf}: a pending publication
  * another class left in the shared registry neither counts nor holds the cleanup up (#1444), while one naming
- * the venue's booking or stay counts. Payloads come from the registry's own serializer. Real Postgres via
- * Testcontainers.
+ * the venue's booking or stay counts. The cleanup removes the operator the fixture created and no other.
+ * Payloads come from the registry's own serializer. Real Postgres via Testcontainers.
  */
 @EnabledIfDockerAvailable
 @Import(TestcontainersConfiguration.class)
@@ -89,6 +89,28 @@ class StayFixturesCleanupScopeIT {
 
 		assertEquals(3L, StayFixtures.pendingPublicationsOf(jdbc, venue.id()),
 				"each of the venue's own incomplete publications, by bookingId, stayId and bookingRef");
+	}
+
+	@Test
+	void cleanupRemovesTheOperatorTheFixtureCreatedAndNoOther() {
+		Venue visible = venue();
+		long fixtureOperator = StayFixtures.ownerOf(jdbc, visible).value();
+		Venue linkedByTheTest = StayFixtures.venue(jdbc, "INSTANT", null, false);
+		long another = jdbc.sql("INSERT INTO operator (username, status) VALUES (:u, 'ACTIVE') RETURNING id")
+				.param("u", "cleanup-scope-" + System.nanoTime()).query(Long.class).single();
+		jdbc.sql("INSERT INTO operator_venue (venue_id, operator_id) VALUES (:v, :o)")
+				.param("v", linkedByTheTest.id()).param("o", another).update();
+
+		StayFixtures.cleanupNow(jdbc, visible.id());
+		StayFixtures.cleanupNow(jdbc, linkedByTheTest.id());
+
+		assertEquals(0L, operators(fixtureOperator), "the operator the fixture created goes with its venue");
+		assertEquals(1L, operators(another), "an owner a test linked itself is that test's to remove");
+		jdbc.sql("DELETE FROM operator WHERE id = :o").param("o", another).update();
+	}
+
+	private long operators(long id) {
+		return jdbc.sql("SELECT count(*) FROM operator WHERE id = :o").param("o", id).query(Long.class).single();
 	}
 
 	private Venue venue() {
