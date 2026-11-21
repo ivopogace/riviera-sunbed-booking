@@ -16,12 +16,12 @@ clock-derived fields move into `@BeforeEach`, since a field initializer runs bef
 
 ## Acceptance criteria
 
-- [ ] **AC-1:** Given the clock at 2038-01-01T10:00Z, when the `booking` package batch runs, then the 48 group-B
+- [x] **AC-1:** Given the clock at 2038-01-01T10:00Z, when the `booking` package batch runs, then the 48 group-B
   tests red on `main` are green and nothing else in the batch is red. *Seam:* the context `Clock` moved by
   `TestClockTravel` · *Pinned by:* the 18 classes; the batch.
-- [ ] **AC-2:** Given the real clock, when the touched classes and the rest of the suite run, then they are green.
+- [x] **AC-2:** Given the real clock, when the touched classes and the rest of the suite run, then they are green.
   *Seam:* same · *Pinned by:* the touched classes; the suite in package batches.
-- [ ] **AC-3:** No file under `platform/src/main` in the diff.
+- [x] **AC-3:** No file under `platform/src/main` in the diff.
 
 ## Non-goals
 
@@ -42,12 +42,12 @@ clock-derived fields move into `@BeforeEach`, since a field initializer runs bef
 
 ## Execution status
 
-**Stage pointer:** implement (phase 0)
+**Stage pointer:** review (round 1)
 
-**Next action:** open the draft PR; finish the booking batch at 2038 and the no-travel suite.
+**Next action:** mark #1851 ready and run the review gate at high.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
-| 0 — group B reads the clock | ⏳ | |
+| 0 — group B reads the clock | ✅ | `8c3780b` |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
