@@ -14,6 +14,7 @@ import {
 } from '../../testing/contrast';
 import {
   BANNER_FILLS,
+  CONSOLE_SCRIM,
   CTA_BORDER,
   CTA_GRAD_STOPS,
   DARK_CARD_BORDER,
@@ -26,12 +27,19 @@ import {
   DARK_STOPS,
   DARK_UNDER_CONTENT,
   DIALOG_CLOSE_FILL,
+  DIALOG_GLASS,
   DIALOG_SCRIM,
+  FIELD_SOLID,
   type Glass,
+  POP_SURFACE,
   PORCELAIN_CARD_GLASS,
+  PORCELAIN_HEADER_GLASS,
   PORCELAIN_STOPS,
+  PORCELAIN_UNDER_CONTENT,
   RIVIERA_CARD_GLASS,
+  RIVIERA_HEADER_GLASS,
   RIVIERA_STOPS,
+  RIVIERA_UNDER_CONTENT,
   stackOver,
   surfaceOver,
 } from '../../testing/glass-tokens';
@@ -196,6 +204,115 @@ const DARK_HOSTS: readonly DarkHost[] = [
 ];
 
 /**
+ * The same surfaces in the light themes (#1850), keyed to the dark host by its H number, so the
+ * sites are the dark entry's. Riviera has no console hosts: the console wears porcelain or dark
+ * only (`core/console-theme.ts`'s `ConsoleThemeId`). Grounds follow the dark population's rule.
+ */
+interface LightHost {
+  readonly theme: 'porcelain' | 'riviera';
+  readonly host: string;
+  readonly layers: readonly Glass[];
+  readonly grounds: readonly Rgb[];
+  /** The fill-vs-host band, to two decimals. */
+  readonly band: readonly [number, number];
+}
+
+const LIGHT_HOSTS: readonly LightHost[] = [
+  {
+    theme: 'porcelain',
+    host: 'H1 card glass',
+    layers: [PORCELAIN_CARD_GLASS],
+    grounds: PORCELAIN_STOPS,
+    band: [5.03, 7.24],
+  },
+  {
+    theme: 'riviera',
+    host: 'H1 card glass',
+    layers: [RIVIERA_CARD_GLASS],
+    grounds: RIVIERA_STOPS,
+    band: [3.8, 6.9],
+  },
+  {
+    theme: 'porcelain',
+    host: 'H2 card glass, then the --riv-field-solid banner',
+    layers: [PORCELAIN_CARD_GLASS, FIELD_SOLID],
+    grounds: PORCELAIN_STOPS,
+    band: [5.5, 7.24],
+  },
+  {
+    theme: 'riviera',
+    host: 'H2 card glass, then the --riv-field-solid banner',
+    layers: [RIVIERA_CARD_GLASS, FIELD_SOLID],
+    grounds: RIVIERA_STOPS,
+    band: [5.36, 7.21],
+  },
+  {
+    theme: 'porcelain',
+    host: 'H3 --riv-dialog-glass, over its scrim',
+    layers: [DIALOG_SCRIM, DIALOG_GLASS],
+    grounds: PORCELAIN_UNDER_CONTENT,
+    band: [3.73, 6.16],
+  },
+  {
+    theme: 'riviera',
+    host: 'H3 --riv-dialog-glass, over its scrim',
+    layers: [DIALOG_SCRIM, DIALOG_GLASS],
+    grounds: RIVIERA_UNDER_CONTENT,
+    band: [3.73, 6.16],
+  },
+  {
+    theme: 'porcelain',
+    host: 'H5 the floating --riv-pop-surface pick bar, over the map',
+    layers: [POP_SURFACE],
+    grounds: PORCELAIN_UNDER_CONTENT,
+    band: [4.66, 7.24],
+  },
+  {
+    theme: 'riviera',
+    host: 'H5 the floating --riv-pop-surface pick bar, over the map',
+    layers: [POP_SURFACE],
+    grounds: RIVIERA_UNDER_CONTENT,
+    band: [4.66, 7.24],
+  },
+  {
+    theme: 'porcelain',
+    host: "H6 --riv-header-glass, then the failure panel's card glass",
+    layers: [PORCELAIN_HEADER_GLASS, PORCELAIN_CARD_GLASS],
+    grounds: PORCELAIN_UNDER_CONTENT,
+    band: [3.64, 7.24],
+  },
+  {
+    theme: 'riviera',
+    host: "H6 --riv-header-glass, then the failure panel's card glass",
+    layers: [RIVIERA_HEADER_GLASS, RIVIERA_CARD_GLASS],
+    grounds: RIVIERA_UNDER_CONTENT,
+    band: [3.5, 5.33],
+  },
+  {
+    theme: 'porcelain',
+    host: 'H7 the console bottom sheet below lg, card glass over the console scrim',
+    layers: [CONSOLE_SCRIM, PORCELAIN_CARD_GLASS],
+    grounds: PORCELAIN_UNDER_CONTENT,
+    band: [1.79, 4.74],
+  },
+  {
+    theme: 'porcelain',
+    host: 'H8 the sticky card-glass save bar, over the scrolling page',
+    layers: [PORCELAIN_CARD_GLASS],
+    grounds: PORCELAIN_UNDER_CONTENT,
+    band: [1.65, 7.24],
+  },
+];
+
+/** The dark hosts that are console surfaces only, so riviera never reaches them. */
+const CONSOLE_ONLY_HOSTS = ['H7', 'H8'];
+
+/** A host's H number, the key a light host shares with its dark entry. */
+function hostId({ host }: { host: string }): string {
+  return host.split(' ')[0];
+}
+
+/**
  * H4, the popover (`--riv-pop-surface`): the calendar's Apply and the partly-free sheet's retry.
  * Its number lives in `availability-calendar.contrast.spec.ts`, which measures the popover surface
  * both sheets wear; the sources below are held to that surface.
@@ -352,8 +469,8 @@ function darkFillAgainstCard(): readonly number[] {
   );
 }
 
-/** The CTA fill against a dark host, over every ground it can sit on and both gradient stops. */
-function fillAgainst({ layers, grounds }: DarkHost): readonly number[] {
+/** The CTA fill against a host, over every ground it can sit on and both gradient stops. */
+function fillAgainst({ layers, grounds }: DarkHost | LightHost): readonly number[] {
   return grounds.flatMap((ground) =>
     CTA_GRAD_STOPS.map((fill) =>
       contrastRatio(rgbToHex(fill), rgbToHex(stackOver(layers, ground))),
@@ -559,6 +676,41 @@ describe('--riv-cta-border — the CTA hairline (#853)', () => {
     }
   });
 
+  /**
+   * Rule 2's second condition in the light themes (#1850): every light host's band is asserted,
+   * including the ones where the fill clears 3:1 and needs no exemption.
+   */
+  it.each(LIGHT_HOSTS)('the light fill against $host, in $theme, is a measured band', (host) => {
+    const ratios = fillAgainst(host);
+
+    expect(Math.min(...ratios), 'the band floor').toBeCloseTo(host.band[0], 2);
+    expect(Math.max(...ratios), 'the band ceiling').toBeCloseTo(host.band[1], 2);
+  });
+
+  /**
+   * Where the doc's light-theme sentence comes from: the console's save bars and bottom sheet, with
+   * a photo or the beach map under card glass, are the only light hosts that rest on rule 2.
+   */
+  it("in the light themes the fill clears 3:1 on every host but porcelain's console save bars and bottom sheet", () => {
+    const underThreeToOne = LIGHT_HOSTS.filter(
+      (host) => Math.min(...fillAgainst(host)) < AA_LARGE,
+    ).map((host) => `${host.theme} ${hostId(host)}`);
+
+    expect(underThreeToOne).toEqual(['porcelain H7', 'porcelain H8']);
+  });
+
+  it('every dark host has its light counterpart in each light theme that reaches it', () => {
+    const darkIds = DARK_HOSTS.map(hostId);
+    const idsIn = (theme: LightHost['theme']): readonly string[] =>
+      LIGHT_HOSTS.filter((host) => host.theme === theme).map(hostId);
+
+    expect(idsIn('porcelain')).toEqual(darkIds);
+    expect(idsIn('riviera')).toEqual(darkIds.filter((id) => !CONSOLE_ONLY_HOSTS.includes(id)));
+    expect(read('core/console-theme.ts'), 'the console never wears riviera').toContain(
+      "export type ConsoleThemeId = 'porcelain' | 'dark';",
+    );
+  });
+
   it('the lighter-fill measure refuses a host too light for any fill to reach 3:1', () => {
     expect(() => whiteOnThreeToOneFill(0.4)).toThrow(RangeError);
   });
@@ -576,6 +728,37 @@ describe('--riv-cta-border — the CTA hairline (#853)', () => {
     for (const [token, { color, alpha }] of mirrors) {
       expect(dark, token).toContain(`${token}: rgba(${color.join(', ')}, ${alpha});`);
     }
+  });
+
+  it('every light host mirror matches the base and riviera blocks of the stylesheet', () => {
+    const css = ({ color, alpha }: Glass): string => `rgba(${color.join(', ')}, ${alpha})`;
+    const base = baseBlock();
+    const riviera = themeBlock('riviera');
+    const shared = [
+      ['--riv-field-solid', FIELD_SOLID],
+      ['--riv-dialog-glass', DIALOG_GLASS],
+      ['--riv-pop-surface', POP_SURFACE],
+    ] as const;
+
+    for (const [token, glass] of [
+      ['--riv-card-glass', PORCELAIN_CARD_GLASS],
+      ['--riv-header-glass', PORCELAIN_HEADER_GLASS],
+      ...shared,
+    ] as const) {
+      expect(base, token).toContain(`${token}: ${css(glass)};`);
+    }
+    for (const [token, glass] of [
+      ['--riv-card-glass', RIVIERA_CARD_GLASS],
+      ['--riv-header-glass', RIVIERA_HEADER_GLASS],
+    ] as const) {
+      expect(riviera, token).toContain(`${token}: ${css(glass)};`);
+    }
+    for (const [token] of shared) {
+      expect(riviera, `${token} is inherited from the base block`).not.toContain(`${token}:`);
+    }
+    expect(base, 'the console scrim').toContain(
+      `--riv-console-scrim: ${rgbToHex(CONSOLE_SCRIM.color)};`,
+    );
   });
 
   it('every CTA call site is counted, and every counted file is named on a host', () => {
