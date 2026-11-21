@@ -1577,10 +1577,11 @@ The SPA rules whose TSDoc points here; structure is `riviera-frontend`'s, stylin
   silent. The bar shows no proportion and the no-cover banner is withheld: each would put the old read's numbers
   under the new days. No `aria-busy` on the map: an inert node is not exposed, and on the line it would hold the
   announcement back. A progress mark joins the line after a second, outside the live region so its arrival is not read.
-  A same-days re-read (the refresh above, Retry) shows none of this. The sales-closed alert is withheld too (#1822): its
-  verdict is the old day's, and the read that answers closed inserts it again, which announces it for the new day. The
-  closed-for-season notice stays: it speaks of the venue, as the header's chip does, and withholding it would repeat an
-  unchanged alert on every date change inside a closed season.
+  A same-days re-read (the refresh above, Retry) shows none of this.
+- **While other days load, the sales-closed alert is withheld; the closed-for-season notice stays** (#1822): the
+  alert's verdict is the old day's, and the read that answers closed inserts it again, which announces it for the new
+  day. The notice speaks of the venue, as the header's chip does, and withholding it would repeat an unchanged alert on
+  every date change inside a closed season.
 - **The rails' label ellipsis and `rowName()`'s non-letter branch stay, defensive only** (#1626): the
   rails render active sets only (`active_set_position`, `JdbcVenueCatalog`), so no live map reaches a
   long label; the unit specs keep the classes, `loading-skeletons.e2e.ts` the capped rail's width under
