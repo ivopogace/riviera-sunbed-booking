@@ -333,7 +333,7 @@ class CancelStayIT {
 		SetId b = venue.online().get(1);
 		LocalDate first = firstDay(clock);
 		String code = "RLSD" + System.nanoTime() % 100_000_000L;
-		StayFixtures.SeededStay seeded = StayFixtures.insertStay(jdbc, venue, code, first, a, 2, "CANCELLED", b, 2,
+		StayFixtures.SeededStay seeded = StayFixtures.insertStay(jdbc, clock, venue, code, first, a, 2, "CANCELLED", b, 2,
 				"CANCELLED");
 		receipts.store(new NewReceipt(new VenueId(venue.id()), StayFixtures.ownerOf(jdbc, venue), clock.instant(),
 				List.of(), List.of(
@@ -357,7 +357,7 @@ class CancelStayIT {
 		SetId b = venue.online().get(1);
 		LocalDate first = firstDay(clock);
 		String code = "NLFT" + System.nanoTime() % 100_000_000L;
-		StayFixtures.SeededStay seeded = StayFixtures.insertStay(jdbc, venue, code, first, a, 2, "CONFIRMED", b, 2,
+		StayFixtures.SeededStay seeded = StayFixtures.insertStay(jdbc, clock, venue, code, first, a, 2, "CONFIRMED", b, 2,
 				"CONFIRMED");
 		first.datesUntil(first.plusDays(2)).forEach(day -> StayFixtures.take(jdbc, a, day));
 		first.plusDays(2).datesUntil(first.plusDays(4)).forEach(day -> StayFixtures.take(jdbc, b, day));
@@ -401,7 +401,7 @@ class CancelStayIT {
 		SetId b = venue.online().get(1);
 		LocalDate first = firstDay(clock);
 		String code = "NLSA" + System.nanoTime() % 100_000_000L;
-		StayFixtures.SeededStay seeded = StayFixtures.insertStay(jdbc, venue, code, first, a, 2, "CONFIRMED", b, 2,
+		StayFixtures.SeededStay seeded = StayFixtures.insertStay(jdbc, clock, venue, code, first, a, 2, "CONFIRMED", b, 2,
 				"CONFIRMED");
 		first.datesUntil(first.plusDays(4)).forEach(day -> StayFixtures.take(jdbc, day.isBefore(first.plusDays(2)) ? a : b, day));
 		seeded.stretches().forEach(stretch -> accrue(venue, stretch));
@@ -435,7 +435,7 @@ class CancelStayIT {
 		SetId b = venue.online().get(1);
 		LocalDate first = firstDay(clock);
 		String code = "NLAL" + System.nanoTime() % 100_000_000L;
-		StayFixtures.SeededStay seeded = StayFixtures.insertStay(jdbc, venue, code, first, a, 2, "CONFIRMED", b, 2,
+		StayFixtures.SeededStay seeded = StayFixtures.insertStay(jdbc, clock, venue, code, first, a, 2, "CONFIRMED", b, 2,
 				"CONFIRMED");
 		first.datesUntil(first.plusDays(4)).forEach(day -> StayFixtures.take(jdbc, day.isBefore(first.plusDays(2)) ? a : b, day));
 		seeded.stretches().forEach(stretch -> refundEveryDay(stretch, PRICE / 2));

@@ -1,7 +1,7 @@
 package ai.riviera.platform.booking;
 
+import java.time.Clock;
 import java.time.LocalDate;
-import java.time.ZoneId;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -16,6 +16,7 @@ import org.springframework.test.web.servlet.MvcResult;
 import ai.riviera.platform.EnabledIfDockerAvailable;
 import ai.riviera.platform.SessionLoginSupport;
 import ai.riviera.platform.TestcontainersConfiguration;
+import ai.riviera.platform.TiraneDaytimeClock;
 
 import jakarta.servlet.http.Cookie;
 
@@ -42,13 +43,15 @@ class VenueDayRefundControllerIT {
 
 	private static final String OPERATOR = "operator";
 	private static final String PASSWORD = "test-operator-pw";
-	private static final ZoneId TIRANE = ZoneId.of("Europe/Tirane");
 
 	@Autowired
 	MockMvc mvc;
 
 	@Autowired
 	JdbcClient jdbc;
+
+	@Autowired
+	Clock clock;
 
 	private Cookie operatorSession;
 
@@ -82,9 +85,9 @@ class VenueDayRefundControllerIT {
 		long id = jdbc.sql("""
 				INSERT INTO booking (code, venue_id, set_id, customer_id, booking_date, last_date,
 				                     amount_minor, amount_currency, status, confirmed_at)
-				VALUES (:code, :venue, :set, :cust, :first, :last, :amount, 'EUR', 'CONFIRMED', now())
+				VALUES (:code, :venue, :set, :cust, :first, :last, :amount, 'EUR', 'CONFIRMED', :now)
 				RETURNING id
-				""")
+				""").param("now", java.sql.Timestamp.from(clock.instant()))
 				.param("code", code).param("venue", venueId).param("set", set).param("cust", customer)
 				.param("first", first).param("last", first.plusDays(days - 1)).param("amount", amountMinor)
 				.query(Long.class).single();
@@ -108,8 +111,8 @@ class VenueDayRefundControllerIT {
 		return prefix + System.nanoTime() % 1_000_000;
 	}
 
-	private static LocalDate today() {
-		return LocalDate.now(TIRANE);
+	private LocalDate today() {
+		return TiraneDaytimeClock.today(clock);
 	}
 
 	/** Invariant #7: no body may echo the bearer credential — not even in {@code instance}. */
@@ -167,7 +170,8 @@ class VenueDayRefundControllerIT {
 		String code = uniqueCode("VDRATT");
 		LocalDate first = today().minusDays(2);
 		long id = insertConfirmedSpan(code, venue, first, 3, 9000L);
-		jdbc.sql("UPDATE booking_day SET attended_at = now() WHERE booking_id = :id AND service_date = :d")
+		jdbc.sql("UPDATE booking_day SET attended_at = :now WHERE booking_id = :id AND service_date = :d")
+				.param("now", java.sql.Timestamp.from(clock.instant()))
 				.param("id", id).param("d", first).update();
 
 		MvcResult result = mvc.perform(post("/api/venues/{v}/bookings/{code}/day-refund", venue, code)

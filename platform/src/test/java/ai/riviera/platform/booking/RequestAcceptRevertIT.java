@@ -1,8 +1,7 @@
 package ai.riviera.platform.booking;
 
-import java.time.Instant;
+import java.time.Clock;
 import java.time.LocalDate;
-import java.time.ZoneId;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -16,6 +15,7 @@ import org.springframework.transaction.support.TransactionTemplate;
 
 import ai.riviera.platform.EnabledIfDockerAvailable;
 import ai.riviera.platform.TestcontainersConfiguration;
+import ai.riviera.platform.TiraneDaytimeClock;
 import ai.riviera.platform.availability.api.AvailabilityClaim;
 import ai.riviera.platform.availability.vocabulary.ClaimOutcome;
 import ai.riviera.platform.booking.application.Bookings;
@@ -52,6 +52,9 @@ class RequestAcceptRevertIT {
 	JdbcClient jdbc;
 
 	@Autowired
+	Clock clock;
+
+	@Autowired
 	Bookings bookings;
 
 	@Autowired
@@ -67,10 +70,11 @@ class RequestAcceptRevertIT {
 	private long venueId;
 	private OperatorId operator;
 	private long setId;
-	private final LocalDate day = LocalDate.now(ZoneId.of("Europe/Tirane")).plusDays(10);
+	private LocalDate day;
 
 	@BeforeEach
 	void seedRequestVenue() {
+		day = TiraneDaytimeClock.today(clock).plusDays(10);
 		venueId = jdbc.sql("""
 				INSERT INTO venue (name, beach, booking_mode, commission_bps, payout_currency)
 				VALUES (:name, 'KSAMIL', 'REQUEST', 1500, 'EUR')
@@ -106,7 +110,7 @@ class RequestAcceptRevertIT {
 			new TransactionTemplate(txManager).executeWithoutResult(status -> {
 				assertSame(ClaimOutcome.CLAIMED, availability.claim(new SetId(candidate), day));
 				availability.release(new SetId(setId), day);
-				assertTrue(bookings.moveToSet(request, new SetId(setId), new SetId(candidate), Instant.now()));
+				assertTrue(bookings.moveToSet(request, new SetId(setId), new SetId(candidate), clock.instant()));
 			});
 			assertSame(ClaimOutcome.CLAIMED, availability.claim(new SetId(setId), day));
 			return new PaymentOutcome.Failed("stripe_error");
@@ -129,7 +133,7 @@ class RequestAcceptRevertIT {
 		long candidate = insertSet(2);
 		long request = insertRequest();
 
-		assertFalse(bookings.moveToSet(request, new SetId(setId), new SetId(candidate), Instant.now()),
+		assertFalse(bookings.moveToSet(request, new SetId(setId), new SetId(candidate), clock.instant()),
 				"a pending request holds no claim (ADR-0025), so the remodel's move misses and its commit rolls back");
 		assertEquals(setId, jdbc.sql("SELECT set_id FROM booking WHERE id = :id")
 				.param("id", request).query(Long.class).single());
@@ -156,7 +160,7 @@ class RequestAcceptRevertIT {
 				RETURNING id
 				""")
 				.param("code", code).param("venue", venueId).param("set", setId).param("cust", customer)
-				.param("day", day).param("expires", java.sql.Timestamp.from(Instant.now().plusSeconds(3600)))
+				.param("day", day).param("expires", java.sql.Timestamp.from(clock.instant().plusSeconds(3600)))
 				.query(Long.class).single();
 	}
 

@@ -82,7 +82,7 @@ class StayRequestDeclineIT {
 
 	@Test
 	void theVenueDeclinesAStayWhole() {
-		StayFixtures.SeededStay stay = pendingStay("SDCA", Instant.now().plusSeconds(3600));
+		StayFixtures.SeededStay stay = pendingStay("SDCA", clock.instant().plusSeconds(3600));
 		VenueId venueId = new VenueId(venue.id());
 
 		assertInstanceOf(DeclineOutcome.Declined.class, respondToRequest.declineStay(owner, venueId, new StayId(stay.id())));
@@ -101,7 +101,7 @@ class StayRequestDeclineIT {
 
 	@Test
 	void theSweepExpiresAStayWholeAndSaysSoOnce() {
-		StayFixtures.SeededStay stay = pendingStay("SEXA", Instant.now().minusSeconds(60));
+		StayFixtures.SeededStay stay = pendingStay("SEXA", clock.instant().minusSeconds(60));
 
 		expireRequests.sweep();
 

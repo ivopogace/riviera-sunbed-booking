@@ -105,7 +105,7 @@ class StayMoveReminderIT {
 	@Test
 	void theEveningBeforeAMoveAnnouncesItOnce() {
 		Venue venue = venue();
-		SeededStay stay = StayFixtures.insertStay(jdbc, venue, code("RMND"), FIRST, venue.online().get(0), 3,
+		SeededStay stay = StayFixtures.insertStay(jdbc, clock, venue, code("RMND"), FIRST, venue.online().get(0), 3,
 				"CONFIRMED", venue.online().get(1), 3, "CONFIRMED");
 		clock.set(EVENING_BEFORE);
 
@@ -126,7 +126,7 @@ class StayMoveReminderIT {
 	@Test
 	void nothingIsDueOutsideTheEveningBefore() {
 		Venue venue = venue();
-		SeededStay stay = StayFixtures.insertStay(jdbc, venue, code("RMNO"), FIRST, venue.online().get(0), 3,
+		SeededStay stay = StayFixtures.insertStay(jdbc, clock, venue, code("RMNO"), FIRST, venue.online().get(0), 3,
 				"CONFIRMED", venue.online().get(1), 3, "CONFIRMED");
 
 		clock.set(AFTERNOON_BEFORE);
@@ -146,9 +146,9 @@ class StayMoveReminderIT {
 	@Test
 	void aMoveToADayTheGuestNoLongerHoldsIsNotAnnounced() {
 		Venue venue = venue();
-		SeededStay moveDayRefunded = StayFixtures.insertStay(jdbc, venue, code("RMMR"), FIRST, venue.online().get(0), 3,
+		SeededStay moveDayRefunded = StayFixtures.insertStay(jdbc, clock, venue, code("RMMR"), FIRST, venue.online().get(0), 3,
 				"CONFIRMED", venue.online().get(1), 3, "CONFIRMED");
-		SeededStay departureRefunded = StayFixtures.insertStay(jdbc, venue, code("RMDR"), FIRST, venue.online().get(2), 3,
+		SeededStay departureRefunded = StayFixtures.insertStay(jdbc, clock, venue, code("RMDR"), FIRST, venue.online().get(2), 3,
 				"CONFIRMED", venue.online().get(0), 3, "CONFIRMED");
 		refundDay(moveDayRefunded.stretches().get(1), MOVE_DAY);
 		refundDay(departureRefunded.stretches().get(0), MOVE_DAY.minusDays(1));
@@ -165,20 +165,21 @@ class StayMoveReminderIT {
 	}
 
 	private void refundDay(long bookingId, LocalDate day) {
-		jdbc.sql("UPDATE booking_day SET refunded_at = now(), refund_minor = 0, refund_reason = 'WEATHER' "
-				+ "WHERE booking_id = :b AND service_date = :d").param("b", bookingId).param("d", day).update();
+		jdbc.sql("UPDATE booking_day SET refunded_at = :now, refund_minor = 0, refund_reason = 'WEATHER' "
+				+ "WHERE booking_id = :b AND service_date = :d").param("b", bookingId).param("d", day)
+				.param("now", java.sql.Timestamp.from(clock.instant())).update();
 	}
 
 	@Test
 	void aCancelledStayAnEndedStretchAndASameSetStayGetNoReminderWhileACheckedInOneDoes() {
 		Venue venue = venue();
-		SeededStay cancelled = StayFixtures.insertStay(jdbc, venue, code("RMCA"), FIRST, venue.online().get(0), 3,
+		SeededStay cancelled = StayFixtures.insertStay(jdbc, clock, venue, code("RMCA"), FIRST, venue.online().get(0), 3,
 				"CANCELLED", venue.online().get(1), 3, "CANCELLED");
-		SeededStay ended = StayFixtures.insertStay(jdbc, venue, code("RMEN"), FIRST, venue.online().get(0), 3,
+		SeededStay ended = StayFixtures.insertStay(jdbc, clock, venue, code("RMEN"), FIRST, venue.online().get(0), 3,
 				"CONFIRMED", venue.online().get(1), 3, "CANCELLED");
-		SeededStay sameSet = StayFixtures.insertStay(jdbc, venue, code("RMSS"), FIRST, venue.online().get(2), 3,
+		SeededStay sameSet = StayFixtures.insertStay(jdbc, clock, venue, code("RMSS"), FIRST, venue.online().get(2), 3,
 				"CONFIRMED", venue.online().get(2), 3, "CONFIRMED");
-		SeededStay checkedIn = StayFixtures.insertStay(jdbc, venue, code("RMCI"), FIRST, venue.online().get(0), 3,
+		SeededStay checkedIn = StayFixtures.insertStay(jdbc, clock, venue, code("RMCI"), FIRST, venue.online().get(0), 3,
 				"COMPLETED", venue.online().get(1), 3, "CONFIRMED");
 		clock.set(EVENING_BEFORE);
 

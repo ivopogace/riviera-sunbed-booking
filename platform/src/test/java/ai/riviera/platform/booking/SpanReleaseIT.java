@@ -1,8 +1,8 @@
 package ai.riviera.platform.booking;
 
+import java.time.Clock;
 import java.time.Instant;
 import java.time.LocalDate;
-import java.time.ZoneId;
 import java.util.List;
 
 import org.junit.jupiter.api.BeforeEach;
@@ -14,6 +14,7 @@ import org.springframework.jdbc.core.simple.JdbcClient;
 
 import ai.riviera.platform.EnabledIfDockerAvailable;
 import ai.riviera.platform.TestcontainersConfiguration;
+import ai.riviera.platform.TiraneDaytimeClock;
 import ai.riviera.platform.availability.api.AvailabilityClaim;
 import ai.riviera.platform.availability.vocabulary.ClaimOutcome;
 import ai.riviera.platform.booking.api.RemodelClaims;
@@ -46,8 +47,6 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 @Import(TestcontainersConfiguration.class)
 @SpringBootTest
 class SpanReleaseIT {
-
-	private static final ZoneId TIRANE = ZoneId.of("Europe/Tirane");
 	private static final int DAYS = 3;
 
 	@Autowired
@@ -68,6 +67,9 @@ class SpanReleaseIT {
 	@Autowired
 	JdbcClient jdbc;
 
+	@Autowired
+	Clock clock;
+
 	private long venueId;
 	private OperatorId operator;
 	/** Ten days out: inside the guest's free window, beyond the remodel's refund-notice floor. */
@@ -85,7 +87,7 @@ class SpanReleaseIT {
 		jdbc.sql("INSERT INTO operator_venue (venue_id, operator_id) VALUES (:v, :o)")
 				.param("v", venueId).param("o", operatorId).update();
 		operator = new OperatorId(operatorId);
-		firstDay = LocalDate.now(TIRANE).plusDays(10);
+		firstDay = TiraneDaytimeClock.today(clock).plusDays(10);
 	}
 
 	private long insertSet(int positionNo) {
@@ -117,7 +119,7 @@ class SpanReleaseIT {
 				""")
 				.param("code", code).param("venue", venueId).param("set", setId).param("cust", customer)
 				.param("first", firstDay).param("last", firstDay.plusDays(DAYS - 1)).param("status", status)
-				.param("confirmedAt", "CONFIRMED".equals(status) ? java.sql.Timestamp.from(Instant.now()) : null,
+				.param("confirmedAt", "CONFIRMED".equals(status) ? java.sql.Timestamp.from(clock.instant()) : null,
 						java.sql.Types.TIMESTAMP)
 				.param("expires", requestExpiresAt == null ? null : java.sql.Timestamp.from(requestExpiresAt),
 						java.sql.Types.TIMESTAMP)

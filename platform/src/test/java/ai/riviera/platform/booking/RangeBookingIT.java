@@ -1,8 +1,8 @@
 package ai.riviera.platform.booking;
 
+import java.time.Clock;
 import java.util.Optional;
 import java.time.LocalDate;
-import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -15,6 +15,7 @@ import org.springframework.jdbc.core.simple.JdbcClient;
 
 import ai.riviera.platform.EnabledIfDockerAvailable;
 import ai.riviera.platform.TestcontainersConfiguration;
+import ai.riviera.platform.TiraneDaytimeClock;
 import ai.riviera.platform.availability.api.AvailabilityClaim;
 import ai.riviera.platform.availability.vocabulary.ClaimOutcome;
 import ai.riviera.platform.booking.application.cancel.CancelBooking;
@@ -41,8 +42,6 @@ import static org.junit.jupiter.api.Assertions.assertSame;
 @Import(TestcontainersConfiguration.class)
 @SpringBootTest
 class RangeBookingIT {
-
-	private static final ZoneId TIRANE = ZoneId.of("Europe/Tirane");
 	private static final long PRICE = 4500L;
 	private static final GuestContact GUEST = new GuestContact("stay@example.com", "Stay Guest", "+355699");
 
@@ -61,6 +60,9 @@ class RangeBookingIT {
 	@Autowired
 	JdbcClient jdbc;
 
+	@Autowired
+	Clock clock;
+
 	private final List<Long> venues = new ArrayList<>();
 
 	@AfterEach
@@ -69,8 +71,8 @@ class RangeBookingIT {
 	}
 
 	/** Ten days out: inside the guest's free cancellation window, so the cancel is admitted. */
-	private static LocalDate firstDay() {
-		return LocalDate.now(TIRANE).plusDays(10);
+	private LocalDate firstDay() {
+		return TiraneDaytimeClock.today(clock).plusDays(10);
 	}
 
 	private SetId onlineSetOf(String mode) {

@@ -1,8 +1,8 @@
 package ai.riviera.platform.booking;
 
+import java.time.Clock;
 import java.time.Instant;
 import java.time.LocalDate;
-import java.time.ZoneId;
 import java.util.List;
 import java.util.Optional;
 
@@ -16,6 +16,7 @@ import org.springframework.jdbc.core.simple.JdbcClient;
 
 import ai.riviera.platform.EnabledIfDockerAvailable;
 import ai.riviera.platform.TestcontainersConfiguration;
+import ai.riviera.platform.TiraneDaytimeClock;
 import ai.riviera.platform.booking.application.Bookings;
 import ai.riviera.platform.booking.application.checkin.CheckInBooking;
 import ai.riviera.platform.booking.application.checkin.CheckInResult;
@@ -50,8 +51,6 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 @SpringBootTest
 class MultiDayAttendanceIT {
 
-	private static final ZoneId TIRANE = ZoneId.of("Europe/Tirane");
-
 	/** Far from every other suite's fixtures, so the date-stepping sweep selects only this stay. */
 	private static final LocalDate FIRST_DAY = LocalDate.of(2003, 6, 10);
 
@@ -66,6 +65,9 @@ class MultiDayAttendanceIT {
 
 	@Autowired
 	JdbcClient jdbc;
+
+	@Autowired
+	Clock clock;
 
 	private long venueId;
 	private long setId;
@@ -98,8 +100,8 @@ class MultiDayAttendanceIT {
 		jdbc.sql("DELETE FROM customer WHERE email LIKE 'STAY%'").update();
 	}
 
-	private static LocalDate today() {
-		return LocalDate.now(TIRANE);
+	private LocalDate today() {
+		return TiraneDaytimeClock.today(clock);
 	}
 
 	private static String uniqueCode(String prefix) {
@@ -114,9 +116,9 @@ class MultiDayAttendanceIT {
 		long id = jdbc.sql("""
 				INSERT INTO booking (code, venue_id, set_id, customer_id, booking_date,
 				                     amount_minor, amount_currency, status, confirmed_at)
-				VALUES (:code, :venue, :set, :cust, :date, 4500, 'EUR', 'CONFIRMED', now())
+				VALUES (:code, :venue, :set, :cust, :date, 4500, 'EUR', 'CONFIRMED', :now)
 				RETURNING id
-				""")
+				""").param("now", java.sql.Timestamp.from(clock.instant()))
 				.param("code", code).param("venue", venueId).param("set", setId)
 				.param("cust", customer).param("date", firstNight)
 				.query(Long.class).single();
@@ -128,7 +130,8 @@ class MultiDayAttendanceIT {
 	}
 
 	private void attend(long bookingId, LocalDate serviceDate) {
-		jdbc.sql("UPDATE booking_day SET attended_at = now() WHERE booking_id = :id AND service_date = :serviceDate")
+		jdbc.sql("UPDATE booking_day SET attended_at = :now WHERE booking_id = :id AND service_date = :serviceDate")
+				.param("now", java.sql.Timestamp.from(clock.instant()))
 				.param("id", bookingId).param("serviceDate", serviceDate).update();
 	}
 
@@ -157,7 +160,7 @@ class MultiDayAttendanceIT {
 	}
 
 	private Optional<CompletedCheckIn> scan(String code, LocalDate day) {
-		return bookings.completeConfirmed(code, new VenueId(venueId), day, Instant.now());
+		return bookings.completeConfirmed(code, new VenueId(venueId), day, clock.instant());
 	}
 
 	/** The sweep's two statements as one run on a chosen day; answers the stays resolved. */
@@ -195,10 +198,10 @@ class MultiDayAttendanceIT {
 		String code = uniqueCode("STAYWX");
 		long stay = insertStay(code, FIRST_DAY, 3);
 		attend(stay, FIRST_DAY);
-		assertTrue(bookings.refundDay(stay, FIRST_DAY.plusDays(1), 1500L, Instant.now(), DayRefundStamp.weather()).isPresent(), "day 2 refunded");
-		assertTrue(bookings.refundDay(stay, FIRST_DAY.plusDays(1), 1500L, Instant.now(), DayRefundStamp.weather()).isEmpty(),
+		assertTrue(bookings.refundDay(stay, FIRST_DAY.plusDays(1), 1500L, clock.instant(), DayRefundStamp.weather()).isPresent(), "day 2 refunded");
+		assertTrue(bookings.refundDay(stay, FIRST_DAY.plusDays(1), 1500L, clock.instant(), DayRefundStamp.weather()).isEmpty(),
 				"a second refund of the same day stamps nothing");
-		assertTrue(bookings.refundDay(stay, FIRST_DAY, 1500L, Instant.now(), DayRefundStamp.weather()).isEmpty(), "an attended day is never refunded");
+		assertTrue(bookings.refundDay(stay, FIRST_DAY, 1500L, clock.instant(), DayRefundStamp.weather()).isEmpty(), "an attended day is never refunded");
 
 		assertTrue(scan(code, FIRST_DAY.plusDays(1)).isEmpty(), "a scan on the refunded day stamps nothing");
 		assertEquals(1, sweepOn(FIRST_DAY.plusDays(3)), "the stay resolves after its last day");
@@ -214,7 +217,7 @@ class MultiDayAttendanceIT {
 		// Day 3 was refunded for weather, so day 2 is the last the guest can attend (#1210).
 		String code = uniqueCode("STAYWXLAST");
 		long stay = insertStay(code, FIRST_DAY, 3);
-		assertTrue(bookings.refundDay(stay, FIRST_DAY.plusDays(2), 1500L, Instant.now(), DayRefundStamp.weather()).isPresent());
+		assertTrue(bookings.refundDay(stay, FIRST_DAY.plusDays(2), 1500L, clock.instant(), DayRefundStamp.weather()).isPresent());
 
 		assertTrue(scan(code, FIRST_DAY).isPresent());
 		assertEquals("CONFIRMED", statusOf(stay), "day 2 is still ahead");
@@ -229,7 +232,7 @@ class MultiDayAttendanceIT {
 	void aScanOnTodayRefundedAnswersDayRefunded() {
 		String code = uniqueCode("STAYWXNOW");
 		long stay = insertStay(code, today().minusDays(1), 3);
-		bookings.refundDay(stay, today(), 1500L, Instant.now(), DayRefundStamp.weather());
+		bookings.refundDay(stay, today(), 1500L, clock.instant(), DayRefundStamp.weather());
 
 		CheckInResult result = checkInBooking.checkIn(operator, new VenueId(venueId), code);
 

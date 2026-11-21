@@ -1,7 +1,6 @@
 package ai.riviera.platform.booking;
 
 import java.time.Clock;
-import java.time.Instant;
 import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
@@ -171,7 +170,7 @@ class MyBookingsIT {
 		Venue venue = venue();
 		LocalDate first = StayFixtures.firstDay(clock);
 		String code = "MBRS" + System.nanoTime() % 100_000_000L;
-		StayFixtures.SeededStay stay = StayFixtures.insertStay(jdbc, venue, code, first, venue.online().get(0), 2,
+		StayFixtures.SeededStay stay = StayFixtures.insertStay(jdbc, clock, venue, code, first, venue.online().get(0), 2,
 				"CONFIRMED", venue.online().get(1), 2, "CONFIRMED");
 		linkToAccount(stay);
 		endAsARemodelRefund(venue, stay.stretches().get(0), venue.online().get(0), first);
@@ -185,7 +184,7 @@ class MyBookingsIT {
 		Venue venue = venue();
 		LocalDate first = StayFixtures.firstDay(clock);
 		String code = "MBOS" + System.nanoTime() % 100_000_000L;
-		linkToAccount(StayFixtures.insertStay(jdbc, venue, code, first, venue.online().get(0), 2, "CONFIRMED",
+		linkToAccount(StayFixtures.insertStay(jdbc, clock, venue, code, first, venue.online().get(0), 2, "CONFIRMED",
 				venue.online().get(1), 2, "CONFIRMED"));
 
 		expectNothingLeft(code, false);
@@ -222,9 +221,10 @@ class MyBookingsIT {
 		return jdbc.sql("""
 				INSERT INTO booking (code, venue_id, set_id, customer_id, account_id, booking_date, last_date,
 				                     amount_minor, amount_currency, status, confirmed_at)
-				VALUES (:code, :venue, :set, :cust, :account, :first, :last, :amount, 'EUR', 'CONFIRMED', now())
+				VALUES (:code, :venue, :set, :cust, :account, :first, :last, :amount, 'EUR', 'CONFIRMED', :now)
 				RETURNING id
-				""").param("code", code).param("venue", venue.id()).param("set", venue.online().get(2).value())
+				""").param("now", java.sql.Timestamp.from(clock.instant()))
+				.param("code", code).param("venue", venue.id()).param("set", venue.online().get(2).value())
 				.param("cust", guest).param("account", accountId(EMAIL_A)).param("first", first).param("last", last)
 				.param("amount", amountMinor).query(Long.class).single();
 	}
@@ -237,9 +237,10 @@ class MyBookingsIT {
 	/** Weather-refunds a booking's service days {@code from..to}, as the storm would. */
 	private void refundDays(long booking, LocalDate from, LocalDate to) {
 		jdbc.sql("""
-				UPDATE booking_day SET refunded_at = now(), refund_minor = :minor, refund_reason = 'WEATHER'
+				UPDATE booking_day SET refunded_at = :now, refund_minor = :minor, refund_reason = 'WEATHER'
 				WHERE booking_id = :b AND service_date BETWEEN :from AND :to
-				""").param("minor", StayFixtures.PRICE / 2).param("b", booking).param("from", from).param("to", to)
+				""").param("now", java.sql.Timestamp.from(clock.instant()))
+				.param("minor", StayFixtures.PRICE / 2).param("b", booking).param("from", from).param("to", to)
 				.update();
 	}
 
@@ -247,8 +248,8 @@ class MyBookingsIT {
 	private void endAsARemodelRefund(Venue venue, long stretch, SetId set, LocalDate day) {
 		long amount = jdbc.sql("SELECT amount_minor FROM booking WHERE id = :id").param("id", stretch)
 				.query(Long.class).single();
-		bookings.cancelConfirmed(stretch, Instant.now(), amount, RefundReason.VENUE_CHANGE, amount).orElseThrow();
-		receipts.store(new NewReceipt(new VenueId(venue.id()), StayFixtures.ownerOf(jdbc, venue), Instant.now(),
+		bookings.cancelConfirmed(stretch, clock.instant(), amount, RefundReason.VENUE_CHANGE, amount).orElseThrow();
+		receipts.store(new NewReceipt(new VenueId(venue.id()), StayFixtures.ownerOf(jdbc, venue), clock.instant(),
 				List.of(), List.of(new ReceiptOutcome(new BookingId(stretch), day, new SpotRef(set, "A", 1),
 						ReceiptOutcomeKind.REFUND, amount, "EUR", 0L)), "row A rebuilt", List.of()));
 	}

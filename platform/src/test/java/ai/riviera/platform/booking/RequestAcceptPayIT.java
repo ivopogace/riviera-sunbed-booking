@@ -198,7 +198,8 @@ class RequestAcceptPayIT {
 		LocalDate date = TiraneDaytimeClock.today(clock).plusMonths(6);
 		String code = request(date, "credentials@e.com");
 		long bookingId = bookingIdOf(code);
-		jdbc.sql("UPDATE booking SET status = 'AWAITING_PAYMENT', accepted_at = NOW() WHERE id = :id")
+		jdbc.sql("UPDATE booking SET status = 'AWAITING_PAYMENT', accepted_at = :now WHERE id = :id")
+				.param("now", java.sql.Timestamp.from(clock.instant()))
 				.param("id", bookingId).update();
 		long payment = jdbc.sql("""
 				INSERT INTO payment (payment_intent_id, amount_minor, currency, status, client_secret)

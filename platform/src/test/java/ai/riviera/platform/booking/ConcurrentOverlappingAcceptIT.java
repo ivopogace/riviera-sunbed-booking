@@ -1,8 +1,7 @@
 package ai.riviera.platform.booking;
 
-import java.time.Instant;
+import java.time.Clock;
 import java.time.LocalDate;
-import java.time.ZoneId;
 import java.util.List;
 import java.util.concurrent.Callable;
 import java.util.concurrent.CountDownLatch;
@@ -19,6 +18,7 @@ import org.springframework.jdbc.core.simple.JdbcClient;
 
 import ai.riviera.platform.EnabledIfDockerAvailable;
 import ai.riviera.platform.TestcontainersConfiguration;
+import ai.riviera.platform.TiraneDaytimeClock;
 import ai.riviera.platform.booking.application.request.AcceptOutcome;
 import ai.riviera.platform.booking.application.request.RespondToRequest;
 import ai.riviera.platform.booking.vocabulary.BookingId;
@@ -39,13 +39,14 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 @SpringBootTest
 class ConcurrentOverlappingAcceptIT {
 
-	private static final ZoneId TIRANE = ZoneId.of("Europe/Tirane");
-
 	@Autowired
 	RespondToRequest respondToRequest;
 
 	@Autowired
 	JdbcClient jdbc;
+
+	@Autowired
+	Clock clock;
 
 	private long venueId;
 	private OperatorId operator;
@@ -70,7 +71,7 @@ class ConcurrentOverlappingAcceptIT {
 				VALUES (:venue, 'A', 1, 'STANDARD', 'ONLINE', 4500, 'EUR', 1, 1)
 				RETURNING id
 				""").param("venue", venueId).query(Long.class).single();
-		day = LocalDate.now(TIRANE).plusDays(10);
+		day = TiraneDaytimeClock.today(clock).plusDays(10);
 	}
 
 	private long insertPending() {
@@ -85,7 +86,7 @@ class ConcurrentOverlappingAcceptIT {
 				RETURNING id
 				""")
 				.param("code", code).param("venue", venueId).param("set", setId).param("cust", customer)
-				.param("day", day).param("expires", java.sql.Timestamp.from(Instant.now().plusSeconds(3600)))
+				.param("day", day).param("expires", java.sql.Timestamp.from(clock.instant().plusSeconds(3600)))
 				.query(Long.class).single();
 	}
 

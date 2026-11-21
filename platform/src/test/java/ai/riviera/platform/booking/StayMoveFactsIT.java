@@ -1,5 +1,6 @@
 package ai.riviera.platform.booking;
 
+import java.time.Clock;
 import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
@@ -46,6 +47,9 @@ class StayMoveFactsIT {
 	@Autowired
 	JdbcClient jdbc;
 
+	@Autowired
+	Clock clock;
+
 	private final List<Long> venues = new ArrayList<>();
 
 	@AfterEach
@@ -66,7 +70,7 @@ class StayMoveFactsIT {
 	@Test
 	void aStandingMoveResolvesTheStaysCodeBothSetsAndTheLiveDistance() {
 		Venue venue = venue();
-		SeededStay stay = StayFixtures.insertStay(jdbc, venue, "MVF" + System.nanoTime() % 1_000_000, FIRST,
+		SeededStay stay = StayFixtures.insertStay(jdbc, clock, venue, "MVF" + System.nanoTime() % 1_000_000, FIRST,
 				venue.online().get(0), 2, "COMPLETED", venue.online().get(2), 3, "CONFIRMED");
 		attendedDaysOf(stay.stretches().get(0));
 		long arriving = stay.stretches().get(1);
@@ -82,9 +86,9 @@ class StayMoveFactsIT {
 	@Test
 	void aRefundedDepartureDayDropsTodaysSpotAndARefundedMoveDayResolvesNothing() {
 		Venue venue = venue();
-		SeededStay departureRefunded = StayFixtures.insertStay(jdbc, venue, "MVD" + System.nanoTime() % 1_000_000, FIRST,
+		SeededStay departureRefunded = StayFixtures.insertStay(jdbc, clock, venue, "MVD" + System.nanoTime() % 1_000_000, FIRST,
 				venue.online().get(0), 2, "CONFIRMED", venue.online().get(1), 3, "CONFIRMED");
-		SeededStay moveDayRefunded = StayFixtures.insertStay(jdbc, venue, "MVR" + System.nanoTime() % 1_000_000,
+		SeededStay moveDayRefunded = StayFixtures.insertStay(jdbc, clock, venue, "MVR" + System.nanoTime() % 1_000_000,
 				FIRST.plusDays(10), venue.online().get(0), 2, "CONFIRMED", venue.online().get(1), 3, "CONFIRMED");
 		refundDay(departureRefunded.stretches().get(0), FIRST.plusDays(1));
 		refundDay(moveDayRefunded.stretches().get(1), FIRST.plusDays(12));
@@ -101,22 +105,23 @@ class StayMoveFactsIT {
 	private void attendedDaysOf(long bookingId) {
 		jdbc.sql("""
 				INSERT INTO booking_day (booking_id, service_date, attended_at)
-				SELECT b.id, d::date, now() FROM booking b, generate_series(b.booking_date, b.last_date, interval '1 day') d
+				SELECT b.id, d::date, CAST(:now AS timestamptz) FROM booking b, generate_series(b.booking_date, b.last_date, interval '1 day') d
 				WHERE b.id = :b
-				""").param("b", bookingId).update();
+				""").param("b", bookingId).param("now", java.sql.Timestamp.from(clock.instant())).update();
 	}
 
 	private void refundDay(long bookingId, java.time.LocalDate day) {
-		jdbc.sql("UPDATE booking_day SET refunded_at = now(), refund_minor = 0, refund_reason = 'WEATHER' "
-				+ "WHERE booking_id = :b AND service_date = :d").param("b", bookingId).param("d", day).update();
+		jdbc.sql("UPDATE booking_day SET refunded_at = :now, refund_minor = 0, refund_reason = 'WEATHER' "
+				+ "WHERE booking_id = :b AND service_date = :d").param("b", bookingId).param("d", day)
+				.param("now", java.sql.Timestamp.from(clock.instant())).update();
 	}
 
 	@Test
 	void theFirstStretchAnEndedMoveAndARetiredSetResolveNothing() {
 		Venue venue = venue();
-		SeededStay stay = StayFixtures.insertStay(jdbc, venue, "MVN" + System.nanoTime() % 1_000_000, FIRST,
+		SeededStay stay = StayFixtures.insertStay(jdbc, clock, venue, "MVN" + System.nanoTime() % 1_000_000, FIRST,
 				venue.online().get(0), 2, "CONFIRMED", venue.online().get(1), 3, "CONFIRMED");
-		SeededStay ended = StayFixtures.insertStay(jdbc, venue, "MVE" + System.nanoTime() % 1_000_000, FIRST,
+		SeededStay ended = StayFixtures.insertStay(jdbc, clock, venue, "MVE" + System.nanoTime() % 1_000_000, FIRST,
 				venue.online().get(0), 2, "CANCELLED", venue.online().get(1), 3, "CONFIRMED");
 
 		assertEquals(Optional.empty(), facts.moveReminderFacts(new BookingId(stay.stretches().get(0))),
@@ -126,8 +131,8 @@ class StayMoveFactsIT {
 
 		assertTrue(facts.moveReminderFacts(new BookingId(stay.stretches().get(1))).isPresent(),
 				"the standing move resolves before its set retires");
-		jdbc.sql("UPDATE set_position SET retired_at = now() WHERE id = :s").param("s", venue.online().get(0).value())
-				.update();
+		jdbc.sql("UPDATE set_position SET retired_at = :now WHERE id = :s").param("s", venue.online().get(0).value())
+				.param("now", java.sql.Timestamp.from(clock.instant())).update();
 		assertEquals(Optional.empty(), facts.moveReminderFacts(new BookingId(stay.stretches().get(1))),
 				"a set off the active map has no placement to measure from");
 	}
