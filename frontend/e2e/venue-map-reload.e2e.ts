@@ -492,7 +492,6 @@ test('a refresh that turns the focused tile partly free keeps focus on that set 
   page,
 }) => {
   await refuseBookingAsTaken(page, await mockChallengeFence(page, 'on'));
-  await page.clock.setFixedTime(PINNED_NOW);
   await mockVenues(page);
   let reads = 0;
   // Someone took set 1's last day while the dialog was open: every read after the first says so.
