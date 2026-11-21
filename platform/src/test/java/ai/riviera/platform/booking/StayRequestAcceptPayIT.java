@@ -1,6 +1,6 @@
 package ai.riviera.platform.booking;
 
-import java.time.Instant;
+import java.time.Clock;
 import java.time.LocalDate;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -76,6 +76,9 @@ class StayRequestAcceptPayIT {
 	JdbcClient jdbc;
 
 	@Autowired
+	Clock clock;
+
+	@Autowired
 	ApplicationEvents events;
 
 	@Autowired
@@ -99,9 +102,9 @@ class StayRequestAcceptPayIT {
 	void seed() {
 		venue = StayFixtures.venue(jdbc, "REQUEST", null, true);
 		owner = StayFixtures.ownerOf(jdbc, venue);
-		first = StayFixtures.firstDay();
+		first = StayFixtures.firstDay(clock);
 		stay = StayFixtures.insertPendingStay(jdbc, venue, "SRPA" + System.nanoTime() % 100_000_000L, first,
-				venue.online().get(0), 2, venue.online().get(1), 3, Instant.now().plusSeconds(3600));
+				venue.online().get(0), 2, venue.online().get(1), 3, clock.instant().plusSeconds(3600));
 	}
 
 	@AfterEach

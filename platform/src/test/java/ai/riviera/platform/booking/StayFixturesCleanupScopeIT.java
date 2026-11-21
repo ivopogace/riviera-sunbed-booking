@@ -1,5 +1,6 @@
 package ai.riviera.platform.booking;
 
+import java.time.Clock;
 import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
@@ -45,6 +46,9 @@ class StayFixturesCleanupScopeIT {
 
 	@Autowired
 	JdbcClient jdbc;
+
+	@Autowired
+	Clock clock;
 
 	@Autowired
 	EventSerializer serializer;
@@ -120,12 +124,12 @@ class StayFixturesCleanupScopeIT {
 	}
 
 	private SeededStay seedStay(Venue venue, String code) {
-		return StayFixtures.insertStay(jdbc, venue, code + "-" + System.nanoTime(), firstDay(),
+		return StayFixtures.insertStay(jdbc, venue, code + "-" + System.nanoTime(), firstDay(clock),
 				venue.online().get(0), 1, "CONFIRMED", venue.online().get(1), 1, "CONFIRMED");
 	}
 
-	private static BookingConfirmed confirmed(long booking, long venue, SetId set, StayId stay) {
-		LocalDate day = firstDay();
+	private BookingConfirmed confirmed(long booking, long venue, SetId set, StayId stay) {
+		LocalDate day = firstDay(clock);
 		return new BookingConfirmed(new BookingId(booking), new VenueId(venue), set, day,
 				StayFixtures.PRICE, "EUR", CancellationWindow.FREE, 0, day, stay);
 	}

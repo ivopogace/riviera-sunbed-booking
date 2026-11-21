@@ -1,5 +1,6 @@
 package ai.riviera.platform.booking;
 
+import java.time.Clock;
 import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
@@ -61,6 +62,9 @@ class CreateStayCheckoutIT {
 	@Autowired
 	JdbcClient jdbc;
 
+	@Autowired
+	Clock clock;
+
 	@MockitoBean
 	StripeClient stripeClient;
 
@@ -91,7 +95,7 @@ class CreateStayCheckoutIT {
 		venues.add(venue.id());
 		SetId a = venue.online().get(0);
 		SetId b = venue.online().get(1);
-		LocalDate first = firstDay();
+		LocalDate first = firstDay(clock);
 
 		StayOutcome outcome = createStay.create(plan(a, 3, b, 4, first));
 
@@ -121,7 +125,7 @@ class CreateStayCheckoutIT {
 		venues.add(venue.id());
 		SetId a = venue.online().get(0);
 		SetId b = venue.online().get(1);
-		LocalDate first = firstDay();
+		LocalDate first = firstDay(clock);
 
 		assertThrows(RuntimeException.class, () -> createStay.create(plan(a, 3, b, 4, first)));
 

@@ -1,5 +1,6 @@
 package ai.riviera.platform.booking;
 
+import java.time.Clock;
 import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
@@ -56,6 +57,9 @@ class BookingLocaleIT {
 	@Autowired
 	JdbcClient jdbc;
 
+	@Autowired
+	Clock clock;
+
 	private final List<Long> venues = new ArrayList<>();
 
 	@AfterEach
@@ -67,7 +71,7 @@ class BookingLocaleIT {
 	@EnumSource(SiteLocale.class)
 	void aBookingKeepsTheLocaleItWasCreatedIn(SiteLocale locale) {
 		Venue venue = venue();
-		LocalDate day = firstDay();
+		LocalDate day = firstDay(clock);
 
 		BookingId booking = book(new CreateBookingCommand(venue.online().getFirst(), day, day, GUEST, null, locale), venue);
 
@@ -77,7 +81,7 @@ class BookingLocaleIT {
 	@Test
 	void aBookingCreatedWithoutALocaleReadsAsEnglish() {
 		Venue venue = venue();
-		LocalDate day = firstDay();
+		LocalDate day = firstDay(clock);
 
 		BookingId booking = book(new CreateBookingCommand(venue.online().getFirst(), day, day, GUEST, null), venue);
 
@@ -89,7 +93,7 @@ class BookingLocaleIT {
 		Venue venue = venue();
 		SetId a = venue.online().get(0);
 		SetId b = venue.online().get(1);
-		CreateStayCommand english = plan(a, 2, b, 2, firstDay());
+		CreateStayCommand english = plan(a, 2, b, 2, firstDay(clock));
 		CreateStayCommand albanian = new CreateStayCommand(english.stretches(), english.contact(), null, SiteLocale.SQ);
 
 		assertInstanceOf(StayOutcome.Confirmed.class, createStay.create(albanian));

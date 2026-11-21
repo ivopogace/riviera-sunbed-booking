@@ -1,6 +1,7 @@
 package ai.riviera.platform.booking;
 
 import java.util.Optional;
+import java.time.Clock;
 import java.time.Duration;
 import java.time.LocalDate;
 import java.util.ArrayList;
@@ -24,6 +25,7 @@ import org.springframework.transaction.support.TransactionTemplate;
 
 import ai.riviera.platform.EnabledIfDockerAvailable;
 import ai.riviera.platform.TestcontainersConfiguration;
+import ai.riviera.platform.TiraneDaytimeClock;
 import ai.riviera.platform.booking.StayFixtures.Venue;
 import ai.riviera.platform.booking.api.RemodelClaims;
 import ai.riviera.platform.booking.application.Bookings;
@@ -89,6 +91,9 @@ class CancelStayIT {
 	JdbcClient jdbc;
 
 	@Autowired
+	Clock clock;
+
+	@Autowired
 	ApplicationEvents events;
 
 	@Autowired
@@ -116,7 +121,7 @@ class CancelStayIT {
 		venues.add(venue.id());
 		SetId a = venue.online().get(0);
 		SetId b = venue.online().get(1);
-		LocalDate first = firstDay();
+		LocalDate first = firstDay(clock);
 		String code = assertInstanceOf(StayOutcome.Confirmed.class, createStay.create(plan(a, 3, b, 4, first)))
 				.confirmation().code();
 		StayFixtures.awaitAccruals(jdbc, venue.id(), 2L);
@@ -156,7 +161,7 @@ class CancelStayIT {
 	void anUnknownCodeIsNotFoundAndACancelledStayIsNotCancellableTwice() {
 		Venue venue = StayFixtures.venue(jdbc, "INSTANT", null, true);
 		venues.add(venue.id());
-		LocalDate first = firstDay();
+		LocalDate first = firstDay(clock);
 		String code = assertInstanceOf(StayOutcome.Confirmed.class,
 				createStay.create(plan(venue.online().get(0), 2, venue.online().get(1), 2, first))).confirmation().code();
 		StayFixtures.awaitAccruals(jdbc, venue.id(), 2L);
@@ -176,7 +181,7 @@ class CancelStayIT {
 	void aStretchsRowCodeIsNoCredential() {
 		Venue venue = StayFixtures.venue(jdbc, "INSTANT", null, true);
 		venues.add(venue.id());
-		LocalDate first = firstDay();
+		LocalDate first = firstDay(clock);
 		String code = assertInstanceOf(StayOutcome.Confirmed.class,
 				createStay.create(plan(venue.online().get(0), 2, venue.online().get(1), 2, first))).confirmation().code();
 		StayFixtures.awaitAccruals(jdbc, venue.id(), 2L);
@@ -192,7 +197,7 @@ class CancelStayIT {
 		Venue venue = StayFixtures.venue(jdbc, "INSTANT", null, true);
 		venues.add(venue.id());
 		SetId a = venue.online().get(0);
-		LocalDate first = firstDay();
+		LocalDate first = firstDay(clock);
 		String code = assertInstanceOf(StayOutcome.Confirmed.class,
 				createStay.create(plan(a, 3, venue.online().get(1), 4, first))).confirmation().code();
 		StayFixtures.awaitAccruals(jdbc, venue.id(), 2L);
@@ -206,7 +211,7 @@ class CancelStayIT {
 		CancelOutcome outcome;
 		try (ExecutorService pool = Executors.newFixedThreadPool(2)) {
 			Future<?> operator = pool.submit(() -> tx.executeWithoutResult(status -> {
-				bookings.cancelByVenue(secondStretch, java.time.Instant.now(), 0L, secondAmount, RefundReason.WEATHER,
+				bookings.cancelByVenue(secondStretch, clock.instant(), 0L, secondAmount, RefundReason.WEATHER,
 						null).orElseThrow();
 				weatherCancelled.countDown();
 				try {
@@ -247,7 +252,7 @@ class CancelStayIT {
 		venues.add(venue.id());
 		SetId a = venue.online().get(0);
 		SetId b = venue.online().get(1);
-		LocalDate first = firstDay();
+		LocalDate first = firstDay(clock);
 		String code = assertInstanceOf(StayOutcome.Confirmed.class, createStay.create(plan(a, 3, b, 4, first)))
 				.confirmation().code();
 		StayFixtures.awaitAccruals(jdbc, venue.id(), 2L);
@@ -297,7 +302,7 @@ class CancelStayIT {
 				.param("v", venue.id()).update();
 		SetId a = venue.online().get(0);
 		SetId b = venue.online().get(1);
-		LocalDate tomorrow = LocalDate.now(StayFixtures.TIRANE).plusDays(1);
+		LocalDate tomorrow = TiraneDaytimeClock.today(clock).plusDays(1);
 		String code = assertInstanceOf(StayOutcome.Confirmed.class, createStay.create(plan(a, 2, b, 2, tomorrow)))
 				.confirmation().code();
 		StayFixtures.awaitAccruals(jdbc, venue.id(), 2L);
@@ -326,11 +331,11 @@ class CancelStayIT {
 		venues.add(venue.id());
 		SetId a = venue.online().get(0);
 		SetId b = venue.online().get(1);
-		LocalDate first = firstDay();
+		LocalDate first = firstDay(clock);
 		String code = "RLSD" + System.nanoTime() % 100_000_000L;
 		StayFixtures.SeededStay seeded = StayFixtures.insertStay(jdbc, venue, code, first, a, 2, "CANCELLED", b, 2,
 				"CANCELLED");
-		receipts.store(new NewReceipt(new VenueId(venue.id()), StayFixtures.ownerOf(jdbc, venue), java.time.Instant.now(),
+		receipts.store(new NewReceipt(new VenueId(venue.id()), StayFixtures.ownerOf(jdbc, venue), clock.instant(),
 				List.of(), List.of(
 						new ReceiptOutcome(new BookingId(seeded.stretches().get(0)), first, new SpotRef(a, "A", 1),
 								ReceiptOutcomeKind.RELEASE, PRICE, "EUR", 0L),
@@ -350,7 +355,7 @@ class CancelStayIT {
 		venues.add(venue.id());
 		SetId a = venue.online().get(0);
 		SetId b = venue.online().get(1);
-		LocalDate first = firstDay();
+		LocalDate first = firstDay(clock);
 		String code = "NLFT" + System.nanoTime() % 100_000_000L;
 		StayFixtures.SeededStay seeded = StayFixtures.insertStay(jdbc, venue, code, first, a, 2, "CONFIRMED", b, 2,
 				"CONFIRMED");
@@ -363,9 +368,10 @@ class CancelStayIT {
 				VALUES (:v, :b, 'ACCRUAL', :gross, 0, :gross, 'EUR')
 				""").param("v", venue.id()).param("b", stretch).param("gross", PRICE).update());
 		jdbc.sql("""
-				UPDATE booking_day SET refunded_at = now(), refund_minor = :half, refund_reason = 'WEATHER'
+				UPDATE booking_day SET refunded_at = :now, refund_minor = :half, refund_reason = 'WEATHER'
 				WHERE booking_id = :b
-				""").param("half", PRICE / 2).param("b", spent).update();
+				""").param("half", PRICE / 2).param("b", spent)
+				.param("now", java.sql.Timestamp.from(clock.instant())).update();
 		OperatorId owner = StayFixtures.ownerOf(jdbc, venue);
 		VenueId venueId = new VenueId(venue.id());
 		List<RemodelClaim> claims = remodelClaims.classify(owner, venueId, List.of(a));
@@ -393,7 +399,7 @@ class CancelStayIT {
 		venues.add(venue.id());
 		SetId a = venue.online().get(0);
 		SetId b = venue.online().get(1);
-		LocalDate first = firstDay();
+		LocalDate first = firstDay(clock);
 		String code = "NLSA" + System.nanoTime() % 100_000_000L;
 		StayFixtures.SeededStay seeded = StayFixtures.insertStay(jdbc, venue, code, first, a, 2, "CONFIRMED", b, 2,
 				"CONFIRMED");
@@ -427,7 +433,7 @@ class CancelStayIT {
 		venues.add(venue.id());
 		SetId a = venue.online().get(0);
 		SetId b = venue.online().get(1);
-		LocalDate first = firstDay();
+		LocalDate first = firstDay(clock);
 		String code = "NLAL" + System.nanoTime() % 100_000_000L;
 		StayFixtures.SeededStay seeded = StayFixtures.insertStay(jdbc, venue, code, first, a, 2, "CONFIRMED", b, 2,
 				"CONFIRMED");
@@ -459,17 +465,18 @@ class CancelStayIT {
 	/** Weather-refunds every service day of a stretch at {@code dayMinor} each, as the storm would. */
 	private void refundEveryDay(long stretch, long dayMinor) {
 		jdbc.sql("""
-				UPDATE booking_day SET refunded_at = now(), refund_minor = :minor, refund_reason = 'WEATHER'
+				UPDATE booking_day SET refunded_at = :now, refund_minor = :minor, refund_reason = 'WEATHER'
 				WHERE booking_id = :b
-				""").param("minor", dayMinor).param("b", stretch).update();
+				""").param("minor", dayMinor).param("b", stretch)
+				.param("now", java.sql.Timestamp.from(clock.instant())).update();
 	}
 
 	/** Leaves a stretch as a remodel refund does: {@code CANCELLED} as {@code VENUE_CHANGE} with the receipt's outcome line. */
 	private void endAsARemodelRefund(Venue venue, long stretch, SetId set, LocalDate day) {
 		long amount = jdbc.sql("SELECT amount_minor FROM booking WHERE id = :id").param("id", stretch)
 				.query(Long.class).single();
-		bookings.cancelConfirmed(stretch, java.time.Instant.now(), amount, RefundReason.VENUE_CHANGE, amount).orElseThrow();
-		receipts.store(new NewReceipt(new VenueId(venue.id()), StayFixtures.ownerOf(jdbc, venue), java.time.Instant.now(),
+		bookings.cancelConfirmed(stretch, clock.instant(), amount, RefundReason.VENUE_CHANGE, amount).orElseThrow();
+		receipts.store(new NewReceipt(new VenueId(venue.id()), StayFixtures.ownerOf(jdbc, venue), clock.instant(),
 				List.of(), List.of(new ReceiptOutcome(new BookingId(stretch), day, new SpotRef(set, "A", 1),
 						ReceiptOutcomeKind.REFUND, amount, "EUR", 0L)), "row A rebuilt", List.of()));
 	}
@@ -480,7 +487,7 @@ class CancelStayIT {
 		venues.add(venue.id());
 		jdbc.sql("UPDATE venue SET booking_cutoff = '00:00', late_cancel_refund_bps = 2500 WHERE id = :v")
 				.param("v", venue.id()).update();
-		LocalDate tomorrow = LocalDate.now(StayFixtures.TIRANE).plusDays(1);
+		LocalDate tomorrow = TiraneDaytimeClock.today(clock).plusDays(1);
 		String code = assertInstanceOf(StayOutcome.Confirmed.class,
 				createStay.create(plan(venue.online().get(0), 2, venue.online().get(1), 2, tomorrow))).confirmation().code();
 		StayFixtures.awaitAccruals(jdbc, venue.id(), 2L);

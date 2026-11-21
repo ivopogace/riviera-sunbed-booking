@@ -1,5 +1,6 @@
 package ai.riviera.platform.booking;
 
+import java.time.Clock;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.util.List;
@@ -44,6 +45,9 @@ class ConcurrentStayAcceptIT {
 	@Autowired
 	JdbcClient jdbc;
 
+	@Autowired
+	Clock clock;
+
 	private StayFixtures.Venue venue;
 	private OperatorId owner;
 
@@ -60,10 +64,10 @@ class ConcurrentStayAcceptIT {
 
 	@RepeatedTest(3)
 	void exactlyOneStayWinsAndTheLoserHoldsNothing() throws Exception {
-		LocalDate d0 = StayFixtures.firstDay();
+		LocalDate d0 = StayFixtures.firstDay(clock);
 		SetId a = venue.online().get(0);
 		SetId b = venue.online().get(1);
-		Instant expires = Instant.now().plusSeconds(3600);
+		Instant expires = clock.instant().plusSeconds(3600);
 		String tag = String.valueOf(System.nanoTime() % 100_000_000L);
 		StayFixtures.SeededStay x = StayFixtures.insertPendingStay(jdbc, venue, "CSX" + tag, d0, a, 2, b, 2, expires);
 		StayFixtures.SeededStay y = StayFixtures.insertPendingStay(jdbc, venue, "CSY" + tag, d0.plusDays(1), a, 2, b, 2,

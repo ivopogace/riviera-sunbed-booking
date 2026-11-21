@@ -1,6 +1,7 @@
 package ai.riviera.platform.booking;
 
 import java.util.Optional;
+import java.time.Clock;
 import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
@@ -89,6 +90,9 @@ class ViewStayIT {
 	@Autowired
 	JdbcClient jdbc;
 
+	@Autowired
+	Clock clock;
+
 	private final List<Long> venues = new ArrayList<>();
 	private final List<Long> accounts = new ArrayList<>();
 
@@ -104,7 +108,7 @@ class ViewStayIT {
 		venues.add(venue.id());
 		SetId a = venue.online().get(0);
 		SetId b = venue.online().get(1);
-		LocalDate first = firstDay();
+		LocalDate first = firstDay(clock);
 		String code = assertInstanceOf(StayOutcome.Confirmed.class, createStay.create(plan(a, 3, b, 4, first)))
 				.confirmation().code();
 
@@ -136,8 +140,8 @@ class ViewStayIT {
 	void aStayRequestReadsItsStatus() throws Exception {
 		Venue venue = StayFixtures.venue(jdbc, "REQUEST", null, true);
 		venues.add(venue.id());
-		LocalDate first = firstDay();
-		java.time.Instant expires = java.time.Instant.now().plusSeconds(3600).truncatedTo(java.time.temporal.ChronoUnit.SECONDS);
+		LocalDate first = firstDay(clock);
+		java.time.Instant expires = clock.instant().plusSeconds(3600).truncatedTo(java.time.temporal.ChronoUnit.SECONDS);
 		StayFixtures.SeededStay stay = StayFixtures.insertPendingStay(jdbc, venue, "VSR" + System.nanoTime() % 100_000_000L,
 				first, venue.online().get(0), 2, venue.online().get(1), 2, expires);
 
@@ -170,7 +174,7 @@ class ViewStayIT {
 		SetId a = venue.online().get(0);
 		SetId b = venue.online().get(1);
 		SetId c = venue.online().get(2);
-		LocalDate first = firstDay();
+		LocalDate first = firstDay(clock);
 		String code = assertInstanceOf(StayOutcome.Confirmed.class, createStay.create(plan(a, 3, b, 4, first)))
 				.confirmation().code();
 		StayFixtures.take(jdbc, a, first.plusDays(3));
@@ -214,7 +218,7 @@ class ViewStayIT {
 	void aStretchsMailFactAndTheStaffListCarryTheStaysCode() {
 		Venue venue = StayFixtures.venue(jdbc, "INSTANT", null, true);
 		venues.add(venue.id());
-		LocalDate first = firstDay();
+		LocalDate first = firstDay(clock);
 		String code = assertInstanceOf(StayOutcome.Confirmed.class,
 				createStay.create(plan(venue.online().get(0), 3, venue.online().get(1), 4, first))).confirmation().code();
 		List<Long> bookingIds = jdbc.sql("SELECT id FROM booking WHERE venue_id = :v ORDER BY booking_date")
@@ -233,7 +237,7 @@ class ViewStayIT {
 		Venue venue = StayFixtures.venue(jdbc, "INSTANT", null, true);
 		venues.add(venue.id());
 		SetId a = venue.online().get(0);
-		LocalDate first = firstDay();
+		LocalDate first = firstDay(clock);
 		long account = jdbc.sql("INSERT INTO customer_account (email, password_hash) VALUES (:e, '{bcrypt}$2a$stay') RETURNING id")
 				.param("e", "stay-account-" + System.nanoTime() + "@example.com").query(Long.class).single();
 		accounts.add(account);

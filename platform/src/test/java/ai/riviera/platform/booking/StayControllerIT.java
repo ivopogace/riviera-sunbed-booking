@@ -1,5 +1,6 @@
 package ai.riviera.platform.booking;
 
+import java.time.Clock;
 import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
@@ -43,6 +44,9 @@ class StayControllerIT {
 	@Autowired
 	JdbcClient jdbc;
 
+	@Autowired
+	Clock clock;
+
 	private final List<Long> venues = new ArrayList<>();
 
 	@AfterEach
@@ -61,7 +65,7 @@ class StayControllerIT {
 	void booksAPlanAndAnswersTheStay() throws Exception {
 		Venue venue = StayFixtures.venue(jdbc, "INSTANT", null, true);
 		venues.add(venue.id());
-		LocalDate first = firstDay();
+		LocalDate first = firstDay(clock);
 		long a = venue.online().get(0).value();
 		long b = venue.online().get(1).value();
 
@@ -86,7 +90,7 @@ class StayControllerIT {
 	void aPlanAtARequestVenueIsOneRequestAnswered202WithItsDeadline() throws Exception {
 		Venue venue = StayFixtures.venue(jdbc, "REQUEST", null, true);
 		venues.add(venue.id());
-		LocalDate first = firstDay();
+		LocalDate first = firstDay(clock);
 		long a = venue.online().get(0).value();
 		long b = venue.online().get(1).value();
 
@@ -105,7 +109,7 @@ class StayControllerIT {
 	void aMalformedPlanIs400AndATakenDayIs409() throws Exception {
 		Venue venue = StayFixtures.venue(jdbc, "INSTANT", null, true);
 		venues.add(venue.id());
-		LocalDate first = firstDay();
+		LocalDate first = firstDay(clock);
 		long a = venue.online().get(0).value();
 		long b = venue.online().get(1).value();
 
