@@ -1,6 +1,6 @@
 package ai.riviera.platform.booking;
 
-import java.time.Instant;
+import java.time.Clock;
 import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
@@ -64,6 +64,9 @@ class CreateStayIT {
 	JdbcClient jdbc;
 
 	@Autowired
+	Clock clock;
+
+	@Autowired
 	ApplicationEvents events;
 
 	private final List<Long> venues = new ArrayList<>();
@@ -84,7 +87,7 @@ class CreateStayIT {
 		Venue venue = venue("INSTANT", null, true);
 		SetId a = venue.online().get(0);
 		SetId b = venue.online().get(1);
-		LocalDate first = firstDay();
+		LocalDate first = firstDay(clock);
 
 		StayOutcome outcome = createStay.create(plan(a, 3, b, 4, first));
 
@@ -118,7 +121,7 @@ class CreateStayIT {
 		Venue venue = venue("INSTANT", null, true);
 		SetId a = venue.online().get(0);
 		SetId b = venue.online().get(1);
-		LocalDate first = firstDay();
+		LocalDate first = firstDay(clock);
 		take(jdbc, b, first.plusDays(5));
 
 		StayOutcome outcome = createStay.create(plan(a, 3, b, 4, first));
@@ -132,7 +135,7 @@ class CreateStayIT {
 
 	@Test
 	void refusesAFencedPlanBeforeAnyClaim() {
-		LocalDate first = firstDay();
+		LocalDate first = firstDay(clock);
 		Venue instant = venue("INSTANT", null, true);
 		SetId a = instant.online().get(0);
 		SetId b = instant.online().get(1);
@@ -163,7 +166,7 @@ class CreateStayIT {
 		Venue venue = venue("REQUEST", null, true);
 		SetId a = venue.online().get(0);
 		SetId b = venue.online().get(1);
-		LocalDate first = firstDay();
+		LocalDate first = firstDay(clock);
 
 		StayOutcome outcome = createStay.create(plan(a, 3, b, 4, first));
 
@@ -190,7 +193,7 @@ class CreateStayIT {
 		Venue venue = venue("REQUEST", null, true);
 		SetId a = venue.online().get(0);
 		SetId b = venue.online().get(1);
-		LocalDate first = firstDay();
+		LocalDate first = firstDay(clock);
 		take(jdbc, b, first.plusDays(5));
 
 		assertEquals(rejected(BookingOutcome.Rejected.SET_TAKEN), createStay.create(plan(a, 3, b, 4, first)));
@@ -200,7 +203,7 @@ class CreateStayIT {
 
 	@Test
 	void aMalformedPlanIsRefusedByTheCommand() {
-		LocalDate first = firstDay();
+		LocalDate first = firstDay(clock);
 		SetId a = new SetId(1);
 		SetId b = new SetId(2);
 		assertThrows(IllegalArgumentException.class, () -> new CreateStayCommand(List.of(
@@ -224,7 +227,7 @@ class CreateStayIT {
 	void theStubConfirmOfAStayIsAllOrNothing() {
 		Venue venue = StayFixtures.venue(jdbc, "INSTANT", null, true);
 		venues.add(venue.id());
-		LocalDate first = firstDay();
+		LocalDate first = firstDay(clock);
 		long customer = jdbc.sql("INSERT INTO customer (email, full_name, phone) VALUES (:e, 'Guest', '+355600') RETURNING id")
 				.param("e", "atomic-" + System.nanoTime() + "@example.com").query(Long.class).single();
 		long stay = jdbc.sql("INSERT INTO stay (code, venue_id, first_date, last_date) VALUES (:c, :v, :f, :l) RETURNING id")
@@ -235,7 +238,7 @@ class CreateStayIT {
 				"CONFIRMED");
 
 		assertThrows(IllegalStateException.class,
-				() -> confirmBooking.confirmAll(List.of(awaiting, alreadyConfirmed), Instant.now()));
+				() -> confirmBooking.confirmAll(List.of(awaiting, alreadyConfirmed), clock.instant()));
 
 		assertEquals("AWAITING_PAYMENT", jdbc.sql("SELECT status FROM booking WHERE id = :id").param("id", awaiting)
 				.query(String.class).single(), "a stretch that could not confirm leaves its siblings unconfirmed");
@@ -246,10 +249,11 @@ class CreateStayIT {
 				INSERT INTO booking (code, venue_id, set_id, customer_id, booking_date, last_date, amount_minor,
 				                     amount_currency, status, confirmed_at, stay_id)
 				VALUES (:code, :venue, :set, :cust, :first, :last, 4500, 'EUR', :status,
-				        CASE WHEN :status = 'CONFIRMED' THEN now() END, :stay)
+				        CASE WHEN :status = 'CONFIRMED' THEN CAST(:now AS timestamptz) END, :stay)
 				RETURNING id
 				""").param("code", "ATOMIC-" + System.nanoTime() % 1_000_000).param("venue", venue.id()).param("set", set.value())
 				.param("cust", customer).param("first", first).param("last", last).param("status", status).param("stay", stay)
+				.param("now", java.sql.Timestamp.from(clock.instant()))
 				.query(Long.class).single();
 	}
 }

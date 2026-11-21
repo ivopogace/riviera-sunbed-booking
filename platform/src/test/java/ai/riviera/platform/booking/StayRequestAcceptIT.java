@@ -1,5 +1,6 @@
 package ai.riviera.platform.booking;
 
+import java.time.Clock;
 import java.time.Instant;
 import java.time.LocalDate;
 
@@ -51,6 +52,9 @@ class StayRequestAcceptIT {
 	JdbcClient jdbc;
 
 	@Autowired
+	Clock clock;
+
+	@Autowired
 	ApplicationEvents events;
 
 	private StayFixtures.Venue venue;
@@ -61,7 +65,7 @@ class StayRequestAcceptIT {
 	void seed() {
 		venue = StayFixtures.venue(jdbc, "REQUEST", null, true);
 		owner = StayFixtures.ownerOf(jdbc, venue);
-		first = StayFixtures.firstDay();
+		first = StayFixtures.firstDay(clock);
 	}
 
 	@AfterEach
@@ -71,7 +75,7 @@ class StayRequestAcceptIT {
 
 	private StayFixtures.SeededStay pendingStay(String code) {
 		return StayFixtures.insertPendingStay(jdbc, venue, code, first, venue.online().get(0), 2,
-				venue.online().get(1), 2, Instant.now().plusSeconds(3600));
+				venue.online().get(1), 2, clock.instant().plusSeconds(3600));
 	}
 
 	@Test
@@ -128,7 +132,7 @@ class StayRequestAcceptIT {
 	void rivalStaysDeclineWhole() {
 		String tag = String.valueOf(System.nanoTime() % 100_000_000L);
 		StayFixtures.SeededStay stay = pendingStay("SRQD" + tag);
-		Instant expires = Instant.now().plusSeconds(3600);
+		Instant expires = clock.instant().plusSeconds(3600);
 		StayFixtures.SeededStay rivalStay = StayFixtures.insertPendingStay(jdbc, venue, "SRQE" + tag, first.plusDays(3),
 				venue.online().get(1), 1, venue.online().get(2), 3, expires);
 		long rivalLone = StayFixtures.insertPendingLone(jdbc, venue, "SRQF" + tag, venue.online().get(0), first, first,
@@ -155,7 +159,7 @@ class StayRequestAcceptIT {
 		String tag = String.valueOf(System.nanoTime() % 100_000_000L);
 		StayFixtures.SeededStay rivalStay = pendingStay("SRQH" + tag);
 		long lone = StayFixtures.insertPendingLone(jdbc, venue, "SRQI" + tag, venue.online().get(1), first.plusDays(3),
-				first.plusDays(3), Instant.now().plusSeconds(3600));
+				first.plusDays(3), clock.instant().plusSeconds(3600));
 
 		assertInstanceOf(AcceptOutcome.Accepted.class,
 				respondToRequest.accept(owner, new VenueId(venue.id()), new BookingId(lone)));

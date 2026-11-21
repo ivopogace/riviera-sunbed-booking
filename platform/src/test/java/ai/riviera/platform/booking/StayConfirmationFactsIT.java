@@ -1,6 +1,6 @@
 package ai.riviera.platform.booking;
 
-import java.time.Instant;
+import java.time.Clock;
 import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
@@ -61,6 +61,9 @@ class StayConfirmationFactsIT {
 	JdbcClient jdbc;
 
 	@Autowired
+	Clock clock;
+
+	@Autowired
 	RemodelReceipts receipts;
 
 	private final List<Long> venues = new ArrayList<>();
@@ -76,7 +79,7 @@ class StayConfirmationFactsIT {
 		venues.add(venue.id());
 		SetId a = venue.online().get(0);
 		SetId b = venue.online().get(1);
-		LocalDate first = firstDay();
+		LocalDate first = firstDay(clock);
 		StayOutcome.Confirmed confirmed = assertInstanceOf(StayOutcome.Confirmed.class,
 				createStay.create(plan(a, 3, b, 4, first)));
 		long stay = jdbc.sql("SELECT id FROM stay WHERE venue_id = :v").param("v", venue.id()).query(Long.class).single();
@@ -104,7 +107,7 @@ class StayConfirmationFactsIT {
 		venues.add(venue.id());
 		SetId a = venue.online().get(0);
 		SetId b = venue.online().get(1);
-		LocalDate first = firstDay();
+		LocalDate first = firstDay(clock);
 		createStay.create(plan(a, 3, b, 4, first));
 		StayId stay = new StayId(jdbc.sql("SELECT id FROM stay WHERE venue_id = :v").param("v", venue.id())
 				.query(Long.class).single());
@@ -132,7 +135,7 @@ class StayConfirmationFactsIT {
 	void aStretchWithNothingLeftLeavesTheCancellationFacts() {
 		Venue venue = StayFixtures.venue(jdbc, "INSTANT", null, true);
 		venues.add(venue.id());
-		LocalDate first = firstDay();
+		LocalDate first = firstDay(clock);
 		createStay.create(plan(venue.online().get(0), 3, venue.online().get(1), 4, first));
 		StayId stay = new StayId(jdbc.sql("SELECT id FROM stay WHERE venue_id = :v").param("v", venue.id())
 				.query(Long.class).single());
@@ -140,8 +143,8 @@ class StayConfirmationFactsIT {
 				.param("s", stay.value()).query(Long.class).single();
 		StayConfirmationFacts whole = facts.stayConfirmationFacts(stay).orElseThrow();
 
-		jdbc.sql("UPDATE booking_day SET refunded_at = now(), refund_minor = :m, refund_reason = 'WEATHER' WHERE booking_id = :b")
-				.param("m", PRICE).param("b", spent).update();
+		jdbc.sql("UPDATE booking_day SET refunded_at = :now, refund_minor = :m, refund_reason = 'WEATHER' WHERE booking_id = :b")
+				.param("m", PRICE).param("b", spent).param("now", java.sql.Timestamp.from(clock.instant())).update();
 
 		StayConfirmationFacts remainder = facts.stayCancellationFacts(stay).orElseThrow();
 		assertEquals(List.of(whole.stops().get(1)), remainder.stops());
@@ -151,9 +154,9 @@ class StayConfirmationFactsIT {
 
 	/** What a remodel commit leaves on a stretch it refunded: the stretch cancelled and a receipt outcome line. */
 	private void endByRemodel(Venue venue, SetId set, long stretch, LocalDate date) {
-		jdbc.sql("UPDATE booking SET status = 'CANCELLED', cancelled_at = now() WHERE id = :id").param("id", stretch)
-				.update();
-		receipts.store(new NewReceipt(new VenueId(venue.id()), StayFixtures.ownerOf(jdbc, venue), Instant.now(), List.of(),
+		jdbc.sql("UPDATE booking SET status = 'CANCELLED', cancelled_at = :now WHERE id = :id").param("id", stretch)
+				.param("now", java.sql.Timestamp.from(clock.instant())).update();
+		receipts.store(new NewReceipt(new VenueId(venue.id()), StayFixtures.ownerOf(jdbc, venue), clock.instant(), List.of(),
 				List.of(new ReceiptOutcome(new BookingId(stretch), date, new SpotRef(set, "A", 1),
 						ReceiptOutcomeKind.REFUND, PRICE, "EUR", 0L)),
 				"row rebuilt", List.of()));
@@ -163,10 +166,10 @@ class StayConfirmationFactsIT {
 	void aStayWithAStretchStillAwaitingPaymentIsNotEverConfirmed() {
 		Venue venue = StayFixtures.venue(jdbc, "INSTANT", null, true);
 		venues.add(venue.id());
-		createStay.create(plan(venue.online().get(0), 2, venue.online().get(1), 2, firstDay()));
+		createStay.create(plan(venue.online().get(0), 2, venue.online().get(1), 2, firstDay(clock)));
 		long stay = jdbc.sql("SELECT id FROM stay WHERE venue_id = :v").param("v", venue.id()).query(Long.class).single();
 		jdbc.sql("UPDATE booking SET confirmed_at = NULL WHERE stay_id = :s AND booking_date = :d")
-				.param("s", stay).param("d", firstDay()).update();
+				.param("s", stay).param("d", firstDay(clock)).update();
 
 		assertFalse(facts.stayConfirmationFacts(new StayId(stay)).orElseThrow().everConfirmed());
 	}
@@ -182,7 +185,7 @@ class StayConfirmationFactsIT {
 				                     status)
 				VALUES (:code, :v, :set, :c, :d, 4500, 'EUR', 'CONFIRMED') RETURNING id
 				""").param("code", "LONEF" + System.nanoTime()).param("v", venue.id())
-				.param("set", venue.online().get(0).value()).param("c", customer).param("d", firstDay())
+				.param("set", venue.online().get(0).value()).param("c", customer).param("d", firstDay(clock))
 				.query(Long.class).single();
 
 		assertTrue(facts.stayConfirmationFactsOf(new BookingId(lone)).isEmpty());

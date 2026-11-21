@@ -1,5 +1,6 @@
 package ai.riviera.platform.booking;
 
+import java.time.Clock;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.util.List;
@@ -53,6 +54,9 @@ class StayRequestDeclineIT {
 	JdbcClient jdbc;
 
 	@Autowired
+	Clock clock;
+
+	@Autowired
 	ApplicationEvents events;
 
 	private StayFixtures.Venue venue;
@@ -63,7 +67,7 @@ class StayRequestDeclineIT {
 	void seed() {
 		venue = StayFixtures.venue(jdbc, "REQUEST", null, true);
 		owner = StayFixtures.ownerOf(jdbc, venue);
-		first = StayFixtures.firstDay();
+		first = StayFixtures.firstDay(clock);
 	}
 
 	@AfterEach

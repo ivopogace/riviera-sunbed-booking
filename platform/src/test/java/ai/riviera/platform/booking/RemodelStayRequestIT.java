@@ -1,5 +1,6 @@
 package ai.riviera.platform.booking;
 
+import java.time.Clock;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.util.List;
@@ -51,6 +52,9 @@ class RemodelStayRequestIT {
 	JdbcClient jdbc;
 
 	@Autowired
+	Clock clock;
+
+	@Autowired
 	ApplicationEvents events;
 
 	private StayFixtures.Venue venue;
@@ -63,7 +67,7 @@ class RemodelStayRequestIT {
 		venue = StayFixtures.venue(jdbc, "REQUEST", null, true);
 		owner = StayFixtures.ownerOf(jdbc, venue);
 		venueId = new VenueId(venue.id());
-		LocalDate first = StayFixtures.firstDay();
+		LocalDate first = StayFixtures.firstDay(clock);
 		stay = StayFixtures.insertPendingStay(jdbc, venue, "RSR" + System.nanoTime() % 100_000_000L, first,
 				venue.online().get(0), 2, venue.online().get(1), 2, Instant.now().plusSeconds(3600));
 	}
