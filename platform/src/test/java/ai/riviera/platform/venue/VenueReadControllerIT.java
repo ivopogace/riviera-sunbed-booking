@@ -51,10 +51,20 @@ class VenueReadControllerIT {
 	@Autowired
 	MovableClock clock;
 
-	/** A free ONLINE set on the Miramar map, returned as its id. */
-	private long anyOnlineSet() {
-		return jdbc.sql("SELECT id FROM set_position WHERE venue_id = :v AND pool = 'ONLINE' "
-				+ "ORDER BY id LIMIT 1").param("v", MIRAMAR).query(Long.class).single();
+	/** A venue of this test's own with one ONLINE set: no other test writes its {@code (set, date)} rows. */
+	private record OwnSet(long venue, long set) {
+	}
+
+	private OwnSet insertVenueWithOneOnlineSet() {
+		long venue = insertVenueWithAmenities(40);
+		return new OwnSet(venue, insertSet(venue, 1, "ONLINE", 4000));
+	}
+
+	/** Removes the venue with its sets; their {@code set_availability} rows go by the FK's cascade. */
+	private void deleteVenue(long venueId) {
+		jdbc.sql("DELETE FROM set_position WHERE venue_id = :id").param("id", venueId).update();
+		jdbc.sql("DELETE FROM operator_venue WHERE venue_id = :id").param("id", venueId).update();
+		jdbc.sql("DELETE FROM venue WHERE id = :id").param("id", venueId).update();
 	}
 
 	private void book(long setId, LocalDate date) {
@@ -123,9 +133,7 @@ class VenueReadControllerIT {
 					.andExpect(jsonPath("$.sets.length()").value(2))
 					.andExpect(jsonPath("$.fromPrice").value(nullValue()));
 		} finally {
-			jdbc.sql("DELETE FROM set_position WHERE venue_id = :id").param("id", venue).update();
-			jdbc.sql("DELETE FROM operator_venue WHERE venue_id = :id").param("id", venue).update();
-			jdbc.sql("DELETE FROM venue WHERE id = :id").param("id", venue).update();
+			deleteVenue(venue);
 		}
 	}
 
@@ -165,44 +173,56 @@ class VenueReadControllerIT {
 	void unbookedSetIsFreeForDate() throws Exception {
 		// AC-1: with no set_availability row for the date, the set is FREE (sourced from the
 		// authoritative table, not the dropped seed column).
-		long set = anyOnlineSet();
+		OwnSet own = insertVenueWithOneOnlineSet();
 		LocalDate date = LocalDate.of(2026, 11, 20);
-
-		mvc.perform(get("/api/venues/{id}", MIRAMAR).param("date", date.toString()))
-				.andExpect(status().isOk())
-				.andExpect(jsonPath("$.sets[?(@.id == %d)].availability", set).value(contains("FREE")));
+		try {
+			mvc.perform(get("/api/venues/{id}", own.venue()).param("date", date.toString()))
+					.andExpect(status().isOk())
+					.andExpect(jsonPath("$.sets[?(@.id == %d)].availability", own.set()).value(contains("FREE")));
+		} finally {
+			deleteVenue(own.venue());
+		}
 	}
 
 	@Test
 	void bookedSetIsTakenOnItsDateAndFreeOnAnother() throws Exception {
 		// AC-2: a set booked for D shows TAKEN for D and FREE for a different date.
-		long set = anyOnlineSet();
+		OwnSet own = insertVenueWithOneOnlineSet();
 		LocalDate date = LocalDate.of(2026, 11, 21);
 		LocalDate otherDate = LocalDate.of(2026, 11, 22);
-		book(set, date);
+		try {
+			book(own.set(), date);
 
-		mvc.perform(get("/api/venues/{id}", MIRAMAR).param("date", date.toString()))
-				.andExpect(status().isOk())
-				.andExpect(jsonPath("$.sets[?(@.id == %d)].availability", set).value(contains("TAKEN")));
+			mvc.perform(get("/api/venues/{id}", own.venue()).param("date", date.toString()))
+					.andExpect(status().isOk())
+					.andExpect(jsonPath("$.sets[?(@.id == %d)].availability", own.set()).value(contains("TAKEN")));
 
-		mvc.perform(get("/api/venues/{id}", MIRAMAR).param("date", otherDate.toString()))
-				.andExpect(status().isOk())
-				.andExpect(jsonPath("$.sets[?(@.id == %d)].availability", set).value(contains("FREE")));
+			mvc.perform(get("/api/venues/{id}", own.venue()).param("date", otherDate.toString()))
+					.andExpect(status().isOk())
+					.andExpect(jsonPath("$.sets[?(@.id == %d)].availability", own.set()).value(contains("FREE")));
+		} finally {
+			deleteVenue(own.venue());
+		}
 	}
 
 	@Test
 	void rangeReadCarriesPerSetDays() throws Exception {
-		long set = anyOnlineSet();
+		OwnSet own = insertVenueWithOneOnlineSet();
 		LocalDate first = LocalDate.of(2027, 8, 1);
-		book(set, first.plusDays(1));
+		try {
+			book(own.set(), first.plusDays(1));
 
-		mvc.perform(get("/api/venues/{id}", MIRAMAR)
-						.param("date", first.toString()).param("lastDate", first.plusDays(2).toString()))
-				.andExpect(status().isOk())
-				.andExpect(jsonPath("$.sets[?(@.id == %d)].availability", set).value(contains("PARTLY_FREE")))
-				.andExpect(jsonPath("$.sets[?(@.id == %d)].freeDays", set).value(contains(2)))
-				.andExpect(jsonPath("$.sets[?(@.id == %d)].takenDates[0]", set)
-						.value(contains(first.plusDays(1).toString())));
+			mvc.perform(get("/api/venues/{id}", own.venue())
+							.param("date", first.toString()).param("lastDate", first.plusDays(2).toString()))
+					.andExpect(status().isOk())
+					.andExpect(jsonPath("$.sets[?(@.id == %d)].availability", own.set())
+							.value(contains("PARTLY_FREE")))
+					.andExpect(jsonPath("$.sets[?(@.id == %d)].freeDays", own.set()).value(contains(2)))
+					.andExpect(jsonPath("$.sets[?(@.id == %d)].takenDates[0]", own.set())
+							.value(contains(first.plusDays(1).toString())));
+		} finally {
+			deleteVenue(own.venue());
+		}
 	}
 
 	@Test
@@ -224,13 +244,17 @@ class VenueReadControllerIT {
 	void defaultsToTodayTirane() throws Exception {
 		// AC-3: no date param ⇒ today in Europe/Tirane. Book a set for that exact date and
 		// confirm the param-less read renders it TAKEN.
-		long set = anyOnlineSet();
+		OwnSet own = insertVenueWithOneOnlineSet();
 		LocalDate today = TiraneDaytimeClock.today(clock);
-		book(set, today);
+		try {
+			book(own.set(), today);
 
-		mvc.perform(get("/api/venues/{id}", MIRAMAR))
-				.andExpect(status().isOk())
-				.andExpect(jsonPath("$.sets[?(@.id == %d)].availability", set).value(contains("TAKEN")));
+			mvc.perform(get("/api/venues/{id}", own.venue()))
+					.andExpect(status().isOk())
+					.andExpect(jsonPath("$.sets[?(@.id == %d)].availability", own.set()).value(contains("TAKEN")));
+		} finally {
+			deleteVenue(own.venue());
+		}
 	}
 
 	@Test
