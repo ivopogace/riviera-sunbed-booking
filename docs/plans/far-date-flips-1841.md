@@ -44,13 +44,13 @@ None.
 
 ## Execution status
 
-**Stage pointer:** implement (phase 0)
+**Stage pointer:** PR open, CI then review
 
-**Next action:** phase 0 red test
+**Next action:** check CI on the push, mark ready, run the review gate
 
 | Phase | Status | Commits |
 |-------|--------|---------|
-| 0 — fixture | ⏳ | |
-| 1 — availability | | |
-| 2 — booking | | |
-| 3 — venue and notification | | |
+| 0 — fixture | ✅ | 50d6029 |
+| 1 — availability | ✅ | 50d6029 |
+| 2 — booking | ✅ | second commit |
+| 3 — venue and notification | ✅ | third commit |

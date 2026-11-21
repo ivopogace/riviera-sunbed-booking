@@ -1,11 +1,13 @@
 package ai.riviera.platform.notification;
 
+import java.time.Clock;
 import java.time.Duration;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.util.List;
 
 import org.awaitility.Awaitility;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -17,6 +19,8 @@ import org.springframework.transaction.PlatformTransactionManager;
 
 import ai.riviera.platform.EnabledIfDockerAvailable;
 import ai.riviera.platform.TestcontainersConfiguration;
+import ai.riviera.platform.TiraneDaytimeClock;
+import ai.riviera.platform.booking.StayFixtures;
 import ai.riviera.platform.booking.application.cancel.CancelBooking;
 import ai.riviera.platform.booking.application.cancel.CancelOutcome;
 import ai.riviera.platform.booking.application.remodel.NewReceipt;
@@ -84,17 +88,34 @@ class StayCancellationMailIT {
 	private record SeededStay(String code, List<Long> stretches, LocalDate first) {
 	}
 
+	@Autowired
+	Clock clock;
+
+	/** This test's own visible venue: the confirm claims its sets' days, which no other class may hold (#2). */
+	private StayFixtures.Venue venue;
+
 	@BeforeEach
 	void isolateOutbox() {
 		mailer.clear();
 		fixtures = new BookingMailFixtures(jdbc, txManager, publisher);
+		venue = StayFixtures.venue(jdbc, "INSTANT", null, true);
+	}
+
+	@AfterEach
+	void removeVenue() {
+		StayFixtures.cleanup(jdbc, venue.id());
+	}
+
+	/** Thirty days out: on sale and inside the free cancellation window, so a guest's cancel refunds in full. */
+	private LocalDate firstDay() {
+		return TiraneDaytimeClock.today(clock).plusDays(30);
 	}
 
 	@Test
 	void mailsTheStayOnceWhenTheGuestCancelsIt() {
 		String email = "stay-cancel@example.com";
 		List<SetRef> sets = twoSetsOfOneVenue();
-		SeededStay stay = seedStay(sets, LocalDate.of(2036, 4, 1), email, "AWAITING_PAYMENT");
+		SeededStay stay = seedStay(sets, firstDay(), email, "AWAITING_PAYMENT");
 		stay.stretches().forEach(stretch -> fixtures.publishInTransaction(
 				new PaymentConfirmed(new BookingRef(stretch), "pi_stay_cancel_" + stretch)));
 		Awaitility.await().atMost(WAIT).until(() -> count(email, SentEmail.Kind.STAY_CONFIRMATION) == 1L);
@@ -106,7 +127,7 @@ class StayCancellationMailIT {
 		Awaitility.await().atMost(WAIT).until(() -> count(email, SentEmail.Kind.BOOKING_CANCELLATION) == 1L);
 		Awaitility.await().during(Duration.ofSeconds(2)).atMost(WAIT)
 				.until(() -> count(email, SentEmail.Kind.BOOKING_CANCELLATION) == 1L);
-		assertEquals(2 * STRETCH_AMOUNT, cancelled.refundMinor(), "ten years out is the free window");
+		assertEquals(2 * STRETCH_AMOUNT, cancelled.refundMinor(), "thirty days out is the free window");
 		assertEquals(new BookingCancellationMail(stay.code(), sets.get(0).venueName(), stay.first(),
 						stay.first().plusDays(3), 2 * STRETCH_AMOUNT, "EUR", RefundReason.POLICY, null, null),
 				mailer.lastTo(email).orElseThrow().cancellation(),
@@ -121,7 +142,7 @@ class StayCancellationMailIT {
 	void aGuestCancelAfterARemodelEndedAStretchMailsOnlyTheLiveRemainder() {
 		String email = "stay-cancel-remainder@example.com";
 		List<SetRef> sets = twoSetsOfOneVenue();
-		SeededStay stay = seedStay(sets, LocalDate.of(2036, 5, 1), email, "AWAITING_PAYMENT");
+		SeededStay stay = seedStay(sets, firstDay(), email, "AWAITING_PAYMENT");
 		stay.stretches().forEach(stretch -> fixtures.publishInTransaction(
 				new PaymentConfirmed(new BookingRef(stretch), "pi_stay_remainder_" + stretch)));
 		Awaitility.await().atMost(WAIT).until(() -> count(email, SentEmail.Kind.STAY_CONFIRMATION) == 1L);
@@ -150,7 +171,7 @@ class StayCancellationMailIT {
 	void mailsAStayARemodelReleasedOnceWithItsRebookLink() {
 		String email = "stay-released@example.com";
 		List<SetRef> sets = twoSetsOfOneVenue();
-		SeededStay stay = seedStay(sets, LocalDate.of(2036, 4, 21), email, "CANCELLED");
+		SeededStay stay = seedStay(sets, firstDay(), email, "CANCELLED");
 		endedByRemodel(sets.get(0), stay.stretches().get(0), stay.first(), ReceiptOutcomeKind.RELEASE);
 		endedByRemodel(sets.get(1), stay.stretches().get(1), stay.first().plusDays(2), ReceiptOutcomeKind.RELEASE);
 		StayId stayId = new StayId(jdbc.sql("SELECT id FROM stay WHERE code = :code").param("code", stay.code())
@@ -174,7 +195,7 @@ class StayCancellationMailIT {
 	void aStretchEndedAloneByARemodelStillMailsWithItsRebookLink() {
 		String email = "stay-remodel@example.com";
 		List<SetRef> sets = twoSetsOfOneVenue();
-		SeededStay stay = seedStay(sets, LocalDate.of(2036, 4, 11), email, "CANCELLED");
+		SeededStay stay = seedStay(sets, firstDay(), email, "CANCELLED");
 		long ended = stay.stretches().get(1);
 		LocalDate endedFirst = stay.first().plusDays(2);
 		endedByRemodel(sets.get(1), ended, endedFirst, ReceiptOutcomeKind.REFUND);
@@ -193,15 +214,8 @@ class StayCancellationMailIT {
 	}
 
 	private List<SetRef> twoSetsOfOneVenue() {
-		return jdbc.sql("""
-				SELECT sp.id, sp.venue_id, v.name
-				FROM set_position sp JOIN venue v ON v.id = sp.venue_id
-				WHERE sp.pool = 'ONLINE'
-				  AND sp.venue_id = (SELECT venue_id FROM set_position WHERE pool = 'ONLINE' ORDER BY id LIMIT 1)
-				ORDER BY sp.id LIMIT 2
-				""")
-				.query((rs, n) -> new SetRef(rs.getLong("id"), rs.getLong("venue_id"), rs.getString("name")))
-				.list();
+		String name = jdbc.sql("SELECT name FROM venue WHERE id = :v").param("v", venue.id()).query(String.class).single();
+		return venue.online().stream().limit(2).map(set -> new SetRef(set.value(), venue.id(), name)).toList();
 	}
 
 	/** A stay of two two-day stretches on {@code sets}, both in {@code status}. */
