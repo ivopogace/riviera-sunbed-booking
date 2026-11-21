@@ -10,6 +10,8 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.RepeatedTest;
 import org.junit.jupiter.api.RepetitionInfo;
 import org.junit.jupiter.api.Test;
@@ -22,6 +24,7 @@ import ai.riviera.platform.EnabledIfDockerAvailable;
 import ai.riviera.platform.TestcontainersConfiguration;
 import ai.riviera.platform.availability.api.AvailabilityClaim;
 import ai.riviera.platform.availability.vocabulary.ClaimOutcome;
+import ai.riviera.platform.booking.StayFixtures;
 import ai.riviera.platform.venue.vocabulary.SetId;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -46,9 +49,16 @@ class ConcurrentClaimIT {
 	@Autowired
 	JdbcClient jdbc;
 
-	private SetId anyOnlineSet() {
-		return new SetId(jdbc.sql("SELECT id FROM set_position WHERE pool = 'ONLINE' ORDER BY id LIMIT 1")
-				.query(Long.class).single());
+	private StayFixtures.Venue venue;
+
+	@BeforeEach
+	void ownVenue() {
+		venue = StayFixtures.venue(jdbc, "INSTANT", null, false);
+	}
+
+	@AfterEach
+	void removeVenue() {
+		StayFixtures.cleanupNow(jdbc, venue.id());
 	}
 
 	private long rowCount(SetId set, LocalDate date) {
@@ -90,7 +100,7 @@ class ConcurrentClaimIT {
 
 	@Test
 	void exactlyOneOfTwoConcurrentClaimsWins() throws Exception {
-		SetId set = anyOnlineSet();
+		SetId set = venue.online().get(0);
 		LocalDate date = LocalDate.of(2026, 8, 1);
 
 		List<ClaimOutcome> outcomes = raceClaims(set, date, 2);
@@ -105,14 +115,12 @@ class ConcurrentClaimIT {
 	/**
 	 * Stress the guard well past two contenders, repeated several times. A single 2-thread pass
 	 * can win on lucky scheduling; for the #1 correctness invariant we want many claimers racing
-	 * over the SAME row across repeated runs. Each repetition uses a distinct date (the
-	 * Testcontainers DB is shared across methods/repetitions) so repetitions don't interfere.
+	 * over the SAME row across repeated runs, each repetition on a venue of its own.
 	 */
 	@RepeatedTest(5)
 	void manyConcurrentClaimsYieldExactlyOneWinner(RepetitionInfo info) throws Exception {
 		int contenders = 16;
-		SetId set = anyOnlineSet();
-		// Distinct per repetition: 2026-08-10, -11, ... — independent of the 2-thread test's date.
+		SetId set = venue.online().get(0);
 		LocalDate date = LocalDate.of(2026, 8, 10).plusDays(info.getCurrentRepetition());
 
 		List<ClaimOutcome> outcomes = raceClaims(set, date, contenders);

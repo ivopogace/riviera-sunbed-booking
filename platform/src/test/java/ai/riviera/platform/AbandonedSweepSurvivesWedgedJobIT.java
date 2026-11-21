@@ -11,6 +11,7 @@ import java.util.concurrent.TimeUnit;
 
 import javax.sql.DataSource;
 
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -21,6 +22,7 @@ import org.springframework.scheduling.TaskScheduler;
 
 import ai.riviera.platform.availability.api.AvailabilityClaim;
 import ai.riviera.platform.availability.vocabulary.ClaimOutcome;
+import ai.riviera.platform.booking.StayFixtures;
 import ai.riviera.platform.booking.application.refund.ExpireAbandonedBookings;
 import ai.riviera.platform.booking.application.request.RequestWindows;
 import ai.riviera.platform.customer.application.AccountErasureStore;
@@ -99,12 +101,17 @@ class AbandonedSweepSurvivesWedgedJobIT {
 	@Autowired
 	DataSource dataSource;
 
+	private StayFixtures.Venue venue;
+
+	/** Its property set is a container of its own, so the sweep's whole-table count of 1 is this test's booking. */
 	@BeforeEach
-	void isolate() {
-		// The sweep scans the whole table and the container is shared; booking before customer (FK).
-		jdbc.sql("DELETE FROM set_availability WHERE booking_date = :date").param("date", BOOKING_DATE).update();
-		jdbc.sql("DELETE FROM booking WHERE code = :code").param("code", CODE).update();
-		jdbc.sql("DELETE FROM customer WHERE email = :email").param("email", CODE + "@example.com").update();
+	void ownVenue() {
+		venue = StayFixtures.venue(jdbc, "INSTANT", null, false);
+	}
+
+	@AfterEach
+	void removeVenue() {
+		StayFixtures.cleanup(jdbc, venue.id());
 	}
 
 	@Test
@@ -161,8 +168,7 @@ class AbandonedSweepSurvivesWedgedJobIT {
 	}
 
 	private SetRef onlineSet() {
-		return jdbc.sql("SELECT id, venue_id FROM set_position WHERE pool = 'ONLINE' ORDER BY id LIMIT 1")
-				.query((rs, n) -> new SetRef(rs.getLong("id"), rs.getLong("venue_id"))).single();
+		return new SetRef(venue.online().get(0).value(), venue.id());
 	}
 
 	/**

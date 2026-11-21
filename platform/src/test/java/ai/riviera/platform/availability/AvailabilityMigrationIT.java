@@ -2,6 +2,8 @@ package ai.riviera.platform.availability;
 
 import java.time.LocalDate;
 
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.dao.DataIntegrityViolationException;
@@ -11,6 +13,7 @@ import org.springframework.context.annotation.Import;
 
 import ai.riviera.platform.EnabledIfDockerAvailable;
 import ai.riviera.platform.TestcontainersConfiguration;
+import ai.riviera.platform.booking.StayFixtures;
 
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
@@ -18,7 +21,8 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
  * Verifies the U2 migration (issue #5) enforces invariant #2 <em>in the database</em>
  * (invariant #12 — constraints that enforce invariants are tested): the
  * {@code UNIQUE(set_id, booking_date)} double-booking guard and the {@code state} CHECK.
- * Testcontainers Postgres + real Flyway, so it runs in CI; skipped where Docker is absent.
+ * Rows go on a venue each test creates and removes. Testcontainers Postgres + real Flyway; skipped
+ * where Docker is absent.
  */
 @EnabledIfDockerAvailable
 @Import(TestcontainersConfiguration.class)
@@ -28,9 +32,16 @@ class AvailabilityMigrationIT {
 	@Autowired
 	JdbcClient jdbc;
 
-	private long anyOnlineSetId() {
-		return jdbc.sql("SELECT id FROM set_position WHERE pool = 'ONLINE' ORDER BY id LIMIT 1")
-				.query(Long.class).single();
+	private StayFixtures.Venue venue;
+
+	@BeforeEach
+	void ownVenue() {
+		venue = StayFixtures.venue(jdbc, "INSTANT", null, false);
+	}
+
+	@AfterEach
+	void removeVenue() {
+		StayFixtures.cleanupNow(jdbc, venue.id());
 	}
 
 	private void insert(long setId, LocalDate date, String state) {
@@ -42,7 +53,7 @@ class AvailabilityMigrationIT {
 
 	@Test
 	void uniqueConstraintRejectsDuplicateSetDate() {
-		long setId = anyOnlineSetId();
+		long setId = venue.online().get(0).value();
 		LocalDate date = LocalDate.of(2026, 9, 1);
 		insert(setId, date, "BOOKED_ONLINE");
 
@@ -54,7 +65,7 @@ class AvailabilityMigrationIT {
 
 	@Test
 	void checkConstraintRejectsUnknownState() {
-		long setId = anyOnlineSetId();
+		long setId = venue.online().get(0).value();
 		LocalDate date = LocalDate.of(2026, 9, 2);
 
 		assertThrows(DataIntegrityViolationException.class,
