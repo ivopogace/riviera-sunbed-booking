@@ -57,7 +57,6 @@ class CancellationTermsEndpointIT {
 		return TiraneDaytimeClock.today(clock);
 	}
 
-	/** A midnight-cutoff venue offering a 40% late share, with one online set; returns the set id. */
 	/** The venues {@link #seedMidnightCutoffSet} made, one per call, removed after each test. */
 	private final List<Long> venues = new ArrayList<>();
 
@@ -66,6 +65,7 @@ class CancellationTermsEndpointIT {
 		venues.forEach(id -> StayFixtures.cleanupNow(jdbc, id));
 	}
 
+	/** A midnight-cutoff venue offering a 40% late share, with one online set; returns the set id. */
 	private long seedMidnightCutoffSet(String venueName) {
 		long venueId = jdbc.sql("""
 				INSERT INTO venue (name, beach, booking_mode, commission_bps, payout_currency,
