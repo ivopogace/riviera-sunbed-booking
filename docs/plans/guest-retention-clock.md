@@ -68,14 +68,14 @@ statement; `created_at` keeps its database default). Found by #1842 group F.
 
 ## Execution status
 
-**Stage pointer:** implement (phase 1)
+**Stage pointer:** implement (phase 2)
 
-**Next action:** bind `:now` from the `Clock` in the upsert; AC-1 + AC-2 green.
+**Next action:** whole backend suite in batches, no travel and at 2038; then ready for review.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
-| 0 — red | ✅ | (this commit) |
-| 1 — fix | ⏳ | |
-| 2 — suite | | |
+| 0 — red | ✅ | 8dd0824 |
+| 1 — fix | ✅ | (this commit) |
+| 2 — suite | ⏳ | |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
