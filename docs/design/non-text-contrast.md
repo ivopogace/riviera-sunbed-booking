@@ -40,7 +40,9 @@ hairline sits **between** the fill and the glass, so this file treats the hairli
 as what abuts the card (*What the W3C pages say about "adjacent"*, below, says how far the source
 takes that). Measured that way, the CTA's
 boundary against its host card clears 3:1 in every theme — and the carrier swaps, because the
-fill is a fixed mid-teal that the themes move *around* rather than *with*:
+fill is a fixed mid-teal that the themes move *around* rather than *with*. (In the dark theme the
+CTA no longer rests on this reading alone: it is also a rule 2 family, by the owner's decision on
+[#1840](https://github.com/ivopogace/riviera-sunbed-booking/issues/1840).)
 
 | Theme | What abuts the card | Clears 3:1 |
 |---|---|---|
@@ -56,10 +58,17 @@ place they can go stale loudly.
 **Corollary, worth stating because it closed #876's second option:** on a dark host, a
 boundary cannot be raised by *darkening*. The dark theme's lightest card composite is
 luminance ≈ 0.015, so 3:1 in the darker direction would need a negative luminance. Only
-lightening can reach it, and on a filled control that trades directly against the label — the
-CTA's 15px bold white text sits at 5.56–7.24:1 today, and the lightest teal that lifts the
-fill's own boundary past 3:1 drops that text to ~4.0:1, under AA. **Check the label before
-proposing a fill change.**
+lightening can reach it, and on a filled control that trades directly against the label. For the
+CTA the trade has room, narrowly: its white text sits at 5.56–7.24:1 today, a fill just light
+enough for 3:1 against the lightest dark card leaves that text at about 5.4:1, and white stays at
+AA until the fill is about a quarter lighter again in luminance. The two stops would have to fit
+inside that band, which nearly flattens the gradient, and the hover brightening takes the label
+under 4.5:1 at the band's light end. (An earlier version of this file said such a fill drops
+the text to ~4.0:1; that figure is white on the originally drawn `#0e8aa8`, which is well past
+3:1, not at it.) The project has **not** taken that change (#1840): the dark CTA is covered by
+rule 2 instead, and `--riv-cta-grad` stays declared once. The spec keeps the band measured
+(› "a lighter dark fill could clear 3:1 and keep the label at AA, which is why leaving it is a
+choice"). **Check the label before proposing a fill change.**
 
 **Caveat, stated rather than buried:** where the hairline is the carrier it is 1px, and the
 normative text of 1.4.11 sets no minimum thickness for a component boundary (2.4.13 Focus
@@ -67,7 +76,7 @@ Appearance, AAA, does for focus indicators; 2.4.11 is Focus Not Obscured and is 
 thickness). The Understanding page does add a non-normative note on thin lines, quoted below.
 The reading is defensible, not free. It is recorded as the project's position, and the CTA
 independently carries a 3px `focus-visible` outline and an AA label, neither of which this
-reading depends on.
+reading depends on, and which are what rule 2 rests the dark CTA on.
 
 ### What the W3C pages say about "adjacent" (read 2026-11-21)
 
@@ -95,12 +104,15 @@ other way round: a border that does not help identify the component is ignored, 
 taken across it (fill against the host). Rule 1 is consistent with the source only where the
 border *does* help identify the control, which is the case for the CTA's dark-theme hairline
 (white 0.4 over the fill, 1px, the one layer that clears 3:1 against the near-black card). The
-pages do not say that case either way, so the dark CTA stands on the project's reading, recorded
-here as the project's position and not as the source's. A reviewer who applies the "subsumed"
-sentence to it would measure fill against card (2.23–3.16:1 in dark, per #876). That is a residual
-risk this file accepts openly; rule 2 does not cover it (the CTA is not in rule 2's table, and
-putting it there would need the three conditions asserted in a spec, a separate decision). Also
-from the same page:
+pages do not say that case either way: the "subsumed" sentence is about a border "between
+contrasting backgrounds", and in the dark theme the CTA's fill and its card are the pair that does
+not contrast. So rule 1's answer for the dark CTA is the project's position and not the source's.
+A reviewer who applies the "subsumed" sentence to it would measure fill against card
+(2.23–3.16:1 in dark, per #876). **The dark CTA therefore does not rest on rule 1.** By the
+owner's decision on #1840 it is a rule 2 family: its white label identifies it at AA, which is the
+case the page's *Boundaries* section exempts in its own words, whichever way the hairline is read.
+Rule 1's hairline reading stays as the supplementary position, and the hairline as the boundary
+the page encourages but does not require. Also from the same page:
 
 > Due to anti-aliasing, particularly thin lines and shapes of non-text elements may be rendered by
 > user agents with a much fainter color than the actual color defined in the underlying CSS. [...]
@@ -137,7 +149,8 @@ indication" (the 3px ring under #890, below) and that delineating every boundary
 not required. The conditions below are the project's guard rails on top of that text.
 
 It applies where rule 1 does **not** rescue a family: pale fills on pale glass, where neither
-the fill nor the border abuts the card at 3:1 in the light themes.
+the fill nor the border abuts the card at 3:1 in the light themes; and the primary CTA in the dark
+theme, where rule 1's answer is the project's reading and not the source's.
 
 Three conditions, all required:
 
@@ -172,6 +185,7 @@ number-bearing surface, not two.
 | `--riv-amenity-tag-border`, `--riv-amenity-water-border` | `app/shared/fixed-fill-token-skins.contrast.spec.ts` (`amenities.contrast.spec.ts` is the same family's ink/fill text pairs, not these borders) |
 | `--riv-warn-edge/50` on `daily-view-tab`'s close-sales trigger — the button's own label carries the identity | `app/operator/daily-view-tab.contrast.spec.ts` |
 | `--riv-solid-fill-brand` as the operator account chip's avatar disc — the chip's non-text anchor on the header glass, measured at ≥ 3:1 over every porcelain stop; the chip's `--riv-chip-border` hairline is the tourist header's token and decoration under rule 2 (the label carries the identity) | `app/operator/operator-account-chip.contrast.spec.ts` |
+| the primary CTA, `[appPrimaryCta]`'s `--riv-cta-grad` fill under the `--riv-cta-border` hairline, **in the dark theme** (#1840): the white label carries the identity, resting and hovered, and the fill against the card is the measured sub-3:1 number. In the light themes the fill clears 3:1 against the card and needs no exemption | `app/shared/cta-border-token.contrast.spec.ts` › "meets rule 2's three conditions: an AA label resting and hovered, a measured boundary, a real border" |
 | the theme row's swatch circle in the account menu and phone sheet (**rule 2a** — an `aria-hidden` ornament; the row's `Colour theme` label and its value carry the meaning). Its white inset hairline clears 3:1 over the darker swatch stops and vanishes over the palest, which is why rule 1 cannot carry it | `app/app.contrast.spec.ts` |
 
 `--riv-console-card-border`'s one remaining consumer is not a control at all: it is the edge of the
@@ -302,3 +316,7 @@ the W3C pages say about "adjacent"*); "pure decoration" was 1.1.1's wording, not
 project policy, not something the SC asks. Confirmed and now cited: rule 2's boundary argument is
 the Understanding page's *Boundaries* section. Re-verify on a WCAG revision; the dated read is
 the one above.
+
+#1840, same day and same pages: the owner chose to record the dark-theme CTA under rule 2 and not
+to change a colour. That pass re-measured the CTA from the tokens and corrected rule 1's corollary,
+which had said no fill could clear 3:1 against the dark card and keep the label at AA.

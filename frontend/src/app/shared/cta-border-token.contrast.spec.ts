@@ -2,7 +2,15 @@ import { readFileSync } from 'node:fs';
 import { recursivePaths } from '../../testing/source-paths';
 import { join } from 'node:path';
 
-import { AA_LARGE, composite, contrastRatio, rgbToHex } from '../../testing/contrast';
+import {
+  AA_LARGE,
+  AA_NORMAL,
+  composite,
+  contrastRatio,
+  relativeLuminance,
+  rgbToHex,
+  type Rgb,
+} from '../../testing/contrast';
 import {
   CTA_BORDER,
   CTA_GRAD_STOPS,
@@ -161,6 +169,29 @@ function citationsOf(citation: string): readonly { path: string; line: string }[
   );
 }
 
+/** The `[appPrimaryCta]` host class, as the utilities it carries. */
+function skinUtilities(): readonly string[] {
+  return /class:\s*'([^']*)'/.exec(read(SKIN.path))?.[1].split(/\s+/) ?? [];
+}
+
+/** The CTA fill against the dark card glass, over every dark stop and both gradient stops. */
+function darkFillAgainstCard(): readonly number[] {
+  return DARK_STOPS.flatMap((stop) =>
+    CTA_GRAD_STOPS.map((fill) =>
+      contrastRatio(rgbToHex(fill), rgbToHex(surfaceOver(DARK_CARD_GLASS, stop))),
+    ),
+  );
+}
+
+/** A fill under the skin's hover `brightness()`, which multiplies each sRGB channel. */
+function hovered(fill: Rgb): Rgb {
+  const utility = skinUtilities().find((name) => name.includes('brightness-['));
+  const factor = Number(/brightness-\[([\d.]+)\]/.exec(utility ?? '')?.[1]);
+  const lift = (channel: number): number => Math.min(255, Math.round(channel * factor));
+
+  return [lift(fill[0]), lift(fill[1]), lift(fill[2])];
+}
+
 /** The hairline as it actually paints: composited over the opaque fill it sits on. */
 function borderOver(fill: readonly [number, number, number], alpha: number): number {
   const painted = composite([255, 255, 255], alpha, fill);
@@ -220,12 +251,9 @@ describe('--riv-cta-border — the CTA hairline (#853)', () => {
   });
 
   /**
-   * Why no palette change is needed. Measured against the card glass, the CTA fill reads
-   * 2.23-3.16:1 in the dark theme, which looks like a 1.4.11 failure — but
-   * the hairline sits BETWEEN those two, so that pairing is not an adjacency. Measured against the
-   * colour each layer actually abuts, the boundary clears 3:1 in every theme, and WHICH layer
-   * carries it swaps: the fill is a fixed mid-teal, so light glass makes the fill the contrasting
-   * half and dark glass makes the white hairline it. Rule 1 of docs/design/non-text-contrast.md.
+   * Rule 1 of docs/design/non-text-contrast.md, the PROJECT'S reading: the layer that abuts the
+   * card is the boundary, and which layer clears 3:1 swaps by theme. The W3C page does not state
+   * it, so the dark CTA does not rest on this test: rule 2's conditions, asserted below, carry it.
    */
   it('the boundary against the host card clears 3:1 in every theme — the fill carries it in light, the hairline in dark', () => {
     for (const [theme, glass, stops] of THEMED_CARD_GLASS) {
@@ -249,22 +277,58 @@ describe('--riv-cta-border — the CTA hairline (#853)', () => {
   });
 
   /**
-   * The fill-vs-glass number, kept under assertion rather than deleted as wrong — it is real, and
-   * a future slice re-deriving it should find the pairing already named. What it is NOT is the
-   * 1.4.11 comparison: the test above measures the adjacency.
+   * What a reader who subsumes the hairline into the fill (the Understanding page's "subsumed"
+   * sentence) measures. Rule 2's second condition for the CTA: the number stays under assertion.
    */
-  it('the fill-vs-glass pairing #876 reported is not the adjacent pair', () => {
-    const [, darkGlass, darkStops] = THEMED_CARD_GLASS.find(([theme]) => theme === 'dark')!;
-    const ratios = darkStops.flatMap((stop) =>
-      CTA_GRAD_STOPS.map((fill) =>
-        contrastRatio(rgbToHex(fill), rgbToHex(surfaceOver(darkGlass, stop))),
-      ),
-    );
+  it('the dark fill-vs-card pairing #876 reported is measured: under 3:1 at the worst stop', () => {
+    const ratios = darkFillAgainstCard();
     expect(Math.min(...ratios), 'the worst stop, which is what falls under 3:1').toBeLessThan(
       AA_LARGE,
     );
     expect(Math.min(...ratios), "the band's floor").toBeGreaterThan(2.2);
     expect(Math.max(...ratios), "the band's ceiling").toBeLessThan(3.2);
+  });
+
+  /**
+   * Rule 2 of docs/design/non-text-contrast.md, for the CTA (#1840): the label carries the
+   * identity at AA, the boundary's number is measured, and the skin paints a real `border`.
+   */
+  it("meets rule 2's three conditions: an AA label resting and hovered, a measured boundary, a real border", () => {
+    for (const fill of CTA_GRAD_STOPS) {
+      for (const [state, painted] of [
+        ['resting', fill],
+        ['hovered', hovered(fill)],
+      ] as const) {
+        expect(
+          contrastRatio('#ffffff', rgbToHex(painted)),
+          `white label over ${rgbToHex(fill)}, ${state}`,
+        ).toBeGreaterThanOrEqual(AA_NORMAL);
+      }
+    }
+    expect(hovered(CTA_GRAD_STOPS[0]), 'the hover factor is read off the skin').not.toEqual(
+      CTA_GRAD_STOPS[0],
+    );
+
+    expect(Math.min(...darkFillAgainstCard()), 'the measured boundary').toBeGreaterThan(2.2);
+
+    expect(skinUtilities(), 'a real border').toEqual(
+      expect.arrayContaining(['border', 'border-riv-cta-border']),
+    );
+  });
+
+  /**
+   * The option #1840 did not take, kept measured so the doc's corollary cannot go stale: a fill
+   * light enough for 3:1 against the lightest dark card still leaves white text at AA.
+   */
+  it('a lighter dark fill could clear 3:1 and keep the label at AA, which is why leaving it is a choice', () => {
+    const lightestCard = Math.max(
+      ...DARK_STOPS.map((stop) => relativeLuminance(rgbToHex(surfaceOver(DARK_CARD_GLASS, stop)))),
+    );
+    const fillFloor = AA_LARGE * (lightestCard + 0.05) - 0.05;
+    const labelAtFloor = 1.05 / (fillFloor + 0.05);
+
+    expect(labelAtFloor).toBeGreaterThanOrEqual(AA_NORMAL);
+    expect(labelAtFloor, 'the margin is thin').toBeLessThan(5.5);
   });
 
   /**
@@ -310,10 +374,8 @@ describe('--riv-cta-border — the CTA hairline (#853)', () => {
   });
 
   it('the primary CTA skin is the [appPrimaryCta] directive, carrying the proven hairline and fill', () => {
-    const hostClass = /class:\s*'([^']*)'/.exec(read(SKIN.path))?.[1].split(/\s+/) ?? [];
-
     for (const utility of SKIN.utilities) {
-      expect(hostClass, `${SKIN.path} host class`).toContain(utility);
+      expect(skinUtilities(), `${SKIN.path} host class`).toContain(utility);
     }
   });
 
