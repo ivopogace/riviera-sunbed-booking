@@ -1,6 +1,7 @@
 package ai.riviera.platform;
 
 import java.sql.Timestamp;
+import java.time.Clock;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.util.concurrent.atomic.AtomicLong;
@@ -17,9 +18,11 @@ public final class ReviewFixtures {
 	private static final AtomicLong SEQ = new AtomicLong();
 
 	private final JdbcClient jdbc;
+	private final Clock clock;
 
-	public ReviewFixtures(JdbcClient jdbc) {
+	public ReviewFixtures(JdbcClient jdbc, Clock clock) {
 		this.jdbc = jdbc;
+		this.clock = clock;
 	}
 
 	public long venue(String name) {
@@ -81,14 +84,14 @@ public final class ReviewFixtures {
 				RETURNING id
 				""")
 				.param("code", code).param("stars", stars).param("comment", comment)
-				.param("displayName", displayName).param("createdAt", Timestamp.from(Instant.now()))
+				.param("displayName", displayName).param("createdAt", Timestamp.from(clock.instant()))
 				.query(Long.class).single();
 	}
 
 	/** Take the review with this id out of public view, the way an admin takedown leaves the row. */
 	public void hide(long reviewId) {
 		jdbc.sql("UPDATE review SET hidden_at = :hiddenAt WHERE id = :id")
-				.param("id", reviewId).param("hiddenAt", Timestamp.from(Instant.now())).update();
+				.param("id", reviewId).param("hiddenAt", Timestamp.from(clock.instant())).update();
 	}
 
 	public long bookingIdOf(String code) {

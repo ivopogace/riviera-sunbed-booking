@@ -1,5 +1,6 @@
 package ai.riviera.platform.review;
 
+import java.time.Clock;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
@@ -47,7 +48,6 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 @SpringBootTest
 class ReviewUniquenessIT {
 
-	private static final Instant CHECKED_IN = Instant.now().minusSeconds(3600);
 
 	@Autowired
 	ReviewLifecycle lifecycle;
@@ -55,16 +55,21 @@ class ReviewUniquenessIT {
 	@Autowired
 	JdbcClient jdbc;
 
+	@Autowired
+	Clock clock;
+
 	private ReviewFixtures fixtures;
+	private Instant checkedIn;
 
 	@BeforeEach
 	void setUp() {
-		fixtures = new ReviewFixtures(jdbc);
+		fixtures = new ReviewFixtures(jdbc, clock);
+		checkedIn = clock.instant().minusSeconds(3600);
 	}
 
 	@RepeatedTest(3)
 	void concurrentDoubleSubmitRecordsOne() throws Exception {
-		String code = fixtures.completedBooking(fixtures.venue("Uniqueness"), CHECKED_IN);
+		String code = fixtures.completedBooking(fixtures.venue("Uniqueness"), checkedIn);
 
 		List<SubmitOutcome> outcomes = raceSubmits(code, 4);
 
@@ -77,7 +82,7 @@ class ReviewUniquenessIT {
 
 	@RepeatedTest(1)
 	void aRepeatedSubmitIsAlreadyReviewed() {
-		String code = fixtures.completedBooking(fixtures.venue("Repeat"), CHECKED_IN);
+		String code = fixtures.completedBooking(fixtures.venue("Repeat"), checkedIn);
 
 		assertEquals(new SubmitOutcome.Submitted(), lifecycle.submit(code, stars(5)));
 		assertEquals(new SubmitOutcome.AlreadyReviewed(), lifecycle.submit(code, stars(1)));
@@ -90,7 +95,7 @@ class ReviewUniquenessIT {
 
 	@RepeatedTest(3)
 	void aDeleteRacingAnEditLeavesAtMostOneRow() throws Exception {
-		String code = fixtures.completedBooking(fixtures.venue("Amend Race"), CHECKED_IN);
+		String code = fixtures.completedBooking(fixtures.venue("Amend Race"), checkedIn);
 		assertEquals(new SubmitOutcome.Submitted(), lifecycle.submit(code, stars(4)));
 
 		List<AmendOutcome> outcomes = raceAnEditAgainstADelete(code);

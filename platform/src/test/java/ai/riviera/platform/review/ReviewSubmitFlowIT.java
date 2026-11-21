@@ -1,6 +1,6 @@
 package ai.riviera.platform.review;
 
-import java.time.Instant;
+import java.time.Clock;
 import java.time.LocalDate;
 import java.time.temporal.ChronoUnit;
 import java.util.List;
@@ -56,19 +56,22 @@ class ReviewSubmitFlowIT {
 	JdbcClient jdbc;
 
 	@Autowired
+	Clock clock;
+
+	@Autowired
 	ApplicationEvents events;
 
 	private ReviewFixtures fixtures;
 
 	@BeforeEach
 	void setUp() {
-		fixtures = new ReviewFixtures(jdbc);
+		fixtures = new ReviewFixtures(jdbc, clock);
 	}
 
 	@Test
 	void recordsTheReviewAndAnnouncesTheVenue() {
 		long venueId = fixtures.venue("Submit Flow");
-		String code = fixtures.completedBooking(venueId, Instant.now().minus(1, ChronoUnit.DAYS));
+		String code = fixtures.completedBooking(venueId, clock.instant().minus(1, ChronoUnit.DAYS));
 
 		assertEquals(new SubmitOutcome.Submitted(), lifecycle.submit(code, stars(4)));
 
@@ -80,7 +83,7 @@ class ReviewSubmitFlowIT {
 	@Test
 	void recordsACommentedReview() {
 		long venueId = fixtures.venue("Submit Flow Commented");
-		String code = fixtures.completedBooking(venueId, Instant.now().minus(1, ChronoUnit.DAYS));
+		String code = fixtures.completedBooking(venueId, clock.instant().minus(1, ChronoUnit.DAYS));
 
 		assertEquals(new SubmitOutcome.Submitted(),
 				lifecycle.submit(code, new ReviewSubmission(4, "Great sunbeds", "Ana")));
@@ -91,7 +94,7 @@ class ReviewSubmitFlowIT {
 	@Test
 	void recordsTheStayDate() {
 		long venueId = fixtures.venue("Submit Flow Stay Date");
-		String code = fixtures.completedBooking(venueId, Instant.now().minus(1, ChronoUnit.DAYS));
+		String code = fixtures.completedBooking(venueId, clock.instant().minus(1, ChronoUnit.DAYS));
 
 		assertEquals(new SubmitOutcome.Submitted(), lifecycle.submit(code, stars(5)));
 
@@ -104,7 +107,7 @@ class ReviewSubmitFlowIT {
 	void refusesAndAnnouncesNothingOutsideTheWindow() {
 		long venueId = fixtures.venue("Submit Flow Frozen");
 		String code = fixtures.completedBooking(venueId,
-				Instant.now().minus(ReviewWindow.WINDOW).minus(1, ChronoUnit.DAYS));
+				clock.instant().minus(ReviewWindow.WINDOW).minus(1, ChronoUnit.DAYS));
 
 		assertEquals(new SubmitOutcome.WindowClosed(), lifecycle.submit(code, stars(4)));
 
@@ -126,7 +129,7 @@ class ReviewSubmitFlowIT {
 	void agreesWithTheEligibilityReadOnAStayThatIsBothRatedAndFrozen() {
 		// Rated inside the window, then frozen: both paths must answer the same way.
 		long venueId = fixtures.venue("Submit Flow Rated Then Frozen");
-		String code = fixtures.completedBooking(venueId, Instant.now().minus(1, ChronoUnit.DAYS));
+		String code = fixtures.completedBooking(venueId, clock.instant().minus(1, ChronoUnit.DAYS));
 		assertEquals(new SubmitOutcome.Submitted(), lifecycle.submit(code, stars(4)));
 		freezeTheWindowFor(code);
 
@@ -143,7 +146,7 @@ class ReviewSubmitFlowIT {
 	private void freezeTheWindowFor(String code) {
 		jdbc.sql("UPDATE booking SET completed_at = :at WHERE code = :code")
 				.param("at", java.sql.Timestamp.from(
-						Instant.now().minus(ReviewWindow.WINDOW).minus(1, ChronoUnit.DAYS)))
+						clock.instant().minus(ReviewWindow.WINDOW).minus(1, ChronoUnit.DAYS)))
 				.param("code", code)
 				.update();
 	}

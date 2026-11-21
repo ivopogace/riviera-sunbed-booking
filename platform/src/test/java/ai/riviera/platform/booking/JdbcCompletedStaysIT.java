@@ -1,10 +1,12 @@
 package ai.riviera.platform.booking;
 
+import java.time.Clock;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.time.temporal.ChronoUnit;
 import java.util.Optional;
 
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.EnumSource;
@@ -33,9 +35,6 @@ import static org.assertj.core.api.Assertions.assertThat;
 @SpringBootTest
 class JdbcCompletedStaysIT {
 
-	/** Truncated to micros: TIMESTAMPTZ stores no finer, so a nanosecond instant would not round-trip. */
-	private static final Instant CHECKED_IN =
-			Instant.now().minus(2, ChronoUnit.DAYS).truncatedTo(ChronoUnit.MICROS);
 
 	@Autowired
 	CompletedStays stays;
@@ -43,10 +42,21 @@ class JdbcCompletedStaysIT {
 	@Autowired
 	JdbcClient jdbc;
 
+	@Autowired
+	Clock clock;
+
+	/** Truncated to micros: TIMESTAMPTZ stores no finer, so a nanosecond instant would not round-trip. */
+	private Instant checkedIn;
+
+	@BeforeEach
+	void stampCheckIn() {
+		checkedIn = clock.instant().minus(2, ChronoUnit.DAYS).truncatedTo(ChronoUnit.MICROS);
+	}
+
 	@ParameterizedTest
 	@EnumSource(value = BookingStatus.class, names = "COMPLETED", mode = EnumSource.Mode.EXCLUDE)
 	void yieldsNothingForAnyStatusButCompleted(BookingStatus status) {
-		String code = booking(status, CHECKED_IN);
+		String code = booking(status, checkedIn);
 
 		assertThat(stays.byCode(code)).isEmpty();
 		assertThat(stays.existsByCode(code)).isTrue();
@@ -55,13 +65,13 @@ class JdbcCompletedStaysIT {
 	@Test
 	void yieldsTheStayFactsForACompletedBooking() {
 		long venueId = venue();
-		String code = booking(venueId, BookingStatus.COMPLETED, CHECKED_IN);
+		String code = booking(venueId, BookingStatus.COMPLETED, checkedIn);
 
 		Optional<CompletedStay> stay = stays.byCode(code);
 
 		assertThat(stay).isPresent();
 		assertThat(stay.get().venue().value()).isEqualTo(venueId);
-		assertThat(stay.get().completedAt()).isEqualTo(CHECKED_IN);
+		assertThat(stay.get().completedAt()).isEqualTo(checkedIn);
 		assertThat(stay.get().booking().value()).isEqualTo(bookingIdOf(code));
 	}
 
@@ -95,12 +105,12 @@ class JdbcCompletedStaysIT {
 	}
 
 	private ReviewFixtures fixtures() {
-		return new ReviewFixtures(jdbc);
+		return new ReviewFixtures(jdbc, clock);
 	}
 
 	@Test
 	void aStayWithALiveStretchIsNotCompletedYet() {
-		String code = stitchedStay(venue(), BookingStatus.COMPLETED, CHECKED_IN, BookingStatus.CONFIRMED, null);
+		String code = stitchedStay(venue(), BookingStatus.COMPLETED, checkedIn, BookingStatus.CONFIRMED, null);
 
 		assertThat(stays.byCode(code)).as("stretch one is done, stretch two is still to come").isEmpty();
 		assertThat(stays.existsByCode(code)).isTrue();
@@ -108,8 +118,8 @@ class JdbcCompletedStaysIT {
 
 	@Test
 	void aResolvedStayIsItsLastCompletedStretch() {
-		Instant later = CHECKED_IN.plus(2, ChronoUnit.DAYS);
-		String code = stitchedStay(venue(), BookingStatus.COMPLETED, CHECKED_IN, BookingStatus.COMPLETED, later);
+		Instant later = checkedIn.plus(2, ChronoUnit.DAYS);
+		String code = stitchedStay(venue(), BookingStatus.COMPLETED, checkedIn, BookingStatus.COMPLETED, later);
 
 		Optional<CompletedStay> stay = stays.byCode(code);
 
@@ -120,7 +130,7 @@ class JdbcCompletedStaysIT {
 
 	@Test
 	void aStayWhoseLastStretchWasMissedIsStillTheAttendedOne() {
-		String code = stitchedStay(venue(), BookingStatus.COMPLETED, CHECKED_IN, BookingStatus.NO_SHOW, null);
+		String code = stitchedStay(venue(), BookingStatus.COMPLETED, checkedIn, BookingStatus.NO_SHOW, null);
 
 		Optional<CompletedStay> stay = stays.byCode(code);
 
@@ -130,7 +140,7 @@ class JdbcCompletedStaysIT {
 
 	@Test
 	void aStretchsRowCodeIsNoCredential() {
-		String code = stitchedStay(venue(), BookingStatus.COMPLETED, CHECKED_IN, BookingStatus.COMPLETED, CHECKED_IN);
+		String code = stitchedStay(venue(), BookingStatus.COMPLETED, checkedIn, BookingStatus.COMPLETED, checkedIn);
 
 		assertThat(stays.byCode(code + "-1")).isEmpty();
 		assertThat(stays.existsByCode(code + "-1")).isFalse();

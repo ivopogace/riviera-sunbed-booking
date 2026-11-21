@@ -1,5 +1,6 @@
 package ai.riviera.platform;
 
+import java.time.Clock;
 import java.time.Instant;
 import java.util.List;
 import java.util.Map;
@@ -59,6 +60,9 @@ class AdminReviewTakedownIT {
 	MockMvc mvc;
 	@Autowired
 	JdbcClient jdbc;
+
+	@Autowired
+	Clock clock;
 	@Autowired
 	OperatorProvisioning provisioning;
 	@Autowired
@@ -70,7 +74,7 @@ class AdminReviewTakedownIT {
 
 	@BeforeEach
 	void setUp() {
-		fixtures = new ReviewFixtures(jdbc);
+		fixtures = new ReviewFixtures(jdbc, clock);
 		jdbc.sql("DELETE FROM admin_audit_record WHERE path LIKE '/api/admin/reviews/%'").update();
 		jdbc.sql("DELETE FROM operator WHERE username = :u").param("u", PLAIN_OPERATOR).update();
 		provisioning.provision(PLAIN_OPERATOR, encoder.encode(PLAIN_OPERATOR_PW));

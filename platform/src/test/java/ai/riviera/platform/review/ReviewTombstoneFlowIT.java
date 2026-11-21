@@ -1,5 +1,6 @@
 package ai.riviera.platform.review;
 
+import java.time.Clock;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.ArrayList;
@@ -76,11 +77,14 @@ class ReviewTombstoneFlowIT {
 	@Autowired
 	JdbcClient jdbc;
 
+	@Autowired
+	Clock clock;
+
 	private ReviewFixtures fixtures;
 
 	@BeforeEach
 	void setUp() {
-		fixtures = new ReviewFixtures(jdbc);
+		fixtures = new ReviewFixtures(jdbc, clock);
 	}
 
 	@Test
@@ -106,7 +110,7 @@ class ReviewTombstoneFlowIT {
 	void aTombstonedReviewLeavesTheListAndStaysInTheScore() {
 		long venueId = fixtures.venue("Tombstone Surfaces");
 		VenueRef venue = new VenueRef(venueId);
-		String first = fixtures.completedBooking(venueId, Instant.now().minus(Duration.ofHours(1)));
+		String first = fixtures.completedBooking(venueId, clock.instant().minus(Duration.ofHours(1)));
 		String second = fixtures.completedBooking(venueId, CHECKED_IN);
 		fixtures.review(first, 4, "Good", "Ana");
 		fixtures.review(second, 5, "Great", "Ben");
