@@ -2,6 +2,8 @@ package ai.riviera.platform.availability;
 
 import java.time.LocalDate;
 
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.jdbc.core.simple.JdbcClient;
@@ -12,16 +14,15 @@ import ai.riviera.platform.EnabledIfDockerAvailable;
 import ai.riviera.platform.TestcontainersConfiguration;
 import ai.riviera.platform.availability.api.AvailabilityClaim;
 import ai.riviera.platform.availability.vocabulary.ClaimOutcome;
+import ai.riviera.platform.booking.StayFixtures;
 import ai.riviera.platform.venue.vocabulary.SetId;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
 /**
- * Verifies the U2 claim outcomes (issue #5, AC-2..AC-5) against the seeded Miramar map:
+ * Verifies the U2 claim outcomes (issue #5, AC-2..AC-5) on a venue each test creates and removes:
  * a free online set is claimable once, a re-claim is rejected, a walk-in set is not
- * claimable online (invariant #3), and an unknown set is rejected. Each test uses a
- * distinct {@code booking_date} so methods are independent of one another and of the
- * concurrency IT (the Testcontainers Postgres / Spring context is shared).
+ * claimable online (invariant #3), and an unknown set is rejected.
  */
 @EnabledIfDockerAvailable
 @Import(TestcontainersConfiguration.class)
@@ -34,14 +35,16 @@ class AvailabilityClaimIT {
 	@Autowired
 	JdbcClient jdbc;
 
-	private SetId anyOnlineSet() {
-		return new SetId(jdbc.sql("SELECT id FROM set_position WHERE pool = 'ONLINE' ORDER BY id LIMIT 1")
-				.query(Long.class).single());
+	private StayFixtures.Venue venue;
+
+	@BeforeEach
+	void ownVenue() {
+		venue = StayFixtures.venue(jdbc, "INSTANT", null, false);
 	}
 
-	private SetId anyWalkInSet() {
-		return new SetId(jdbc.sql("SELECT id FROM set_position WHERE pool = 'WALK_IN' ORDER BY id LIMIT 1")
-				.query(Long.class).single());
+	@AfterEach
+	void removeVenue() {
+		StayFixtures.cleanupNow(jdbc, venue.id());
 	}
 
 	private long rowCount(SetId setId, LocalDate date) {
@@ -52,7 +55,7 @@ class AvailabilityClaimIT {
 
 	@Test
 	void claimingFreeOnlineSetSucceeds() {
-		SetId set = anyOnlineSet();
+		SetId set = venue.online().get(0);
 		LocalDate date = LocalDate.of(2026, 7, 1);
 
 		assertEquals(ClaimOutcome.CLAIMED, claim.claim(set, date));
@@ -61,7 +64,7 @@ class AvailabilityClaimIT {
 
 	@Test
 	void claimingTakenSetIsRejected() {
-		SetId set = anyOnlineSet();
+		SetId set = venue.online().get(0);
 		LocalDate date = LocalDate.of(2026, 7, 2);
 
 		assertEquals(ClaimOutcome.CLAIMED, claim.claim(set, date));
@@ -71,7 +74,7 @@ class AvailabilityClaimIT {
 
 	@Test
 	void walkInSetIsNotClaimable() {
-		SetId set = anyWalkInSet();
+		SetId set = venue.walkIn();
 		LocalDate date = LocalDate.of(2026, 7, 3);
 
 		assertEquals(ClaimOutcome.NOT_ONLINE_POOL, claim.claim(set, date), "invariant #3");

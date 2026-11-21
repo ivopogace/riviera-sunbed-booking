@@ -4,6 +4,8 @@ import java.time.Duration;
 import java.time.LocalDate;
 
 import org.awaitility.Awaitility;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -14,6 +16,7 @@ import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.support.TransactionTemplate;
 
+import ai.riviera.platform.booking.StayFixtures;
 import ai.riviera.platform.booking.events.BookingConfirmed;
 import ai.riviera.platform.booking.vocabulary.BookingId;
 import ai.riviera.platform.booking.vocabulary.CancellationWindow;
@@ -63,6 +66,19 @@ class EventRegistryDurabilityIT {
 	@Autowired
 	PlatformTransactionManager txManager;
 
+	private StayFixtures.Venue venue;
+
+	@BeforeEach
+	void ownVenue() {
+		venue = StayFixtures.venue(jdbc, "INSTANT", null, false);
+	}
+
+	/** Waits out the payout and mail listeners the confirmation fans out to, then removes the venue's rows. */
+	@AfterEach
+	void removeVenue() {
+		StayFixtures.cleanup(jdbc, venue.id());
+	}
+
 	/**
 	 * Publications of <em>this test's</em> event, keyed on its deliberately-improbable amount rather than
 	 * on the booking id: ids are small integers, and every {@code BookingConfirmed} payload in the shared
@@ -92,8 +108,7 @@ class EventRegistryDurabilityIT {
 				.as("a bounded completion mode — DELETE or ARCHIVE, never the accumulating default")
 				.isEqualTo("archive");
 
-		var set = jdbc.sql("SELECT id, venue_id FROM set_position WHERE pool = 'ONLINE' ORDER BY id LIMIT 1")
-				.query((rs, n) -> new long[] {rs.getLong("id"), rs.getLong("venue_id")}).single();
+		long[] set = {venue.online().get(0).value(), venue.id()};
 		LocalDate date = LocalDate.of(2029, 5, 5);
 		long customerId = jdbc.sql("INSERT INTO customer (email, full_name, phone) "
 						+ "VALUES ('archive-me@example.com', 'Archive Guest', '+355780') RETURNING id")

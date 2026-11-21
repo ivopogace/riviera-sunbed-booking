@@ -13,6 +13,7 @@ import com.stripe.service.PaymentIntentService;
 import com.stripe.service.V1Services;
 
 import org.awaitility.Awaitility;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -27,6 +28,7 @@ import ai.riviera.platform.EnabledIfDockerAvailable;
 import ai.riviera.platform.MovableClock;
 import ai.riviera.platform.TestcontainersConfiguration;
 import ai.riviera.platform.TiraneDaytimeClock;
+import ai.riviera.platform.booking.StayFixtures;
 import ai.riviera.platform.booking.application.refund.ExpireAbandonedBookings;
 import ai.riviera.platform.booking.application.request.RequestWindows;
 import ai.riviera.platform.payment.application.PaymentReconciliation;
@@ -50,7 +52,8 @@ import static org.mockito.Mockito.when;
 /**
  * The runbook, exercised against a simulated divergence: a webhook lost, so the row still waits while Stripe holds the
  * answer. Real SQL, the guarded transition and the booking effect, under the {@code stripe} profile with Stripe mocked.
- * Rows of other classes share the table, so each assertion is about this class's own {@code pi_recon} rows.
+ * Each test seeds on a venue of its own; the report scans the whole table, so its assertions read the
+ * {@code pi_recon} rows.
  */
 @EnabledIfDockerAvailable
 @Import({ TestcontainersConfiguration.class, TiraneDaytimeClock.class })
@@ -87,15 +90,17 @@ class PaymentReconciliationIT {
 	private record SetRef(long setId, long venueId) {
 	}
 
+	private StayFixtures.Venue venue;
+
 	@BeforeEach
-	void isolate() {
-		jdbc.sql("DELETE FROM payment_booking WHERE payment_id IN (SELECT id FROM payment WHERE payment_intent_id LIKE 'pi_recon%')").update();
-		jdbc.sql("DELETE FROM payment WHERE payment_intent_id LIKE 'pi_recon%'").update();
-		jdbc.sql("DELETE FROM payout_ledger_entry WHERE booking_id IN (SELECT id FROM booking WHERE code LIKE 'RECON%')").update();
-		jdbc.sql("DELETE FROM booking_confirmation_mail_attempt WHERE booking_id IN (SELECT id FROM booking WHERE code LIKE 'RECON%')").update();
-		jdbc.sql("DELETE FROM set_availability WHERE booking_date BETWEEN '2027-09-01' AND '2027-09-30'").update();
-		jdbc.sql("DELETE FROM booking WHERE code LIKE 'RECON%'").update();
-		jdbc.sql("DELETE FROM customer WHERE email LIKE 'RECON%@example.com'").update();
+	void ownVenue() {
+		venue = StayFixtures.venue(jdbc, "INSTANT", null, false);
+	}
+
+	/** Waits out the confirm's and the cancel's listeners, then removes the venue's rows, payments included. */
+	@AfterEach
+	void removeVenue() {
+		StayFixtures.cleanup(jdbc, venue.id());
 	}
 
 	@BeforeEach
@@ -120,8 +125,7 @@ class PaymentReconciliationIT {
 	}
 
 	private SetRef onlineSet() {
-		return jdbc.sql("SELECT id, venue_id FROM set_position WHERE pool = 'ONLINE' ORDER BY id LIMIT 1")
-				.query((rs, n) -> new SetRef(rs.getLong("id"), rs.getLong("venue_id"))).single();
+		return new SetRef(venue.online().get(0).value(), venue.id());
 	}
 
 	private long awaitingBooking(String code, SetRef set, LocalDate date) {
