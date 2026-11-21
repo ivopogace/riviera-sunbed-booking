@@ -1,6 +1,7 @@
 package ai.riviera.platform.customer.adapter.out;
 
 import java.sql.Timestamp;
+import java.time.Clock;
 import java.time.Instant;
 import java.util.Optional;
 
@@ -15,10 +16,10 @@ import ai.riviera.platform.customer.vocabulary.CustomerAccountId;
  * JDBC adapter for the {@code customer} module's {@link CustomerAccountTokens} port. Explicit SQL
  * via {@link JdbcClient} in text blocks, named params, package-private (invariant #1).
  *
- * <p>The single-use guarantee is the atomic {@code UPDATE … SET consumed_at = NOW() WHERE
- * consumed_at IS NULL AND expires_at > NOW() RETURNING account_id}: at most one concurrent redeemer
- * wins; invalid / expired / consumed tokens look alike (zero rows; non-enumeration, design D-8).
- * Expiry uses the DB clock ({@code NOW()}), so no application clock crosses this seam.
+ * <p>The single-use guarantee is the atomic {@code UPDATE … SET consumed_at = :now WHERE consumed_at IS NULL
+ * AND expires_at > :now RETURNING account_id}: at most one concurrent redeemer wins; invalid / expired / consumed
+ * tokens look alike (zero rows; non-enumeration, design D-8). {@code :now} is the injected {@link Clock}, the clock
+ * {@code auth} mints {@code expires_at} from, so each comparison and stamp reads one time source (invariant #6).
  */
 @Repository
 class JdbcCustomerAccountTokens implements CustomerAccountTokens {
@@ -27,11 +28,14 @@ class JdbcCustomerAccountTokens implements CustomerAccountTokens {
 	private static final String ACCOUNT_ID = "accountId";
 	private static final String PURPOSE = "purpose";
 	private static final String TOKEN_HASH = "tokenHash";
+	private static final String NOW = "now";
 
 	private final JdbcClient jdbc;
+	private final Clock clock;
 
-	JdbcCustomerAccountTokens(JdbcClient jdbc) {
+	JdbcCustomerAccountTokens(JdbcClient jdbc, Clock clock) {
 		this.jdbc = jdbc;
+		this.clock = clock;
 	}
 
 	@Override
@@ -51,11 +55,12 @@ class JdbcCustomerAccountTokens implements CustomerAccountTokens {
 	@Override
 	public void retireAll(CustomerAccountId accountId, TokenPurpose purpose) {
 		jdbc.sql("""
-				UPDATE customer_account_token SET consumed_at = NOW()
+				UPDATE customer_account_token SET consumed_at = :now
 				WHERE account_id = :accountId AND purpose = :purpose AND consumed_at IS NULL
 				""")
 				.param(ACCOUNT_ID, accountId.value())
 				.param(PURPOSE, purpose.name())
+				.param(NOW, now())
 				.update();
 	}
 
@@ -65,10 +70,11 @@ class JdbcCustomerAccountTokens implements CustomerAccountTokens {
 		return jdbc.sql("""
 				SELECT account_id FROM customer_account_token
 				WHERE token_hash = :tokenHash AND purpose = :purpose
-				  AND consumed_at IS NULL AND expires_at > NOW()
+				  AND consumed_at IS NULL AND expires_at > :now
 				""")
 				.param(TOKEN_HASH, tokenHash)
 				.param(PURPOSE, purpose.name())
+				.param(NOW, now())
 				.query(Long.class)
 				.optional()
 				.map(CustomerAccountId::new);
@@ -77,15 +83,20 @@ class JdbcCustomerAccountTokens implements CustomerAccountTokens {
 	@Override
 	public Optional<CustomerAccountId> consume(TokenPurpose purpose, String tokenHash) {
 		return jdbc.sql("""
-				UPDATE customer_account_token SET consumed_at = NOW()
+				UPDATE customer_account_token SET consumed_at = :now
 				WHERE token_hash = :tokenHash AND purpose = :purpose
-				  AND consumed_at IS NULL AND expires_at > NOW()
+				  AND consumed_at IS NULL AND expires_at > :now
 				RETURNING account_id
 				""")
 				.param(TOKEN_HASH, tokenHash)
 				.param(PURPOSE, purpose.name())
+				.param(NOW, now())
 				.query(Long.class)
 				.optional()
 				.map(CustomerAccountId::new);
+	}
+
+	private Timestamp now() {
+		return Timestamp.from(clock.instant());
 	}
 }

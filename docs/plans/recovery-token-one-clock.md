@@ -32,7 +32,8 @@ past the TTL, for customer email verification, customer password reset and the a
   *Seam:* `CustomerAccountRecovery` / `OperatorPasswordReset` · *Pinned by:* `RecoveryTokenExpiryIT` (the same tests)
 - [ ] **AC-5:** The existing expiry ITs mint their "future" and "past" from the context `Clock`, so they stay green
   with `RIVIERA_TEST_TRAVEL_TO` set. *Pinned by:* `CustomerAccountRecoveryIT`, `TokenRedemptionLockOrderIT`,
-  `CustomerErasureRaceIT`, `OperatorPasswordResetStoreIT`, `OperatorPasswordResetIT`, run once plain and once travelled.
+  `CustomerErasureRaceIT`, `OperatorPasswordResetStoreIT`, `OperatorPasswordResetIT`, `OperatorSsoLinksIT` (found by the
+  travelled run), run once plain and once travelled.
 
 ## Non-goals
 
@@ -62,4 +63,8 @@ past the TTL, for customer email verification, customer password reset and the a
 
 ## Execution status
 
-- Phase 0: in progress.
+- Phase 0: done (0f5e0c2). All four `RecoveryTokenExpiryIT` tests red on main for the expected reason.
+- Phase 1: done. Five checks and five stamps bind `:now`; `RecoveryTokenExpiryIT` green.
+- Phase 2: done. With `RIVIERA_TEST_TRAVEL_TO` 12 years ahead, 10 tests went red before the move (plus
+  `OperatorSsoLinksIT` once found). After it, every token-touching IT is green plain and travelled (114 tests, 0 skipped).
+- Next: PR ready, review gate (high), Sonar, plan removal.
