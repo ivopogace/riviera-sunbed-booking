@@ -277,8 +277,9 @@ class AbandonedBookingSweepIT {
 	@Test
 	void leavesConfirmedAndWithinTtlBookingsAlone() throws Exception {
 		SetRef set = onlineSet();
-		LocalDate confirmedDate = LocalDate.of(2027, 8, 5);
-		LocalDate freshDate = LocalDate.of(2027, 8, 6);
+		// Ahead of the clock: the day-end arm reaps an AWAITING_PAYMENT booking whose service day is over.
+		LocalDate confirmedDate = TiraneDaytimeClock.today(clock).plusYears(1).plusDays(5);
+		LocalDate freshDate = confirmedDate.plusDays(1);
 
 		long confirmed = insertBooking("SWEEPAC0003", set, confirmedDate, "CONFIRMED", STALE_AGE_MINUTES);
 		long fresh = insertBooking("SWEEPAC0004", set, freshDate, "AWAITING_PAYMENT", FRESH_AGE_MINUTES);

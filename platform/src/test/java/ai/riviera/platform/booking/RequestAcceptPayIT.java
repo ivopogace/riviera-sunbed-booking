@@ -1,5 +1,6 @@
 package ai.riviera.platform.booking;
 
+import java.time.Clock;
 import java.time.Duration;
 import java.time.LocalDate;
 
@@ -21,6 +22,7 @@ import com.jayway.jsonpath.JsonPath;
 import ai.riviera.platform.SessionLoginSupport;
 import ai.riviera.platform.EnabledIfDockerAvailable;
 import ai.riviera.platform.TestcontainersConfiguration;
+import ai.riviera.platform.TiraneDaytimeClock;
 import ai.riviera.platform.operator.api.OperatorDirectory;
 import ai.riviera.platform.operator.vocabulary.OperatorId;
 
@@ -61,6 +63,9 @@ class RequestAcceptPayIT {
 
 	@Autowired
 	MockMvc mvc;
+
+	@Autowired
+	Clock clock;
 	@Autowired
 	JdbcClient jdbc;
 
@@ -122,7 +127,7 @@ class RequestAcceptPayIT {
 
 	@Test
 	void acceptConfirmsAndAccruesExactlyOnce() throws Exception {
-		LocalDate date = LocalDate.now().plusMonths(4);
+		LocalDate date = TiraneDaytimeClock.today(clock).plusMonths(4);
 		String code = request(date, "accept-loop@e.com");
 		long bookingId = bookingIdOf(code);
 
@@ -158,7 +163,7 @@ class RequestAcceptPayIT {
 
 	@Test
 	void declineReleasesTheHoldTerminally() throws Exception {
-		LocalDate date = LocalDate.now().plusMonths(5);
+		LocalDate date = TiraneDaytimeClock.today(clock).plusMonths(5);
 		String code = request(date, "decline-loop@e.com");
 		long bookingId = bookingIdOf(code);
 
@@ -190,7 +195,7 @@ class RequestAcceptPayIT {
 	void awaitingPaymentViewExposesStoredCredentialsOnly() throws Exception {
 		// AC-10: simulate the post-accept Stripe state directly (the stripe profile is not active
 		// here): an AWAITING_PAYMENT booking whose payment row carries a stored client_secret (V19).
-		LocalDate date = LocalDate.now().plusMonths(6);
+		LocalDate date = TiraneDaytimeClock.today(clock).plusMonths(6);
 		String code = request(date, "credentials@e.com");
 		long bookingId = bookingIdOf(code);
 		jdbc.sql("UPDATE booking SET status = 'AWAITING_PAYMENT', accepted_at = NOW() WHERE id = :id")
@@ -226,7 +231,7 @@ class RequestAcceptPayIT {
 
 	@Test
 	void pendingRequestViewExposesDeadlineButNoCredentials() throws Exception {
-		LocalDate date = LocalDate.now().plusMonths(7);
+		LocalDate date = TiraneDaytimeClock.today(clock).plusMonths(7);
 		String code = request(date, "pending-view@e.com");
 
 		mvc.perform(get("/api/bookings/{code}", code))

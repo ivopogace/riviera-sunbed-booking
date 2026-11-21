@@ -1,5 +1,6 @@
 package ai.riviera.platform.booking;
 
+import java.time.Clock;
 import java.time.LocalDate;
 import java.util.List;
 import java.util.concurrent.CountDownLatch;
@@ -18,6 +19,7 @@ import org.springframework.jdbc.core.simple.JdbcClient;
 
 import ai.riviera.platform.EnabledIfDockerAvailable;
 import ai.riviera.platform.TestcontainersConfiguration;
+import ai.riviera.platform.TiraneDaytimeClock;
 import ai.riviera.platform.booking.application.reserve.BookingOutcome;
 import ai.riviera.platform.booking.application.reserve.CreateBooking;
 import ai.riviera.platform.booking.application.reserve.CreateBookingCommand;
@@ -43,6 +45,9 @@ class ConcurrentRangeReservationIT {
 
 	@Autowired
 	CreateBooking createBooking;
+
+	@Autowired
+	Clock clock;
 
 	@Autowired
 	JdbcClient jdbc;
@@ -72,7 +77,7 @@ class ConcurrentRangeReservationIT {
 	@RepeatedTest(5)
 	void rangeAndSingleDayNeverBothWin(RepetitionInfo info) throws Exception {
 		SetId set = rangeSet();
-		LocalDate first = LocalDate.now().plusYears(3).plusDays(info.getCurrentRepetition() * 10L);
+		LocalDate first = TiraneDaytimeClock.today(clock).plusYears(3).plusDays(info.getCurrentRepetition() * 10L);
 		LocalDate middle = first.plusDays(1);
 		CountDownLatch startGate = new CountDownLatch(1);
 
@@ -108,7 +113,7 @@ class ConcurrentRangeReservationIT {
 	@Test
 	void aLostDayLeavesNoPartialClaim() {
 		SetId set = rangeSet();
-		LocalDate first = LocalDate.now().plusYears(4);
+		LocalDate first = TiraneDaytimeClock.today(clock).plusYears(4);
 		LocalDate middle = first.plusDays(1);
 		assertTrue(createBooking.create(oneDay(set, middle, "holder")) instanceof BookingOutcome.Confirmed);
 

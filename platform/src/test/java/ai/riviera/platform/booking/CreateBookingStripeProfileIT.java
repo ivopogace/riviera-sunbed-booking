@@ -1,5 +1,6 @@
 package ai.riviera.platform.booking;
 
+import java.time.Clock;
 import java.time.LocalDate;
 
 import com.stripe.StripeClient;
@@ -23,6 +24,7 @@ import org.springframework.test.web.servlet.MockMvc;
 import ai.riviera.platform.EnabledIfDockerAvailable;
 import ai.riviera.platform.SessionLoginSupport;
 import ai.riviera.platform.TestcontainersConfiguration;
+import ai.riviera.platform.TiraneDaytimeClock;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.mockito.ArgumentMatchers.any;
@@ -49,6 +51,9 @@ class CreateBookingStripeProfileIT {
 
 	@Autowired
 	MockMvc mvc;
+
+	@Autowired
+	Clock clock;
 
 	@Autowired
 	JdbcClient jdbc;
@@ -114,7 +119,7 @@ class CreateBookingStripeProfileIT {
 
 	@Test
 	void createReturns202AwaitingPaymentWithItsCheckoutInstruction() throws Exception {
-		LocalDate date = LocalDate.now().plusYears(1).plusDays(7);
+		LocalDate date = TiraneDaytimeClock.today(clock).plusYears(1).plusDays(7);
 
 		mvc.perform(post("/api/bookings")
 						.header(SessionLoginSupport.CHALLENGE_HEADER, SessionLoginSupport.solvedChallenge(mvc))

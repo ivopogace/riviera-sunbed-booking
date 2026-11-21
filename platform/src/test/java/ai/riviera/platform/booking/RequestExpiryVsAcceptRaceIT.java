@@ -1,5 +1,6 @@
 package ai.riviera.platform.booking;
 
+import java.time.Clock;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.util.ArrayList;
@@ -19,6 +20,7 @@ import org.springframework.jdbc.core.simple.JdbcClient;
 
 import ai.riviera.platform.EnabledIfDockerAvailable;
 import ai.riviera.platform.TestcontainersConfiguration;
+import ai.riviera.platform.TiraneDaytimeClock;
 import ai.riviera.platform.booking.application.request.AcceptOutcome;
 import ai.riviera.platform.booking.application.request.ExpireRequests;
 import ai.riviera.platform.booking.application.request.RespondToRequest;
@@ -47,6 +49,9 @@ class RequestExpiryVsAcceptRaceIT {
 
 	@Autowired
 	ExpireRequests expireRequests;
+
+	@Autowired
+	Clock clock;
 
 	@Autowired
 	RespondToRequest respondToRequest;
@@ -116,7 +121,7 @@ class RequestExpiryVsAcceptRaceIT {
 
 	@RepeatedTest(3)
 	void sweepAndAcceptCannotBothWin() throws Exception {
-		LocalDate date = LocalDate.now().plusMonths(3);
+		LocalDate date = TiraneDaytimeClock.today(clock).plusMonths(3);
 		long bookingId = insertOverdueRequest("RACE" + System.nanoTime() % 1_000_000, date);
 
 		CountDownLatch gate = new CountDownLatch(1);
@@ -156,7 +161,7 @@ class RequestExpiryVsAcceptRaceIT {
 
 	@RepeatedTest(3)
 	void aRangeLeavesOneOutcomeAndNoPartialClaim() throws Exception {
-		LocalDate first = LocalDate.now().plusMonths(3);
+		LocalDate first = TiraneDaytimeClock.today(clock).plusMonths(3);
 		long bookingId = insertOverdueRequest("RNGR" + System.nanoTime() % 1_000_000, first, first.plusDays(2));
 
 		CountDownLatch gate = new CountDownLatch(1);

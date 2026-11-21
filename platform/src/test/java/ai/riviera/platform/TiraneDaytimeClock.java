@@ -1,5 +1,6 @@
 package ai.riviera.platform;
 
+import java.time.Clock;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.time.LocalTime;
@@ -15,7 +16,7 @@ import org.springframework.context.annotation.Primary;
  * 00:05–23:55 {@code Europe/Tirane}, so a {@code 00:01} close has passed and a {@code 23:59} one has not
  * (invariant #4). Never behind the wall (the challenge library checks expiry on the system clock) and
  * at most ten minutes ahead, so a cached context's sweeps never reach another test's rows. Read
- * "today" from {@link #today}, never the wall.
+ * "today" from {@link #today}, never the wall; any context's {@code Clock} bean reads the same way.
  */
 @TestConfiguration(proxyBeanMethods = false)
 public class TiraneDaytimeClock {
@@ -31,7 +32,7 @@ public class TiraneDaytimeClock {
 	}
 
 	/** The Tirane civil date the clock reads. */
-	public static LocalDate today(MovableClock clock) {
+	public static LocalDate today(Clock clock) {
 		return LocalDate.ofInstant(clock.instant(), TIRANE);
 	}
 

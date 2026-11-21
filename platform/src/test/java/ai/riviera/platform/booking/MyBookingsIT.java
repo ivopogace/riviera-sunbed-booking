@@ -249,9 +249,10 @@ class MyBookingsIT {
 						ReceiptOutcomeKind.REFUND, amount, "EUR", 0L)), "row A rebuilt", List.of()));
 	}
 
+	/** A set on a venue this test owns and removes, so its bookings reach no other class's venue. */
 	private SetRef onlineSet() {
-		return jdbc.sql("SELECT id, venue_id FROM set_position WHERE pool = 'ONLINE' ORDER BY id LIMIT 1")
-				.query((rs, n) -> new SetRef(rs.getLong("id"), rs.getLong("venue_id"))).single();
+		Venue venue = venue();
+		return new SetRef(venue.online().getFirst().value(), venue.id());
 	}
 
 	private long accountId(String email) {

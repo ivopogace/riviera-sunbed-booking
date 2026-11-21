@@ -1,5 +1,6 @@
 package ai.riviera.platform.booking;
 
+import java.time.Clock;
 import java.time.LocalDate;
 
 import org.junit.jupiter.api.BeforeEach;
@@ -16,6 +17,7 @@ import ai.riviera.platform.EnabledIfDockerAvailable;
 import ai.riviera.platform.SessionLoginSupport;
 import ai.riviera.platform.OwnershipFixtures;
 import ai.riviera.platform.TestcontainersConfiguration;
+import ai.riviera.platform.TiraneDaytimeClock;
 
 import static org.hamcrest.Matchers.containsString;
 import static org.hamcrest.Matchers.not;
@@ -42,6 +44,9 @@ class RequestToBookFlowIT {
 
 	@Autowired
 	MockMvc mvc;
+
+	@Autowired
+	Clock clock;
 
 	@Autowired
 	JdbcClient jdbc;
@@ -71,8 +76,8 @@ class RequestToBookFlowIT {
 				""".formatted(setId, date);
 	}
 
-	private static LocalDate bookable() {
-		return LocalDate.now().plusMonths(3);
+	private LocalDate bookable() {
+		return TiraneDaytimeClock.today(clock).plusMonths(3);
 	}
 
 	@Test
