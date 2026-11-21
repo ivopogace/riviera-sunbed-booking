@@ -3,7 +3,10 @@ package ai.riviera.platform.booking;
 import java.time.Clock;
 import java.time.LocalDate;
 import java.time.ZoneId;
+import java.util.ArrayList;
+import java.util.List;
 
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -55,6 +58,14 @@ class CancellationTermsEndpointIT {
 	}
 
 	/** A midnight-cutoff venue offering a 40% late share, with one online set; returns the set id. */
+	/** The venues {@link #seedMidnightCutoffSet} made, one per call, removed after each test. */
+	private final List<Long> venues = new ArrayList<>();
+
+	@AfterEach
+	void removeVenues() {
+		venues.forEach(id -> StayFixtures.cleanupNow(jdbc, id));
+	}
+
 	private long seedMidnightCutoffSet(String venueName) {
 		long venueId = jdbc.sql("""
 				INSERT INTO venue (name, beach, booking_mode, commission_bps, payout_currency,
@@ -62,6 +73,7 @@ class CancellationTermsEndpointIT {
 				VALUES (:name, 'KSAMIL', 'INSTANT', 1500, 'EUR', 4000, TIME '00:00')
 				RETURNING id
 				""").param("name", venueName).query(Long.class).single();
+		venues.add(venueId);
 		return jdbc.sql("""
 				INSERT INTO set_position (venue_id, row_label, position_no, tier, pool, price_minor,
 				                          price_currency, grid_x, grid_y)

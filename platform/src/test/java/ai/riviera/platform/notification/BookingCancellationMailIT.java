@@ -4,6 +4,7 @@ import java.time.Clock;
 import java.time.Duration;
 import java.time.Instant;
 import java.time.LocalDate;
+import java.util.ArrayList;
 import java.util.List;
 
 import org.awaitility.Awaitility;
@@ -123,9 +124,13 @@ class BookingCancellationMailIT {
 		venue = StayFixtures.venue(jdbc, "INSTANT", null, true);
 	}
 
+	/** The operators {@link #anOperator} made, removed once the cleanup has taken their receipts. */
+	private final List<Long> operators = new ArrayList<>();
+
 	@AfterEach
 	void removeVenue() {
 		StayFixtures.cleanup(jdbc, venue.id());
+		operators.forEach(id -> jdbc.sql("DELETE FROM operator WHERE id = :o").param("o", id).update());
 	}
 
 	/**
@@ -346,8 +351,10 @@ class BookingCancellationMailIT {
 	}
 
 	private long anOperator() {
-		return jdbc.sql("INSERT INTO operator (username, status) VALUES (:u, 'ACTIVE') RETURNING id")
+		long id = jdbc.sql("INSERT INTO operator (username, status) VALUES (:u, 'ACTIVE') RETURNING id")
 				.param("u", "rebook-" + System.nanoTime()).query(Long.class).single();
+		operators.add(id);
+		return id;
 	}
 
 	private SetRef onlineSet() {

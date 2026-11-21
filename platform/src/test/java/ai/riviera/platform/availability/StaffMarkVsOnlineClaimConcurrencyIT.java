@@ -1,5 +1,6 @@
 package ai.riviera.platform.availability;
 
+import java.time.Clock;
 import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
@@ -10,6 +11,8 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.RepeatedTest;
 import org.junit.jupiter.api.RepetitionInfo;
 import org.junit.jupiter.api.Test;
@@ -19,8 +22,11 @@ import org.springframework.context.annotation.Import;
 import org.springframework.jdbc.core.simple.JdbcClient;
 
 import ai.riviera.platform.EnabledIfDockerAvailable;
+import ai.riviera.platform.OwnershipFixtures;
 import ai.riviera.platform.TestcontainersConfiguration;
+import ai.riviera.platform.TiraneDaytimeClock;
 import ai.riviera.platform.availability.api.AvailabilityClaim;
+import ai.riviera.platform.booking.StayFixtures;
 import ai.riviera.platform.availability.vocabulary.ClaimOutcome;
 import ai.riviera.platform.availability.application.MarkOutcome;
 import ai.riviera.platform.availability.application.StaffAvailability;
@@ -47,8 +53,6 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 @SpringBootTest
 class StaffMarkVsOnlineClaimConcurrencyIT {
 
-	private static final VenueId MIRAMAR = new VenueId(1L);
-
 	@Autowired
 	StaffAvailability staff;
 
@@ -61,12 +65,31 @@ class StaffMarkVsOnlineClaimConcurrencyIT {
 	@Autowired
 	OperatorDirectory operators;
 
+	@Autowired
+	Clock clock;
+
+	/** This test's own venue, granted to the bootstrap operator: the race's rows are the only ones on its sets. */
+	private StayFixtures.Venue venue;
+
+	@BeforeEach
+	void ownVenue() {
+		venue = StayFixtures.venue(jdbc, "INSTANT", null, false);
+		OwnershipFixtures.grantToBootstrap(jdbc, venue.id());
+	}
+
+	@AfterEach
+	void removeVenue() {
+		StayFixtures.cleanupNow(jdbc, venue.id());
+	}
+
+	/** An ONLINE-pool set, so the online claim is possible; staff marking is pool-agnostic and contends on it too. */
 	private SetId anyOnlineSet() {
-		// An ONLINE-pool set so the online claim is even possible (a WALK_IN set would 422 before the
-		// race). Staff marking is pool-agnostic, so it contends on this same set.
-		return new SetId(jdbc.sql("""
-				SELECT id FROM set_position WHERE venue_id = :v AND pool = 'ONLINE' ORDER BY id LIMIT 1
-				""").param("v", MIRAMAR.value()).query(Long.class).single());
+		return venue.online().getFirst();
+	}
+
+	/** Thirty days out: on sale, and a day the staff mark accepts, so neither side loses as a past date. */
+	private LocalDate raceDay() {
+		return TiraneDaytimeClock.today(clock).plusDays(30);
 	}
 
 	private long rowCount(SetId set, LocalDate date) {
@@ -80,13 +103,13 @@ class StaffMarkVsOnlineClaimConcurrencyIT {
 	 * together. Returns {@code [markWon, claimWon]}. Bounded waits so a lock-wait hang fails fast.
 	 */
 	private boolean[] race(SetId set, LocalDate date) throws Exception {
-		// Resolve the owns-all bootstrap operator once, outside the race: the ownership guard is
+		// Resolve the bootstrap operator (granted the venue) once, outside the race: the ownership guard is
 		// not what's under test here — the atomic INSERT ... ON CONFLICT is.
 		OperatorId operator = operators.operatorFor("operator").orElseThrow();
 		CountDownLatch startGate = new CountDownLatch(1);
 		Callable<Boolean> markAttempt = () -> {
 			startGate.await();
-			return staff.mark(operator, MIRAMAR, set, date) == MarkOutcome.MARKED;
+			return staff.mark(operator, new VenueId(venue.id()), set, date) == MarkOutcome.MARKED;
 		};
 		Callable<Boolean> claimAttempt = () -> {
 			startGate.await();
@@ -103,7 +126,7 @@ class StaffMarkVsOnlineClaimConcurrencyIT {
 	@Test
 	void staffMarkAndOnlineClaimCannotBothWin() throws Exception {
 		SetId set = anyOnlineSet();
-		LocalDate date = LocalDate.of(2031, 8, 1);
+		LocalDate date = raceDay();
 
 		boolean[] won = race(set, date);
 
@@ -115,12 +138,12 @@ class StaffMarkVsOnlineClaimConcurrencyIT {
 	/**
 	 * Repeat the cross-channel race several times over distinct dates. A single pass can win on lucky
 	 * scheduling; for the #1 correctness invariant we want the staff/online contention exercised
-	 * repeatedly. Each repetition uses its own date (the Testcontainers DB is shared).
+	 * repeatedly. Each repetition uses its own date.
 	 */
 	@RepeatedTest(5)
 	void crossChannelRaceAlwaysYieldsExactlyOneWinner(RepetitionInfo info) throws Exception {
 		SetId set = anyOnlineSet();
-		LocalDate date = LocalDate.of(2031, 8, 10).plusDays(info.getCurrentRepetition());
+		LocalDate date = raceDay().plusDays(info.getCurrentRepetition());
 
 		List<Boolean> winners = new ArrayList<>();
 		boolean[] won = race(set, date);

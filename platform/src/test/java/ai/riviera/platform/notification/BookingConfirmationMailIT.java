@@ -6,6 +6,7 @@ import java.time.Instant;
 import java.time.LocalDate;
 
 import org.awaitility.Awaitility;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -26,6 +27,7 @@ import ai.riviera.platform.EnabledIfDockerAvailable;
 import ai.riviera.platform.SessionLoginSupport;
 import ai.riviera.platform.TestcontainersConfiguration;
 import ai.riviera.platform.TiraneDaytimeClock;
+import ai.riviera.platform.booking.StayFixtures;
 import ai.riviera.platform.booking.events.BookingConfirmed;
 import ai.riviera.platform.booking.vocabulary.BookingId;
 import ai.riviera.platform.booking.vocabulary.CancellationWindow;
@@ -102,17 +104,26 @@ class BookingConfirmationMailIT {
 	private record SetRef(long setId, long venueId, String venueName, String rowLabel, int positionNo) {
 	}
 
+	/** This test's own visible venue: the bookings and mail rows are on sets no other class holds (#2). */
+	private StayFixtures.Venue venue;
+
 	@BeforeEach
 	void isolateOutbox() {
 		mailer.clear();
+		venue = StayFixtures.venue(jdbc, "INSTANT", null, true);
+	}
+
+	@AfterEach
+	void removeVenue() {
+		StayFixtures.cleanup(jdbc, venue.id());
 	}
 
 	private SetRef onlineSet() {
 		return jdbc.sql("""
 				SELECT sp.id, sp.venue_id, v.name, sp.row_label, sp.position_no
 				FROM set_position sp JOIN venue v ON v.id = sp.venue_id
-				WHERE sp.pool = 'ONLINE' ORDER BY sp.id LIMIT 1
-				""")
+				WHERE sp.id = :set
+				""").param("set", venue.online().getFirst().value())
 				.query((rs, n) -> new SetRef(rs.getLong("id"), rs.getLong("venue_id"),
 						rs.getString("name"), rs.getString("row_label"), rs.getInt("position_no")))
 				.single();
@@ -131,12 +142,7 @@ class BookingConfirmationMailIT {
 	}
 
 	/**
-	 * Seed a guest contact plus a booking on {@code set}. The four SQL-seeded tests below differed only
-	 * in code, date, amount, status and whether an account is linked, so this lived in four
-	 * near-identical copies — and the newest copy silently reused another test's booking date, breaking
-	 * the unique-date discipline the whole class depends on (see the comment on the first test: classes
-	 * sharing this context share one container and one online set, and a claimed {@code (set, date)} is
-	 * never released, invariant #2).
+	 * Seed a guest contact plus a booking on {@code set}.
 	 *
 	 * @param accountId the linked customer account, or {@code null} for a guest booking
 	 */
@@ -166,10 +172,6 @@ class BookingConfirmationMailIT {
 	@Test
 	void sendsOneConfirmationCarryingCodeVenueDateSetAndAmount() throws Exception {
 		SetRef set = onlineSet();
-		// A date no other IT books. Classes sharing this context key share one container, and a claimed
-		// (set, date) is never released (invariant #2), so reusing BookingControllerIT's
-		// plusYears(1) on the same first ONLINE set would 409 whichever class ran second. The suite's
-		// other create-booking ITs offset by hand for the same reason (+7, +11 days).
 		LocalDate date = TiraneDaytimeClock.today(clock).plusYears(1).plusDays(23);
 
 		String response = mvc.perform(post("/api/bookings")
@@ -288,11 +290,9 @@ class BookingConfirmationMailIT {
 	@Test
 	void suppressedAddressCompletesWithoutSend() {
 		SetRef set = onlineSet();
-		// 06-15, not 06-14: this test was added last and reused sendsForABookingConfirmedViaThePaymentPath's
-		// date, which the class's unique-date discipline forbids (#386 cleanup).
 		LocalDate date = LocalDate.of(2029, 6, 15);
 		String suppressed = "suppressed-tourist@example.com";
-		suppressions.suppress(suppressed, SuppressionReason.HARD_BOUNCE, Instant.now());
+		suppressions.suppress(suppressed, SuppressionReason.HARD_BOUNCE, clock.instant());
 
 		long bookingId = seedConfirmedBooking(set, "SUPPRESS1", date, suppressed, 2100L);
 

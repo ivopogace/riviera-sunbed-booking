@@ -9,6 +9,7 @@ import java.util.List;
 import jakarta.servlet.http.Cookie;
 
 import org.awaitility.Awaitility;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -23,6 +24,7 @@ import org.springframework.transaction.PlatformTransactionManager;
 import ai.riviera.platform.EnabledIfDockerAvailable;
 import ai.riviera.platform.SessionLoginSupport;
 import ai.riviera.platform.TestcontainersConfiguration;
+import ai.riviera.platform.booking.StayFixtures;
 import ai.riviera.platform.booking.application.BookingCutoff;
 import ai.riviera.platform.booking.application.remodel.NewReceipt;
 import ai.riviera.platform.booking.application.remodel.ReceiptOutcomeKind;
@@ -88,15 +90,28 @@ class BookingMovedMailIT {
 
 	private BookingMailFixtures fixtures;
 
+	/** This test's own venue: the bookings, receipts and the sets moved to are its own, and removed after (#2). */
+	private StayFixtures.Venue venue;
+
 	@BeforeEach
 	void isolateOutbox() {
 		mailer.clear();
 		fixtures = new BookingMailFixtures(jdbc, txManager, publisher);
+		venue = StayFixtures.venue(jdbc, "INSTANT", null, false);
+	}
+
+	@AfterEach
+	void removeVenue() {
+		StayFixtures.cleanup(jdbc, venue.id());
+	}
+
+	private BookingMailFixtures.SetRef ownSet() {
+		return new BookingMailFixtures.SetRef(venue.online().getFirst().value(), venue.id());
 	}
 
 	@Test
 	void mailsTheGuestTheNewSpotTheDistanceAndTheDeadlineAndTheMockOutboxReadsItBack() throws Exception {
-		BookingMailFixtures.SetRef from = fixtures.onlineSet();
+		BookingMailFixtures.SetRef from = ownSet();
 		long to = insertSet(from.venueId(), 87);
 		LocalDate date = LocalDate.of(2029, 8, 10);
 		String guest = "moved-guest-" + System.nanoTime() + "@example.com";
@@ -141,7 +156,7 @@ class BookingMovedMailIT {
 
 	@Test
 	void aMovedStayIsMailedWithItsDays() {
-		BookingMailFixtures.SetRef from = fixtures.onlineSet();
+		BookingMailFixtures.SetRef from = ownSet();
 		long to = insertSet(from.venueId(), 89);
 		LocalDate first = LocalDate.of(2029, 8, 12);
 		LocalDate last = first.plusDays(2);
@@ -226,7 +241,7 @@ class BookingMovedMailIT {
 
 	/** A three-day stretch then a moved three-day stretch under one stay code; the rows keep codes of their own. */
 	private Stretch seedStitchedStayMovedAt(String guest, String stayCode, LocalDate first, Instant movedAt) {
-		BookingMailFixtures.SetRef from = fixtures.onlineSet();
+		BookingMailFixtures.SetRef from = ownSet();
 		long to = insertSet(from.venueId(), first.getDayOfMonth() + 60);
 		long stay = jdbc.sql("INSERT INTO stay (code, venue_id, first_date, last_date) VALUES (:c, :v, :f, :l) RETURNING id")
 				.param("c", stayCode).param("v", from.venueId()).param("f", first).param("l", first.plusDays(5))
@@ -247,7 +262,7 @@ class BookingMovedMailIT {
 
 	@Test
 	void aSuppressedAddressIsSkippedAndThePublicationCompletes() {
-		BookingMailFixtures.SetRef from = fixtures.onlineSet();
+		BookingMailFixtures.SetRef from = ownSet();
 		long to = insertSet(from.venueId(), 88);
 		LocalDate date = LocalDate.of(2029, 8, 11);
 		String suppressed = "suppressed-move-" + System.nanoTime() + "@example.com";
