@@ -5,6 +5,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.jdbc.core.simple.JdbcClient;
@@ -13,6 +15,7 @@ import org.springframework.context.annotation.Import;
 
 import ai.riviera.platform.EnabledIfDockerAvailable;
 import ai.riviera.platform.TestcontainersConfiguration;
+import ai.riviera.platform.booking.StayFixtures;
 import ai.riviera.platform.venue.vocabulary.SetId;
 import ai.riviera.platform.venue.spi.SetAvailabilityLookup;
 
@@ -27,9 +30,8 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
  * with no row is free; any state ({@code BOOKED_ONLINE} / {@code STAFF_MARKED}) counts as taken;
  * an empty input is handled without a query. This is the read side of the dependency-inverted
  * {@link SetAvailabilityLookup} port (declared in {@code venue.spi}, implemented by
- * {@code availability}). Real Postgres + seed via Testcontainers. Each test isolates on a distinct
- * date — or, for the ranged reads whose result depends on days they did not seed, a distinct set —
- * so methods stay independent (the context/DB is shared).
+ * {@code availability}). Real Postgres via Testcontainers. Each test runs on a venue of its own and removes
+ * it; the lookup takes every day as an argument and reads no clock, so the literal dates never go stale.
  */
 @EnabledIfDockerAvailable
 @Import(TestcontainersConfiguration.class)
@@ -42,52 +44,21 @@ class AvailabilityLookupIT {
 	@Autowired
 	JdbcClient jdbc;
 
-	private List<SetId> firstThreeOnlineSets() {
-		return jdbc.sql("SELECT id FROM set_position WHERE pool = 'ONLINE' ORDER BY id LIMIT 3")
-				.query(Long.class).list().stream().map(SetId::new).toList();
+	/** This test's own venue: its three online sets hold only the rows the test marks (#2). */
+	private StayFixtures.Venue venue;
+
+	@BeforeEach
+	void ownVenue() {
+		venue = StayFixtures.venue(jdbc, "INSTANT", null, false);
 	}
 
-	/**
-	 * A set trio no other test in this class touches. The range read is the only method here whose
-	 * result depends on days it was not itself asked to seed, so it seeds its own sets rather than
-	 * sharing the first three.
-	 */
-	private List<SetId> calendarSets() {
-		return jdbc.sql("SELECT id FROM set_position WHERE pool = 'ONLINE' ORDER BY id OFFSET 3 LIMIT 3")
-				.query(Long.class).list().stream().map(SetId::new).toList();
+	@AfterEach
+	void removeVenue() {
+		StayFixtures.cleanupNow(jdbc, venue.id());
 	}
 
-	/**
-	 * A set no other test in this class touches, for the other ranged-predicate method: like the
-	 * range read, {@code anyClaimsFrom} answers over {@code booking_date >= :from}, so a sibling's
-	 * hold on a later day would decide its result.
-	 */
-	private SetId claimProbeSet() {
-		return new SetId(jdbc.sql(
-				"SELECT id FROM set_position WHERE pool = 'ONLINE' ORDER BY id OFFSET 6 LIMIT 1")
-				.query(Long.class).single());
-	}
-
-	/**
-	 * A set pair no other test in this class touches: {@code nearestClaimsFrom} answers over
-	 * {@code booking_date >= :from} too, so a sibling's later hold would become its answer.
-	 */
-	private List<SetId> nearestClaimSets() {
-		return jdbc.sql("SELECT id FROM set_position WHERE pool = 'ONLINE' ORDER BY id OFFSET 7 LIMIT 2")
-				.query(Long.class).list().stream().map(SetId::new).toList();
-	}
-
-
-	/** A set trio no other test touches: {@code takenDaysBetween} answers over a window it did not seed alone. */
-	private List<SetId> rangeReadSets() {
-		return jdbc.sql("SELECT id FROM set_position WHERE pool = 'ONLINE' ORDER BY id OFFSET 11 LIMIT 3")
-				.query(Long.class).list().stream().map(SetId::new).toList();
-	}
-
-	/** A set pair no other test touches: {@code walkInHoldsFrom} also ranges over {@code booking_date >= :from}. */
-	private List<SetId> walkInHoldSets() {
-		return jdbc.sql("SELECT id FROM set_position WHERE pool = 'ONLINE' ORDER BY id OFFSET 9 LIMIT 2")
-				.query(Long.class).list().stream().map(SetId::new).toList();
+	private List<SetId> sets() {
+		return venue.online();
 	}
 
 	private void mark(SetId set, LocalDate date, String state) {
@@ -98,7 +69,7 @@ class AvailabilityLookupIT {
 
 	@Test
 	void bookedSetIsTakenOnItsDateAndFreeOnAnother() {
-		List<SetId> sets = firstThreeOnlineSets();
+		List<SetId> sets = sets();
 		SetId booked = sets.getFirst();
 		LocalDate date = LocalDate.of(2026, 11, 1);
 		LocalDate otherDate = LocalDate.of(2026, 11, 2);
@@ -110,7 +81,7 @@ class AvailabilityLookupIT {
 
 	@Test
 	void unbookedSetsAreAbsentFromTheResult() {
-		List<SetId> sets = firstThreeOnlineSets();
+		List<SetId> sets = sets();
 		LocalDate date = LocalDate.of(2026, 11, 3);
 
 		assertEquals(Set.of(), lookup.takenOn(sets, date), "no rows ⇒ nothing taken (all free)");
@@ -118,7 +89,7 @@ class AvailabilityLookupIT {
 
 	@Test
 	void staffMarkedAlsoCountsAsTaken() {
-		List<SetId> sets = firstThreeOnlineSets();
+		List<SetId> sets = sets();
 		SetId blocked = sets.get(1);
 		LocalDate date = LocalDate.of(2026, 11, 4);
 		mark(blocked, date, "STAFF_MARKED");
@@ -133,7 +104,7 @@ class AvailabilityLookupIT {
 
 	@Test
 	void statesOnReportsPerSetState() {
-		List<SetId> sets = firstThreeOnlineSets();
+		List<SetId> sets = sets();
 		SetId online = sets.get(0);
 		SetId marked = sets.get(1);
 		LocalDate date = LocalDate.of(2026, 11, 6);
@@ -148,7 +119,7 @@ class AvailabilityLookupIT {
 
 	@Test
 	void statesOnIsScopedToTheAskedDateAndSets() {
-		List<SetId> sets = firstThreeOnlineSets();
+		List<SetId> sets = sets();
 		SetId held = sets.getFirst();
 		LocalDate date = LocalDate.of(2026, 11, 7);
 		mark(held, date, "BOOKED_ONLINE");
@@ -162,7 +133,7 @@ class AvailabilityLookupIT {
 
 	@Test
 	void anyClaimsFromCountsOnlyHoldsOnOrAfterTheCutoff() {
-		SetId held = claimProbeSet();
+		SetId held = sets().getFirst();
 		LocalDate cutoff = LocalDate.of(2026, 11, 20);
 		mark(held, cutoff.minusDays(1), "STAFF_MARKED");
 
@@ -182,7 +153,7 @@ class AvailabilityLookupIT {
 
 	@Test
 	void nearestClaimsFromAnswersTheEarliestHoldOnOrAfterTheCutoffPerSet() {
-		List<SetId> sets = nearestClaimSets();
+		List<SetId> sets = sets();
 		SetId twiceHeld = sets.get(0);
 		SetId heldBeforeOnly = sets.get(1);
 		LocalDate cutoff = LocalDate.of(2027, 6, 15);
@@ -210,7 +181,7 @@ class AvailabilityLookupIT {
 
 	@Test
 	void takenCountsBetweenCountsHoldsPerDayAndOmitsUntouchedDays() {
-		List<SetId> sets = calendarSets();
+		List<SetId> sets = sets();
 		LocalDate busy = LocalDate.of(2026, 11, 11);
 		LocalDate quiet = LocalDate.of(2026, 11, 12);
 		mark(sets.get(0), busy, "BOOKED_ONLINE");
@@ -226,7 +197,7 @@ class AvailabilityLookupIT {
 
 	@Test
 	void takenCountsBetweenIsInclusiveOfBothBoundsAndExcludesOutside() {
-		List<SetId> sets = calendarSets();
+		List<SetId> sets = sets();
 		SetId held = sets.getFirst();
 		LocalDate from = LocalDate.of(2026, 11, 14);
 		LocalDate to = LocalDate.of(2026, 11, 15);
@@ -241,7 +212,7 @@ class AvailabilityLookupIT {
 
 	@Test
 	void takenCountsBetweenIgnoresSetsOutsideTheAskedList() {
-		List<SetId> sets = calendarSets();
+		List<SetId> sets = sets();
 		LocalDate date = LocalDate.of(2026, 11, 17);
 		mark(sets.get(0), date, "BOOKED_ONLINE");
 		mark(sets.get(1), date, "BOOKED_ONLINE");
@@ -258,7 +229,7 @@ class AvailabilityLookupIT {
 
 	@Test
 	void walkInHoldsFromListsTheStaffMarkedDaysOnOrAfterTheCutoffPerSetInOrder() {
-		List<SetId> sets = walkInHoldSets();
+		List<SetId> sets = sets();
 		SetId marked = sets.get(0);
 		SetId bookedOnly = sets.get(1);
 		LocalDate cutoff = LocalDate.of(2027, 6, 15);
@@ -275,7 +246,7 @@ class AvailabilityLookupIT {
 
 	@Test
 	void takenDaysBetweenListsHeldDaysPerSet() {
-		List<SetId> sets = rangeReadSets();
+		List<SetId> sets = sets();
 		SetId free = sets.get(0);
 		SetId partly = sets.get(1);
 		SetId held = sets.get(2);

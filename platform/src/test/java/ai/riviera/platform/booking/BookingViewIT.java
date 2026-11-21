@@ -3,6 +3,8 @@ package ai.riviera.platform.booking;
 import java.time.Clock;
 import java.time.LocalDate;
 import java.time.ZoneId;
+import java.util.ArrayList;
+import java.util.List;
 
 import com.jayway.jsonpath.JsonPath;
 
@@ -59,11 +61,15 @@ class BookingViewIT {
 	/** The venue the create-flow case books on: its own, so no other class holds the {@code (set, date)} (#2). */
 	private StayFixtures.Venue venue;
 
+	/** The late-cancel venues {@link #seedLateCancelBooking} made, one per call, removed after each test. */
+	private final List<Long> lateCancelVenues = new ArrayList<>();
+
 	@AfterEach
 	void removeVenue() {
 		if (venue != null) {
 			StayFixtures.cleanup(jdbc, venue.id());
 		}
+		lateCancelVenues.forEach(id -> StayFixtures.cleanupNow(jdbc, id));
 	}
 
 	private String createBooking(long setId, LocalDate date) throws Exception {
@@ -212,6 +218,7 @@ class BookingViewIT {
 				VALUES (:name, 'KSAMIL', 'INSTANT', 1500, 'EUR', 5000, TIME '00:00')
 				RETURNING id
 				""").param("name", "Late Refund Club " + code).query(Long.class).single();
+		lateCancelVenues.add(venueId);
 		OwnershipFixtures.grantToBootstrap(jdbc, venueId);
 		long setId = jdbc.sql("""
 				INSERT INTO set_position (venue_id, row_label, position_no, tier, pool, price_minor,

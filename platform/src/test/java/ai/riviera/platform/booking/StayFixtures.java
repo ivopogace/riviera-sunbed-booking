@@ -248,7 +248,11 @@ public final class StayFixtures {
 		jdbc.sql("DELETE FROM payment_booking WHERE booking_ref IN (SELECT id FROM booking WHERE venue_id = :v)")
 				.param("v", venue).update();
 		payments.forEach(payment -> jdbc.sql("DELETE FROM payment WHERE id = :p").param("p", payment).update());
+		List<Long> guests = jdbc.sql("SELECT DISTINCT customer_id FROM booking WHERE venue_id = :v").param("v", venue)
+				.query(Long.class).list();
 		jdbc.sql("DELETE FROM booking WHERE venue_id = :v").param("v", venue).update();
+		guests.forEach(guest -> jdbc.sql("DELETE FROM customer c WHERE c.id = :c AND NOT EXISTS "
+				+ "(SELECT 1 FROM booking b WHERE b.customer_id = c.id)").param("c", guest).update());
 		jdbc.sql("DELETE FROM stay WHERE venue_id = :v").param("v", venue).update();
 		jdbc.sql("DELETE FROM set_availability WHERE set_id IN (SELECT id FROM set_position WHERE venue_id = :v)")
 				.param("v", venue).update();
