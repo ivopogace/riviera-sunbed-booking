@@ -15,16 +15,16 @@ the clock in its constructor; clock-derived `static final` stamps become per-tes
 
 ## Acceptance criteria
 
-- [ ] **AC-1:** Given the clock at 2038-01-01T10:00Z, when the five group-C classes run, then the 18 tests red on
+- [x] **AC-1:** Given the clock at 2038-01-01T10:00Z, when the five group-C classes run, then the 18 tests red on
   `main` are green. *Seam:* the context `Clock` moved by `TestClockTravel` · *Pinned by:* the five classes.
-- [ ] **AC-2:** Given the real clock, when the ten touched classes and the rest of the suite run, then they are
+- [x] **AC-2:** Given the real clock, when the ten touched classes and the rest of the suite run, then they are
   green. *Seam:* same · *Pinned by:* the touched classes; the suite in package batches.
-- [ ] **AC-3:** No file under `platform/src/main` in the diff.
+- [x] **AC-3:** No file under `platform/src/main` in the diff.
 
 ## Non-goals
 
 - Group F (`GuestContactRetentionIT`): its wall read is the production find-or-create's `updated_at = NOW()`
-  against the sweep's application-clock cutoff; a test cannot fix it. Raised to the owner as a decision on #1842.
+  against the sweep's application-clock cutoff; a test cannot fix it. The owner chose a production fix of its own: #1854.
 - Groups D–E, section 1's writers, #1846's residue, sections 3 and 4: later PRs on #1842.
 
 ## Risks
@@ -39,12 +39,12 @@ the clock in its constructor; clock-derived `static final` stamps become per-tes
 
 ## Execution status
 
-**Stage pointer:** implement (phase 0)
+**Stage pointer:** review (round 1)
 
-**Next action:** open the draft PR; finish the batch at 2038 and the no-travel suite.
+**Next action:** mark #1853 ready and run the review gate at high.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
-| 0 — the review ITs read the clock | ⏳ | |
+| 0 — the review ITs read the clock | ✅ | `9442ed1` |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
