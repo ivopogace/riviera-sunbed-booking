@@ -2,6 +2,7 @@ import { expect, type Page, test } from '@playwright/test';
 
 import { mockChallengeFence } from './support/auth-mocks';
 import { expectNoSeriousAxeViolations } from './support/axe';
+import { paintedText } from './support/painted-text';
 import { completeDialog, refuseBookingAsTaken } from './support/booking-dialog';
 import type { MockSetView, MockVenueMapView } from './support/venue-views';
 
@@ -128,6 +129,18 @@ const tile = (page: Page, spot: number) =>
 
 /** The page's map card: the canvas from `sm` up, the row lens below. */
 const mapCard = (page: Page) => page.locator('app-beach-map-canvas, app-beach-row-lens');
+
+/**
+ * The checking line as heard and as seen: the whole sentence is announced at any width, but below
+ * `sm` it is painted without the days, which the date field above names (#1847).
+ */
+async function expectChecking(page: Page, days: string): Promise<void> {
+  const heard = `Checking availability for ${days}…`;
+  const line = page.getByTestId('availability');
+  await expect(line).toMatchAriaSnapshot(`- paragraph: ${heard}`);
+  const phone = page.viewportSize()!.width < 640;
+  expect(await paintedText(line)).toBe(phone ? 'Checking availability…' : heard);
+}
 
 const WIDTHS = [
   { name: 'desktop', width: 1280 },
@@ -321,9 +334,7 @@ for (const { name, width } of WIDTHS) {
       await expect(mapCard(page)).not.toHaveAttribute('aria-busy');
       // The line names the new days and no count; the banner states nothing from the old read.
       const days = (await page.getByTestId('map-date').innerText()).trim();
-      await expect(page.getByTestId('availability')).toHaveText(
-        `Checking availability for ${days}…`,
-      );
+      await expectChecking(page, days);
       await expect(page.getByTestId('no-cover')).toHaveCount(0);
       const beforeMark = await lineBox(page);
       await expect(page.getByTestId('map-date')).toBeFocused();
@@ -338,9 +349,7 @@ for (const { name, width } of WIDTHS) {
       await expect(page.getByTestId('availability-wait')).toHaveCSS('width', '14px');
       // The mark's arrival moves neither the line nor the bar under it.
       expect(await lineBox(page)).toEqual(beforeMark);
-      await expect(page.getByTestId('availability')).toHaveText(
-        `Checking availability for ${days}…`,
-      );
+      await expectChecking(page, days);
 
       // A tap where the other partly-free tile is drawn reaches nothing.
       const box = (await tile(page, 2).boundingBox())!;
@@ -578,6 +587,29 @@ for (const width of [1280, 390, 344]) {
     // The hold ends with the wait: the new days' line takes its own height.
     await expect(page.getByTestId('availability')).toContainText('1 partly free');
     await expect(page.getByTestId('availability')).toHaveCSS('min-height', 'auto');
+  });
+}
+
+for (const width of [390, 344]) {
+  test(`at ${width}px, the map stays put from the pick to the answer, the progress mark included (#1847)`, async ({
+    page,
+  }) => {
+    await page.setViewportSize({ width, height: 844 });
+    const release = await openWithLaterReadsHeld(page, `date=${PINNED_STAY.first}`, FREE);
+    const rest = await lineGeometry(page);
+
+    // At 390px the whole sentence took a line more than this count, and moved the map 24px.
+    await pickDays(page, ['2026-08-20']);
+
+    await expectChecking(page, 'Thu 20 Aug 2026');
+    expect((await lineGeometry(page)).mapUnderCard).toBe(rest.mapUnderCard);
+    await expect(page.getByTestId('availability-wait')).toBeVisible();
+    expect((await lineGeometry(page)).mapUnderCard).toBe(rest.mapUnderCard);
+    release();
+    await expect(page.getByTestId('availability')).toHaveText(
+      '2 of 3 sets free on Thu 20 Aug 2026',
+    );
+    expect((await lineGeometry(page)).mapUnderCard).toBe(rest.mapUnderCard);
   });
 }
 

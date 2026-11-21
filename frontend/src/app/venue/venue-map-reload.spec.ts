@@ -460,7 +460,12 @@ describe('VenueMap: reloading under the visitor (#1810)', () => {
       dom().querySelector<HTMLElement>('app-beach-map-canvas, app-beach-row-lens')!;
     /** The map card wears the dim. Its value is the browser's to prove (`e2e/venue-map-reload.e2e.ts`). */
     const dimmed = (): boolean => map().classList.contains('opacity-50');
-    const line = (): string => one('availability').textContent.replace(/\s+/g, ' ').trim();
+    /** What the live region announces: its text without its `aria-hidden` subtrees, which accname leaves out. */
+    const line = (): string => {
+      const heard = one('availability').cloneNode(true) as HTMLElement;
+      heard.querySelectorAll('[aria-hidden="true"]').forEach((hidden) => hidden.remove());
+      return heard.textContent.replace(/\s+/g, ' ').trim();
+    };
     const dayLabel = (iso: string): string => formatBookingDate(iso, { withYear: true });
     const pickDays = (firstDay: string, lastDay = firstDay): void => {
       (
@@ -914,6 +919,28 @@ describe('VenueMap: reloading under the visitor (#1810)', () => {
       venueReq().flush(freeBeach());
     });
 
+    it('shows the short copy below `sm` and still announces the days (#1847)', async () => {
+      await loadFree();
+
+      pickDays(otherDay, addDays(otherDay, 2));
+      await settle();
+
+      // Which one is painted at which width is the browser's to prove (`e2e/venue-map-reload.e2e.ts`).
+      const region = one('availability');
+      const full = region.querySelector<HTMLElement>(':scope > .max-sm\\:sr-only')!;
+      const short = region.querySelector<HTMLElement>(':scope > .sm\\:hidden')!;
+      const days = one('map-date').textContent.trim();
+      expect(full.textContent.replace(/\s+/g, ' ').trim()).toBe(
+        `Checking availability for ${days}…`,
+      );
+      expect(short.textContent.trim()).toBe('Checking availability…');
+      expect(short.getAttribute('aria-hidden')).toBe('true');
+      expect(line()).toBe(`Checking availability for ${days}…`);
+      venueReq().flush(freeBeach());
+      await settle();
+      expect(region.querySelector('.sm\\:hidden')).toBeNull();
+    });
+
     it('an unchanged count is still a change of the line, so it is spoken again', async () => {
       await loadFree();
       const heard: string[] = [];
@@ -959,7 +986,8 @@ describe('VenueMap: reloading under the visitor (#1810)', () => {
 
     describe('the line’s box while it reads "Checking…" (#1836)', () => {
       /** The count's empty twin. That it holds the line's height is the browser's to prove (`e2e/venue-map-reload.e2e.ts`). */
-      const twin = (): HTMLElement | null => one('availability').querySelector('span');
+      const twin = (): HTMLElement | null =>
+        one('availability').querySelector(':scope > span:empty');
 
       it('is never shorter than the count line it replaced, and the floor goes with the wait', async () => {
         await loadFree();
