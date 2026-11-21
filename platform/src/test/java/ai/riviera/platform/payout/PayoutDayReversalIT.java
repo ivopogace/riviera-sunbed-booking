@@ -172,8 +172,9 @@ class PayoutDayReversalIT {
 	@Test
 	void aVenueDayReversalCarriesTheReasonAndALaterCancellationTakesTheRemainder() {
 		Ref b = stayWithAccrual("DAYREV004");
-		publishInTransaction(dayRefunded(b, DAY_8, RefundReason.VENUE));
-		publishInTransaction(dayRefunded(b, DAY_8, RefundReason.VENUE));
+		BookingDayRefunded event = dayRefunded(b, DAY_8, RefundReason.VENUE);
+		publishInTransaction(event);
+		publishInTransaction(event);
 		Awaitility.await().atMost(WAIT).untilAsserted(() -> assertEquals(1L, rows(b.bookingId(), "DAY_REVERSAL")));
 		assertEquals("VENUE", jdbc.sql("SELECT reason FROM payout_ledger_entry "
 						+ "WHERE booking_id = :id AND entry_type = 'DAY_REVERSAL'")
@@ -185,5 +186,8 @@ class PayoutDayReversalIT {
 
 		Awaitility.await().atMost(WAIT).untilAsserted(() -> assertEquals(1L, rows(b.bookingId(), "REVERSAL")));
 		assertEquals(0L, net(b.bookingId()), "reversed in parts, the booking nets exactly zero (invariant #9)");
+
+		// The identical second publish can lose its registry completion race; re-drive it so none stays open.
+		incompletePublications.resubmitIncompletePublications(publication -> event.equals(publication.getEvent()));
 	}
 }
