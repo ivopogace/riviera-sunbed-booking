@@ -1,6 +1,7 @@
 package ai.riviera.platform.booking;
 
 import java.time.LocalDate;
+import java.util.ArrayList;
 import java.util.List;
 
 import org.junit.jupiter.api.AfterEach;
@@ -43,9 +44,14 @@ class BookingMigrationIT {
 		venue = StayFixtures.venue(jdbc, "INSTANT", null, false);
 	}
 
+	/** The guests this test inserted: one whose booking a constraint rejected is named by no booking. */
+	private final List<Long> guests = new ArrayList<>();
+
 	@AfterEach
 	void removeVenue() {
 		StayFixtures.cleanupNow(jdbc, venue.id());
+		guests.forEach(guest -> jdbc.sql("DELETE FROM customer c WHERE c.id = :c AND NOT EXISTS "
+				+ "(SELECT 1 FROM booking b WHERE b.customer_id = c.id)").param("c", guest).update());
 	}
 
 	private long anyOnlineSetId() {
@@ -57,9 +63,11 @@ class BookingMigrationIT {
 	}
 
 	private long insertCustomer(String email) {
-		return jdbc.sql("INSERT INTO customer (email, full_name, phone) "
+		long guest = jdbc.sql("INSERT INTO customer (email, full_name, phone) "
 						+ "VALUES (:email, 'Guest', '+355600000') RETURNING id")
 				.param("email", email).query(Long.class).single();
+		guests.add(guest);
+		return guest;
 	}
 
 	private void insertBooking(long venueId, long setId, long customerId, String code,

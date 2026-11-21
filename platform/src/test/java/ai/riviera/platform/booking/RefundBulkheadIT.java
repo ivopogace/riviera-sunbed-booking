@@ -362,6 +362,13 @@ class RefundBulkheadIT {
 		Awaitility.await("a listener that threw leaves its row FAILED, which the spine retry filters on (#1340)")
 				.atMost(WAIT)
 				.until(() -> outstandingStatus(bookingId).equals(List.of("FAILED")));
+
+		gateway.failEveryRefund(false);
+		incompletePublications.resubmitIncompletePublications(publication ->
+				publication.getEvent() instanceof BookingCancelled cancelled
+						&& cancelled.bookingId().value() == bookingId);
+		Awaitility.await("the row is re-driven, so the venue can leave").atMost(WAIT)
+				.until(() -> outstandingRefundPublications(bookingId) == 0L);
 	}
 
 	// ---- the controllable gateway ------------------------------------------------------------
