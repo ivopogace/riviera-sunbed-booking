@@ -10,6 +10,7 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.RepeatedTest;
 import org.junit.jupiter.api.Test;
@@ -30,9 +31,8 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
  * {@code Europe/Tirane} becomes {@code NO_SHOW}, because nothing checked it in. Today's and future
  * bookings, and anything already terminal, are untouched.
  *
- * <p>Every test drains first — the sweep is platform-wide, not venue-scoped, so a count assertion
- * is only deterministic once the pre-existing past-day rows other test classes seeded are already
- * swept. After the drain the class seeds its own rows and counts them.
+ * <p>The sweep is platform-wide, not venue-scoped, so each test seeds on a venue of its own and asserts
+ * only its own rows; the race reads the sweep's own count, so it drains first.
  */
 @EnabledIfDockerAvailable
 @Import(TestcontainersConfiguration.class)
@@ -51,18 +51,13 @@ class NoShowSweepIT {
 	private long venueId;
 
 	@BeforeEach
-	void seedVenueAndDrain() {
-		venueId = jdbc.sql("""
-				INSERT INTO venue (name, beach, booking_mode, commission_bps, payout_currency)
-				VALUES ('No-Show Club', 'KSAMIL', 'INSTANT', 1500, 'EUR')
-				RETURNING id
-				""").query(Long.class).single();
-		jdbc.sql("""
-				INSERT INTO set_position (venue_id, row_label, position_no, tier, pool, price_minor,
-				                          price_currency, grid_x, grid_y)
-				VALUES (:venue, 'A', 1, 'STANDARD', 'ONLINE', 4500, 'EUR', 1, 1)
-				""").param("venue", venueId).update();
-		markNoShows.sweep();
+	void ownVenue() {
+		venueId = StayFixtures.venue(jdbc, "INSTANT", null, false).id();
+	}
+
+	@AfterEach
+	void removeVenue() {
+		StayFixtures.cleanup(jdbc, venueId);
 	}
 
 	private LocalDate today() {
@@ -103,6 +98,11 @@ class NoShowSweepIT {
 				.query(Long.class).single();
 	}
 
+	private long missedDaysOf(long bookingId) {
+		return jdbc.sql("SELECT count(*) FROM booking_day WHERE booking_id = :id AND missed_at IS NOT NULL")
+				.param("id", bookingId).query(Long.class).single();
+	}
+
 	private String statusOf(long bookingId) {
 		return jdbc.sql("SELECT status FROM booking WHERE id = :id")
 				.param("id", bookingId).query(String.class).single();
@@ -113,7 +113,7 @@ class NoShowSweepIT {
 		long yesterday = insert(uniqueCode("NSPAST"), today().minusDays(1), "CONFIRMED");
 		long lastWeek = insert(uniqueCode("NSOLD"), today().minusDays(7), "CONFIRMED");
 
-		assertEquals(2, markNoShows.sweep());
+		markNoShows.sweep();
 
 		assertEquals("NO_SHOW", statusOf(yesterday));
 		assertEquals("NO_SHOW", statusOf(lastWeek));
@@ -124,10 +124,11 @@ class NoShowSweepIT {
 		long todaysBooking = insert(uniqueCode("NSTODAY"), today(), "CONFIRMED");
 		long tomorrow = insert(uniqueCode("NSFUTURE"), today().plusDays(1), "CONFIRMED");
 
-		assertEquals(0, markNoShows.sweep(), "no past-day row exists, so nothing may transition");
+		markNoShows.sweep();
 
 		assertEquals("CONFIRMED", statusOf(todaysBooking));
 		assertEquals("CONFIRMED", statusOf(tomorrow));
+		assertEquals(0L, missedDaysOf(todaysBooking) + missedDaysOf(tomorrow), "no day still ahead is marked missed");
 	}
 
 	@Test
@@ -137,7 +138,7 @@ class NoShowSweepIT {
 				.param("now", java.sql.Timestamp.from(clock.instant()))
 				.param("id", completed).update();
 
-		assertEquals(0, markNoShows.sweep());
+		markNoShows.sweep();
 
 		assertEquals("COMPLETED", statusOf(completed),
 				"checked-in is the only path to COMPLETED and the sweep must never undo it");
@@ -147,7 +148,8 @@ class NoShowSweepIT {
 	void secondRunIsANoOp() {
 		long booking = insert(uniqueCode("NSTWICE"), today().minusDays(1), "CONFIRMED");
 
-		assertEquals(1, markNoShows.sweep());
+		markNoShows.sweep();
+		assertEquals("NO_SHOW", statusOf(booking));
 		assertEquals(0, markNoShows.sweep(), "the status guard makes a repeated sweep a 0-row no-op");
 
 		assertEquals("NO_SHOW", statusOf(booking));
@@ -163,7 +165,7 @@ class NoShowSweepIT {
 			ids.add(insert(uniqueCode("NS" + status), past, status));
 		}
 
-		assertEquals(0, markNoShows.sweep());
+		markNoShows.sweep();
 
 		for (int i = 0; i < untouchable.size(); i++) {
 			assertEquals(untouchable.get(i), statusOf(ids.get(i)),
@@ -173,6 +175,7 @@ class NoShowSweepIT {
 
 	@RepeatedTest(3)
 	void concurrentSweepsYieldExactlyOneTransition() throws Exception {
+		markNoShows.sweep(); // the runners' counts are platform-wide, so another class's past row must not add to them
 		long booking = insert(uniqueCode("NSRACE"), today().minusDays(1), "CONFIRMED");
 
 		CountDownLatch gate = new CountDownLatch(1);

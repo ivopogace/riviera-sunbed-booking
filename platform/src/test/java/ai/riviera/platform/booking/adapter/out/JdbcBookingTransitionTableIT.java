@@ -5,6 +5,7 @@ import java.time.Instant;
 import java.time.LocalDate;
 
 import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.EnumSource;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -14,6 +15,7 @@ import org.springframework.jdbc.core.simple.JdbcClient;
 
 import ai.riviera.platform.EnabledIfDockerAvailable;
 import ai.riviera.platform.TestcontainersConfiguration;
+import ai.riviera.platform.booking.StayFixtures;
 import ai.riviera.platform.booking.application.Bookings;
 import ai.riviera.platform.booking.domain.BookingStatus;
 import ai.riviera.platform.booking.domain.BookingTransition;
@@ -54,10 +56,17 @@ class JdbcBookingTransitionTableIT {
 	@Autowired
 	JdbcClient jdbc;
 
+	/** This test's own venue; the port is driven directly and publishes nothing, so it leaves without waiting. */
+	private StayFixtures.Venue venue;
+
+	@BeforeEach
+	void ownVenue() {
+		venue = StayFixtures.venue(jdbc, "INSTANT", null, false);
+	}
+
 	@AfterEach
-	void removeFixtures() {
-		jdbc.sql("DELETE FROM booking WHERE code LIKE :prefix").param("prefix", CODE_PREFIX + "%").update();
-		jdbc.sql("DELETE FROM customer WHERE email LIKE :prefix").param("prefix", CODE_PREFIX + "%").update();
+	void removeVenue() {
+		StayFixtures.cleanupNow(jdbc, venue.id());
 	}
 
 	@ParameterizedTest
@@ -108,8 +117,7 @@ class JdbcBookingTransitionTableIT {
 	}
 
 	private Seeded seed(BookingTransition transition, BookingStatus status) {
-		SetRef set = jdbc.sql("SELECT id, venue_id FROM set_position WHERE pool = 'ONLINE' ORDER BY id LIMIT 1")
-				.query((rs, n) -> new SetRef(rs.getLong("id"), rs.getLong("venue_id"))).single();
+		SetRef set = new SetRef(venue.online().getFirst().value(), venue.id());
 		String code = CODE_PREFIX + transition.ordinal() + "S" + status.ordinal();
 		long customer = jdbc.sql("INSERT INTO customer (email, full_name, phone) "
 						+ "VALUES (:email, 'Guest', '+355600') RETURNING id")

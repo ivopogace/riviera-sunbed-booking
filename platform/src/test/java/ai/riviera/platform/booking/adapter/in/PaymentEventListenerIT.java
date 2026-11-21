@@ -3,6 +3,8 @@ package ai.riviera.platform.booking.adapter.in;
 import java.time.Duration;
 import java.time.LocalDate;
 
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -13,6 +15,7 @@ import org.springframework.modulith.test.Scenario;
 
 import ai.riviera.platform.EnabledIfDockerAvailable;
 import ai.riviera.platform.TestcontainersConfiguration;
+import ai.riviera.platform.booking.StayFixtures;
 import ai.riviera.platform.payment.vocabulary.BookingRef;
 import ai.riviera.platform.payment.events.PaymentCanceled;
 import ai.riviera.platform.payment.events.PaymentConfirmed;
@@ -42,9 +45,21 @@ class PaymentEventListenerIT {
 	private record SetRef(long setId, long venueId) {
 	}
 
+	/** This test's own venue: its bookings reach no other class's sets, and leave with it (#2). */
+	private StayFixtures.Venue venue;
+
+	@BeforeEach
+	void ownVenue() {
+		venue = StayFixtures.venue(jdbc, "INSTANT", null, false);
+	}
+
+	@AfterEach
+	void removeVenue() {
+		StayFixtures.cleanup(jdbc, venue.id());
+	}
+
 	private SetRef onlineSet() {
-		return jdbc.sql("SELECT id, venue_id FROM set_position WHERE pool = 'ONLINE' ORDER BY id LIMIT 1")
-				.query((rs, n) -> new SetRef(rs.getLong("id"), rs.getLong("venue_id"))).single();
+		return new SetRef(venue.online().getFirst().value(), venue.id());
 	}
 
 	private long insertAwaitingBooking(String code, SetRef set, LocalDate date) {

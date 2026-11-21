@@ -2,7 +2,10 @@ package ai.riviera.platform.booking;
 
 import java.time.Clock;
 import java.time.LocalDate;
+import java.util.ArrayList;
+import java.util.List;
 
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -64,9 +67,17 @@ class CheckInFlowIT {
 
 	private Cookie operatorSession;
 
+	/** Every venue this test made; each leaves after it with its rows and the bootstrap grant (#2). */
+	private final List<Long> venues = new ArrayList<>();
+
 	@BeforeEach
 	void logIn() throws Exception {
 		operatorSession = SessionLoginSupport.operatorSession(mvc, OPERATOR, PASSWORD);
+	}
+
+	@AfterEach
+	void removeVenues() {
+		venues.forEach(made -> StayFixtures.cleanup(jdbc, made));
 	}
 
 	private long firstSetOf(long venueId) {
@@ -178,6 +189,7 @@ class CheckInFlowIT {
 				VALUES ('Foreign Club', 'KSAMIL', 'INSTANT', 1500, 'EUR')
 				RETURNING id
 				""").query(Long.class).single();
+		venues.add(otherVenue);
 		jdbc.sql("""
 				INSERT INTO set_position (venue_id, row_label, position_no, tier, pool, price_minor,
 				                          price_currency, grid_x, grid_y)
@@ -253,6 +265,7 @@ class CheckInFlowIT {
 		jdbc.sql("INSERT INTO operator_venue (venue_id, operator_id) "
 						+ "SELECT :v, id FROM operator WHERE username = :u")
 				.param("v", venue).param("u", OPERATOR).update();
+		venues.add(venue);
 		return venue;
 	}
 
