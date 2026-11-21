@@ -550,8 +550,14 @@ test('on a phone, a refresh that drops the pick lands focus the bar held on the 
   await page.goto(`/venues/1?${STAY}`);
   await tile(page, 1).click();
   // The bar is fixed to the viewport: the visitor reads on, and the open row leaves the screen.
-  await page.evaluate(() => window.scrollTo(0, document.documentElement.scrollHeight));
-  const scrolledTo = await page.evaluate(() => window.scrollY);
+  const spacer = page.getByTestId('pick-bar-spacer');
+  await expect(spacer).toBeVisible();
+  // Stop the spacer's height short of the bottom: it leaves with the bar, and the browser would clamp the scroll.
+  const scrolledTo = await spacer.evaluate((room) => {
+    const bottom = document.documentElement.scrollHeight - window.innerHeight;
+    window.scrollTo(0, bottom - room.getBoundingClientRect().height);
+    return window.scrollY;
+  });
   await page.getByTestId('pick-book').click();
   const dialog = page.getByRole('dialog');
   await completeDialog(dialog, 'Continue to payment');
