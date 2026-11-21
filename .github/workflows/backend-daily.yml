@@ -13,6 +13,10 @@ name: Backend daily
 # - `ci.yml` stays untouched, so the build-input key of every job in it (the file is part of the hash) and
 #   every pull request's timing stay as they are.
 # No job here reports a required context, and this workflow never runs on a pull request.
+#
+# A second pass reruns the suite with every test context's clock moved years ahead (`RIVIERA_TEST_TRAVEL_TO`,
+# read by `TestClockTravel`), so a test that reads the wall for "today", or whose literal date will one day
+# meet it, goes red now rather than on that date (#1842). Each pass has its own step and its own report.
 
 on:
   schedule:
@@ -55,13 +59,41 @@ jobs:
 
       # No cache restore: every run executes the tests. The runner's Docker runs the Testcontainers ITs.
       - name: Build and test
+        id: today
         run: ./gradlew build --no-daemon
 
+      # Uploaded before the second pass, which rewrites the same directory.
       - name: Upload the test-report XML (each test's captured stdout)
         if: ${{ !cancelled() }}
         uses: actions/upload-artifact@v7
         with:
           name: backend-test-results
+          path: platform/build/test-results/*/*.xml
+          if-no-files-found: warn
+          retention-days: 7
+
+      # Runs even after a red first pass, so the two results can be told apart. The instant is computed
+      # here so it keeps its distance from today. Twelve years puts every dated literal the suite keeps
+      # on purpose (the latest is 2037) behind it, while its "far future" literals (2099) stay ahead
+      # for decades. 10:00Z is daytime in Tirane in either season, clear of the midnight the run starts near.
+      - name: Test with the clock 12 years ahead
+        id: travel
+        if: ${{ !cancelled() && steps.today.outcome != 'skipped' }}
+        env:
+          TRAVEL_YEARS: 12
+        run: |
+          export RIVIERA_TEST_TRAVEL_TO="$(date -u -d "+${TRAVEL_YEARS} years" +%Y-%m-%dT10:00:00Z)"
+          echo "RIVIERA_TEST_TRAVEL_TO=${RIVIERA_TEST_TRAVEL_TO}"
+          # A cleared report and --continue: both test tasks run even when the first goes red, so the
+          # upload below never carries the first pass's XML as the travelled one.
+          rm -rf build/test-results
+          ./gradlew --continue test --rerun structuredLoggingTest --rerun --no-daemon
+
+      - name: Upload the travelled pass's test-report XML
+        if: ${{ !cancelled() && steps.travel.outcome != 'skipped' }}
+        uses: actions/upload-artifact@v7
+        with:
+          name: backend-test-results-travel
           path: platform/build/test-results/*/*.xml
           if-no-files-found: warn
           retention-days: 7
