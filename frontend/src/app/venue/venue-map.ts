@@ -9,6 +9,7 @@ import {
   inject,
   Injector,
   signal,
+  viewChild,
   untracked,
 } from '@angular/core';
 import { NgTemplateOutlet } from '@angular/common';
@@ -305,6 +306,9 @@ export class VenueMap {
   protected readonly staleDays = signal(false);
   /** {@link staleDays} has held for {@link SLOW_READ_MS}: the wait now shows a progress mark. */
   protected readonly slowRead = signal(false);
+  private readonly availabilityLine = viewChild<ElementRef<HTMLElement>>('availabilityLine');
+  /** The availability line's height when {@link staleDays} began: its floor while the checking text stands in. */
+  protected readonly heldLineHeight = signal(0);
 
   /** Whether the availability calendar is open over the header's date field. */
   protected readonly pickerOpen = signal(false);
@@ -995,6 +999,9 @@ export class VenueMap {
     this.selectedLastDate.set(days.last);
     if (this.venue() !== undefined) {
       // The old days' map stays on screen but inert: focus it held lands on the field naming the new days (RV-FE-9).
+      this.heldLineHeight.set(
+        this.availabilityLine()?.nativeElement.getBoundingClientRect().height ?? 0,
+      );
       this.staleDays.set(true);
       if (this.holdsFocus()) {
         this.parkIfTaken('map-date');

@@ -201,13 +201,20 @@
           <!-- The wrapper seats the progress mark beside the line, outside the live region: a node arriving inside it could be read as a second message. -->
           <div class="mb-2 flex items-center gap-2">
             <!-- aria-live: changing the date silently swaps the grid, so announce the new count. Only the CONTENT branches (#717) — swapping the element would rebuild the live region, which announces unreliably. While other days load it says so, which also makes an unchanged count a new message (#1815). -->
+            <!-- min-height: while other days load the line is never shorter than the count line it replaced, so the page under it stays put (#1836). -->
             <p
+              #availabilityLine
               class="text-[16px] text-riv-card-ink"
               data-testid="availability"
               aria-live="polite"
               aria-atomic="true"
+              [style.min-height.px]="staleDays() ? heldLineHeight() : null"
             >
               @if (staleDays()) {
+                @if (totalCount()) {
+                  <!-- The count's empty twin: its 19px box keeps the line as tall as the count made it, with the text on the same baseline. -->
+                  <span class="text-[19px] font-bold" aria-hidden="true"></span>
+                }
                 <ng-container i18n="The venue page's availability line while newly picked days load"
                   >Checking availability for
                   {{
@@ -254,13 +261,18 @@
                 <ng-container i18n>No sets to book yet</ng-container>
               }
             </p>
-            @if (slowRead()) {
-              <!-- The pay page's ring, in the count's own ink: on this card it clears 3:1 in every theme (venue-map.contrast.spec.ts, the accent-ink case). -->
-              <span
-                class="inline-block size-3.5 shrink-0 animate-[pay-spin_0.8s_linear_infinite] rounded-full border-2 border-riv-accent-ink/25 border-t-riv-accent-ink motion-reduce:animate-none"
-                data-testid="availability-wait"
-                aria-hidden="true"
-              ></span>
+            @if (staleDays()) {
+              <!-- The mark's slot, held for the whole wait: a mark arriving in a new slot would narrow the line and re-wrap it. -->
+              <span class="size-3.5 shrink-0" aria-hidden="true">
+                @if (slowRead()) {
+                  <!-- The pay page's ring, in the count's own ink: on this card it clears 3:1 in every theme (venue-map.contrast.spec.ts, the accent-ink case). -->
+                  <span
+                    class="block size-3.5 animate-[pay-spin_0.8s_linear_infinite] rounded-full border-2 border-riv-accent-ink/25 border-t-riv-accent-ink motion-reduce:animate-none"
+                    data-testid="availability-wait"
+                    aria-hidden="true"
+                  ></span>
+                }
+              </span>
             }
           </div>
           @if (totalCount()) {

@@ -473,6 +473,131 @@ for (const { name, width } of WIDTHS) {
   });
 }
 
+/** A three-day stay under the pinned clock; set 2 is taken on its middle day, so the line ends "· 1 partly free". */
+const PINNED_STAY = { first: '2026-08-25', middle: '2026-08-26', last: '2026-08-27' };
+const PARTLY = [
+  set(1, 'FREE', []),
+  set(2, 'PARTLY_FREE', [PINNED_STAY.middle]),
+  set(3, 'FREE', []),
+];
+
+/**
+ * Open venue 1 on `query` under the pinned clock. Its first read answers at once; every later one is
+ * held until the returned function is called.
+ */
+async function openWithLaterReadsHeld(
+  page: Page,
+  query: string,
+  sets: MockSetView[],
+): Promise<() => void> {
+  let release: () => void = () => undefined;
+  const held = new Promise<void>((resolve) => (release = resolve));
+  await page.clock.setFixedTime(PINNED_NOW);
+  await mockVenues(page);
+  let reads = 0;
+  await page.route(/\/api\/venues\/1(\?.*)?$/, async (route) => {
+    reads += 1;
+    if (reads > 1) {
+      await held;
+    }
+    return route.fulfill({ json: venue(1, sets) });
+  });
+  await page.goto(`/venues/1?${query}`);
+  await expect(page.getByTestId('availability')).toContainText('sets free');
+  return release;
+}
+
+/** Pick `days` in the calendar: one day, or a stay's first and last. */
+async function pickDays(page: Page, days: readonly string[]): Promise<void> {
+  await page.getByTestId('map-date').click();
+  const calendar = page.getByTestId('availability-calendar');
+  const stay = days.length > 1;
+  await calendar.getByTestId(stay ? 'calendar-mode-stay' : 'calendar-mode-day').click();
+  for (const day of days) {
+    await calendar.locator(`button[data-date="${day}"]`).click();
+  }
+  if (stay) {
+    await calendar.getByTestId('calendar-apply').click();
+  }
+  await expect(page.getByTestId('availability')).toContainText('Checking availability for');
+}
+
+/**
+ * The availability line's height, the height its text takes, where its 16px text starts under the
+ * line's top, and the map card's top in the document.
+ */
+const lineGeometry = (page: Page) =>
+  page.evaluate(() => {
+    const line = document.querySelector('[data-testid="availability"]')!;
+    const top = line.getBoundingClientRect().top;
+    const words = document.createTreeWalker(line, NodeFilter.SHOW_TEXT);
+    const range = document.createRange();
+    let textTop: number | undefined;
+    while (textTop === undefined && words.nextNode()) {
+      const node = words.currentNode;
+      if (node.parentElement!.tagName !== 'STRONG' && node.textContent!.trim() !== '') {
+        range.selectNodeContents(node);
+        textTop = range.getClientRects()[0].top - top;
+      }
+    }
+    range.selectNodeContents(line);
+    const map = document.querySelector('app-beach-map-canvas, app-beach-row-lens')!;
+    return {
+      height: line.getBoundingClientRect().height,
+      textHeight: range.getBoundingClientRect().height,
+      textTop,
+      mapTop: map.getBoundingClientRect().top + window.scrollY,
+    };
+  });
+
+for (const width of [1280, 390, 344]) {
+  test(`at ${width}px, the availability line keeps its box while other days load (#1836)`, async ({
+    page,
+  }) => {
+    await page.setViewportSize({ width, height: 844 });
+    const release = await openWithLaterReadsHeld(
+      page,
+      `date=${PINNED_STAY.first}&lastDate=${PINNED_STAY.last}`,
+      PARTLY,
+    );
+    const rest = await lineGeometry(page);
+
+    // This stay's count line is the longer text at any width: only a held box keeps its height.
+    await pickDays(page, ['2026-08-18', '2026-08-21']);
+
+    const checking = await lineGeometry(page);
+    expect(checking.height).toBe(rest.height);
+    expect(checking.mapTop).toBe(rest.mapTop);
+    // The mark's slot is held from the start of the wait: its arrival re-wraps nothing.
+    await expect(page.getByTestId('availability-wait')).toBeVisible();
+    expect(await lineGeometry(page)).toEqual(checking);
+
+    release();
+
+    // The hold ends with the wait: the new days' line takes its own height.
+    await expect(page.getByTestId('availability')).toContainText('1 partly free');
+    await expect(page.getByTestId('availability')).toHaveCSS('min-height', 'auto');
+  });
+}
+
+test('a one-line count and the checking line that replaces it share a height and a baseline (#1836)', async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 1280, height: 844 });
+  const release = await openWithLaterReadsHeld(page, `date=${PINNED_STAY.first}`, FREE);
+  const rest = await lineGeometry(page);
+
+  await pickDays(page, ['2026-08-20']);
+
+  const { height, textTop, mapTop } = await lineGeometry(page);
+  expect({ height, textTop, mapTop }).toEqual({
+    height: rest.height,
+    textTop: rest.textTop,
+    mapTop: rest.mapTop,
+  });
+  release();
+});
+
 test('on a phone, focus on the pick bar’s action lands on "All beaches"', async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
   await mockVenues(page);
