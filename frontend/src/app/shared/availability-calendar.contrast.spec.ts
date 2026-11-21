@@ -25,7 +25,10 @@ import {
   DARK_UNDER_CONTENT,
   Glass,
   POP_INK_DISABLED,
+  POP_SURFACE,
   POPOVER_SCRIM,
+  PORCELAIN_UNDER_CONTENT,
+  RIVIERA_UNDER_CONTENT,
   expectAaOverStops,
   stackOver,
   surfaceOver,
@@ -261,6 +264,27 @@ describe('Availability calendar contrast (WCAG AA) — venue/day-availability.ts
       'the untaken lighter fill keeps the label at AA here',
     ).toBeGreaterThanOrEqual(AA_NORMAL);
   });
+
+  /**
+   * The light counterpart (#1850): over the same scrim and whatever page lies under, the fill
+   * clears 3:1 against the popover in porcelain and riviera, so the Apply needs no exemption there.
+   */
+  it.each([
+    ['porcelain', PORCELAIN_UNDER_CONTENT],
+    ['riviera', RIVIERA_UNDER_CONTENT],
+  ] as const)(
+    'in %s the Apply clears 3:1 by its fill, over its scrim: a measured band',
+    (_, grounds) => {
+      const ratios = grounds.flatMap((ground) =>
+        CTA_GRAD_STOPS.map((fill) =>
+          contrastRatio(rgbToHex(fill), rgbToHex(stackOver([POPOVER_SCRIM, POP_SURFACE], ground))),
+        ),
+      );
+
+      expect(Math.min(...ratios), 'the band floor, at or over 3:1').toBeCloseTo(4.67, 2);
+      expect(Math.max(...ratios), 'the band ceiling').toBeCloseTo(6.86, 2);
+    },
+  );
 
   /**
    * The verdict retuned the dark theme. The light themes keep every day-cell colour the tree
