@@ -1,6 +1,6 @@
 package ai.riviera.platform.review;
 
-import java.time.Instant;
+import java.time.Clock;
 import java.time.temporal.ChronoUnit;
 
 import org.junit.jupiter.api.BeforeEach;
@@ -41,15 +41,18 @@ class ReviewAmendVsTakedownIT {
 	@Autowired
 	JdbcClient jdbc;
 
+	@Autowired
+	Clock clock;
+
 	private ReviewFixtures fixtures;
 	private String code;
 	private long review;
 
 	@BeforeEach
 	void seed() {
-		fixtures = new ReviewFixtures(jdbc);
+		fixtures = new ReviewFixtures(jdbc, clock);
 		long venue = fixtures.venue("Amend vs takedown " + System.nanoTime());
-		code = fixtures.completedBooking(venue, Instant.now().minus(1, ChronoUnit.DAYS));
+		code = fixtures.completedBooking(venue, clock.instant().minus(1, ChronoUnit.DAYS));
 		review = fixtures.review(code, 5, "Lovely", "Ana");
 	}
 

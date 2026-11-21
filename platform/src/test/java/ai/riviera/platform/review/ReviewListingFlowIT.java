@@ -1,5 +1,6 @@
 package ai.riviera.platform.review;
 
+import java.time.Clock;
 import java.time.Instant;
 import java.time.YearMonth;
 import java.util.ArrayList;
@@ -49,11 +50,14 @@ class ReviewListingFlowIT {
 	@Autowired
 	JdbcClient jdbc;
 
+	@Autowired
+	Clock clock;
+
 	private ReviewFixtures fixtures;
 
 	@BeforeEach
 	void setUp() {
-		fixtures = new ReviewFixtures(jdbc);
+		fixtures = new ReviewFixtures(jdbc, clock);
 	}
 
 	@Test

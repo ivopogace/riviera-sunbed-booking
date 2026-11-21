@@ -1,5 +1,6 @@
 package ai.riviera.platform.review;
 
+import java.time.Clock;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
 import java.util.List;
@@ -54,13 +55,16 @@ class ReviewLifecycleFlowIT {
 	JdbcClient jdbc;
 
 	@Autowired
+	Clock clock;
+
+	@Autowired
 	ApplicationEvents events;
 
 	private ReviewFixtures fixtures;
 
 	@BeforeEach
 	void setUp() {
-		fixtures = new ReviewFixtures(jdbc);
+		fixtures = new ReviewFixtures(jdbc, clock);
 	}
 
 	@Test
@@ -107,7 +111,7 @@ class ReviewLifecycleFlowIT {
 	@Test
 	void amendingAStayThatCarriesNoReviewIsNoSuchReview() {
 		long venueId = fixtures.venue("Lifecycle Unreviewed");
-		String code = fixtures.completedBooking(venueId, Instant.now().minus(1, ChronoUnit.DAYS));
+		String code = fixtures.completedBooking(venueId, clock.instant().minus(1, ChronoUnit.DAYS));
 
 		assertEquals(new AmendOutcome.NoSuchReview(),
 				lifecycle.edit(code, new ReviewSubmission(4, null, "Ana")));
@@ -122,7 +126,7 @@ class ReviewLifecycleFlowIT {
 	}
 
 	private String reviewedStay(long venueId, ReviewSubmission submission) {
-		String code = fixtures.completedBooking(venueId, Instant.now().minus(1, ChronoUnit.DAYS));
+		String code = fixtures.completedBooking(venueId, clock.instant().minus(1, ChronoUnit.DAYS));
 		assertEquals(new SubmitOutcome.Submitted(), lifecycle.submit(code, submission));
 		return code;
 	}
@@ -131,7 +135,7 @@ class ReviewLifecycleFlowIT {
 	private void freezeTheWindowFor(String code) {
 		jdbc.sql("UPDATE booking SET completed_at = :at WHERE code = :code")
 				.param("at", java.sql.Timestamp.from(
-						Instant.now().minus(ReviewWindow.WINDOW).minus(1, ChronoUnit.DAYS)))
+						clock.instant().minus(ReviewWindow.WINDOW).minus(1, ChronoUnit.DAYS)))
 				.param("code", code)
 				.update();
 	}
