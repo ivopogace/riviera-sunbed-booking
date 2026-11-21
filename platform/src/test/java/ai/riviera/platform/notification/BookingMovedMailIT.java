@@ -251,9 +251,13 @@ class BookingMovedMailIT {
 				first.plusDays(3), "row-" + guest, 13500L, "CONFIRMED");
 		jdbc.sql("UPDATE booking SET stay_id = :s, last_date = booking_date + 2 WHERE id IN (:head, :moved)")
 				.param("s", stay).param("head", head).param("moved", moved).update();
+		long rowGuest = jdbc.sql("SELECT customer_id FROM booking WHERE id = :m").param("m", moved).query(Long.class)
+				.single();
 		jdbc.sql("UPDATE booking SET moved_at = :at, customer_id = (SELECT customer_id FROM booking WHERE id = :head) "
 						+ "WHERE id = :moved")
 				.param("at", java.sql.Timestamp.from(movedAt)).param("head", head).param("moved", moved).update();
+		// The stretch now names the head's guest, so the row guest it was seeded with names nothing: remove it.
+		jdbc.sql("DELETE FROM customer WHERE id = :c").param("c", rowGuest).update();
 		receipts.store(new NewReceipt(new VenueId(from.venueId()), operatorId(), movedAt, List.of(new ReceiptMove(
 				new BookingId(moved), first.plusDays(3), new SpotRef(new SetId(from.setId()), "A", 3),
 				new SpotRef(new SetId(to), "Z", first.getDayOfMonth() + 60), 0, 1)), List.of(), "", List.of()));
