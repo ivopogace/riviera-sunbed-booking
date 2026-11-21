@@ -57,7 +57,7 @@ import static org.assertj.core.api.Assertions.assertThat;
  *
  * <p>The wedged job is the retention sweep's <em>read</em> rather than {@code ExpireGuestContacts}
  * itself, deliberately: the real sweep would proceed to tombstone whatever it selected once the lock
- * released, and this test shares its database with every other IT in the suite.
+ * released, a write this test does not assert on.
  *
  * <p>Run against a pool of one, this fails at {@code swept.get(...)} — which is how it was verified
  * to be non-vacuous before the pool size was raised.
