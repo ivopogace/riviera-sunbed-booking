@@ -96,10 +96,12 @@ other way round: a border that does not help identify the component is ignored, 
 taken across it (fill against the host). Rule 1 is consistent with the source only where the
 border *does* help identify the control, which is the case for the CTA's dark-theme hairline
 (white 0.4 over the fill, 1px, the one layer that clears 3:1 against the near-black card). The
-pages do not say that case either way, so the dark CTA stands on the project's reading. A reviewer
-who applies the "subsumed" sentence to it would measure fill against card (2.23–3.16:1 in dark,
-per #876), which is why rule 2's argument (the label carries the identity) and the 3px focus ring
-are the load-bearing grounds and rule 1 is the supporting one. Also from the same page:
+pages do not say that case either way, so the dark CTA stands on the project's reading, recorded
+here as the project's position and not as the source's. A reviewer who applies the "subsumed"
+sentence to it would measure fill against card (2.23–3.16:1 in dark, per #876). That is a residual
+risk this file accepts openly; rule 2 does not cover it (the CTA is not in rule 2's table, and
+putting it there would need the three conditions asserted in a spec, a separate decision). Also
+from the same page:
 
 > Due to anti-aliasing, particularly thin lines and shapes of non-text elements may be rendered by
 > user agents with a much fainter color than the actual color defined in the underlying CSS. [...]
