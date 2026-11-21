@@ -222,7 +222,7 @@ export class VenueMap {
   private readonly moveFocus = focusMover();
   /** For a route reset and a refresh's teardown: moves focus only if the render took its holder. */
   private readonly rescueFocus = focusMover({ onlyIfLost: true });
-  /** A date change's or a refresh's landing: the same, without scrolling, as the visitor may be far down the map. */
+  /** A date change's, a refresh's or a dropped pick's landing: the same, without scrolling, as the visitor may be far down the map. */
   private readonly parkIfTaken = focusMover({ onlyIfLost: true, preventScroll: true });
   private readonly destroyRef = inject(DestroyRef);
   private readonly host = inject<ElementRef<HTMLElement>>(ElementRef);
@@ -896,8 +896,9 @@ export class VenueMap {
   /** The map tile holding focus, if one does. */
   private focusedTile(): { readonly setId: number; readonly button: Element } | undefined {
     const button = document.activeElement;
-    return button?.hasAttribute('data-set-id') && this.host.nativeElement.contains(button)
-      ? { setId: Number(button.getAttribute('data-set-id')), button }
+    const setId = tileSetId(button);
+    return button && setId !== undefined && this.host.nativeElement.contains(button)
+      ? { setId, button }
       : undefined;
   }
 
@@ -1092,9 +1093,7 @@ export class VenueMap {
     if (!inMap && !this.pickBarHoldsFocus()) {
       return;
     }
-    const setId = held?.hasAttribute('data-set-id')
-      ? Number(held.getAttribute('data-set-id'))
-      : null;
+    const setId = tileSetId(held);
     const row = this.rows().find((r) => r.tiles.some((tile) => tile.set.id === setId));
     if (row === undefined) {
       this.moveFocus('beach-grid');
@@ -1139,9 +1138,9 @@ export class VenueMap {
     // A pick is for the days its map showed: one tapped on the old map while other days load is dropped too.
     const stale = this.lensUnseeded || this.pickedTile() === undefined;
     if (this.pickId() !== undefined && stale) {
-      // The bar goes with the pick: focus it held lands on the open row, which names itself.
+      // The bar is fixed to the screen: focus it held lands on the open row, unscrolled (#1821).
       if (this.pickBarHoldsFocus()) {
-        this.moveFocus('lens-open', 'beach-grid');
+        this.parkIfTaken('lens-open', 'beach-grid');
       }
       this.pickId.set(undefined);
     }
@@ -1273,4 +1272,10 @@ function freeCountOf(tiles: readonly TileView[]): number {
 /** "5 of 7 free": a zone's or a row's free count against its sets. */
 function freeOfLabel(free: number, total: number): string {
   return $localize`:Free sets against all sets in a beach-map zone or row:${free}:free: of ${total}:total: free`;
+}
+
+/** The set a map tile's button stands for; `undefined` for any other element. */
+function tileSetId(element: Element | null): number | undefined {
+  const id = element instanceof HTMLElement ? element.dataset['setId'] : undefined;
+  return id === undefined ? undefined : Number(id);
 }

@@ -526,3 +526,43 @@ test('focus outside the page stays where it is', async ({ page }) => {
   await expect(venueName(page, 'Riviera Blue')).toBeVisible();
   await expect(help).toBeFocused();
 });
+
+test('on a phone, a refresh that drops the pick lands focus the bar held on the open row without scrolling (#1821)', async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await refuseBookingAsTaken(page, await mockChallengeFence(page, 'on'));
+  await mockVenues(page);
+  let reads = 0;
+  // A deep beach, so the page scrolls its first row off a phone's screen.
+  const deeper = 'BCDEFGHIJKLMNOPQRST'.split('').map((rowLabel, index) => ({
+    ...set(10 + index, 'FREE', []),
+    rowLabel,
+    positionNo: 1,
+    gridX: 1,
+    gridY: 2 + index,
+  }));
+  // Someone took set 1 while the dialog was open: every read after the first says so.
+  await page.route(/\/api\/venues\/1(\?.*)?$/, (route) => {
+    reads += 1;
+    const rowA = reads > 1 ? [set(1, 'TAKEN', [FIRST, MIDDLE, LAST]), ...FREE.slice(1)] : FREE;
+    return route.fulfill({ json: venue(1, [...rowA, ...deeper]) });
+  });
+  await page.goto(`/venues/1?${STAY}`);
+  await tile(page, 1).click();
+  // The bar is fixed to the viewport: the visitor reads on, and the open row leaves the screen.
+  await page.evaluate(() => window.scrollTo(0, document.documentElement.scrollHeight));
+  const scrolledTo = await page.evaluate(() => window.scrollY);
+  await page.getByTestId('pick-book').click();
+  const dialog = page.getByRole('dialog');
+  await completeDialog(dialog, 'Continue to payment');
+  await expect(dialog.getByRole('alert')).toBeVisible();
+
+  await page.keyboard.press('Escape');
+
+  await expect(page.getByTestId('pick-bar')).toHaveCount(0);
+  const openRow = page.getByTestId('lens-open');
+  await expect(openRow).toBeFocused();
+  await expect(openRow).not.toBeInViewport();
+  expect(await page.evaluate(() => window.scrollY)).toBe(scrolledTo);
+});
