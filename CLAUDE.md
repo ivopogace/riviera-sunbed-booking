@@ -65,7 +65,10 @@ failed inside one. Sonar bar: **no new bug, vulnerability or unreviewed hotspot,
 coverage**; smells and duplication judged.
 `deploy.yml` deploys the backend image (serves the SPA) to Render from `main`. `backend-daily.yml` runs the
 backend suite on `main` daily at 23:23 UTC (00:23 Tirane in winter, 01:23 in summer), never from the build-input
-cache, so a date-dependent test fails within a day; it is its own workflow so `deploy.yml`'s trigger (a completed
+cache, so a date-dependent test fails within a day. A second step reruns the suite with every test context's clock 12
+years ahead (`RIVIERA_TEST_TRAVEL_TO`, computed in the step): red there alone means a test reads the wall for "today" or
+holds a dated literal that will lapse. Either pass red fails the run; each keeps its XML for 7 days (`backend-test-results`,
+`backend-test-results-travel`). It is its own workflow so `deploy.yml`'s trigger (a completed
 "CI" run) never sees it, and `workflow_dispatch` starts it by hand. `claude.yml`: an
 `@claude` PR comment gets Claude to review, answer or push a commit to the PR's branch; an outside
 contributor's PR gets a read-only review on its own.

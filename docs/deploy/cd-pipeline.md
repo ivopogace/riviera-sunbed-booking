@@ -266,8 +266,10 @@ A release listed here owes one extra step after the old instance has drained.
   hosting is a separate, deferred issue, and per the ADR-0004 amendment it **must** be
   same-origin (a reverse proxy) or same-registrable-domain subdomains or the session cookie
   re-breaks.
-- **The daily backend run (`backend-daily.yml`) has no channel of its own** (#1831). It deploys
-  nothing; a red run only shows in the Actions tab and in GitHub's own notifications. GitHub sends a
+- **The daily backend run (`backend-daily.yml`) has no channel of its own** (#1831). It runs the
+  suite twice, once on today's clock and once with the test clocks 12 years ahead (#1842); either
+  pass red is one red run, and the failing step's name says which. It deploys nothing; a red run
+  only shows in the Actions tab and in GitHub's own notifications. GitHub sends a
   scheduled workflow's notification to the user who **last modified its cron line**, or who last
   **re-enabled** it, so the recipient changes with whoever touches the schedule. The recipient keeps
   *Settings → Notifications → System → Actions* on, **failed workflow runs only** being enough, with

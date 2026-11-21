@@ -17,6 +17,11 @@ keys only to opt out, and `TestContextDriftArchitectureTests` fails a restated v
 password is `SharedTestProperties.OPERATOR_PASSWORD`. Before adding `properties`, `@MockitoBean` or a
 new `@Import`, look for an existing class whose set already fits.
 
+A test reads "today" from its context's clock (`TiraneDaytimeClock.today(clock)`, the injected `Clock`,
+or a bound `:now` in SQL), never the wall (`LocalDate.now`, `Instant.now()`, SQL `now()`). Prove it with
+`RIVIERA_TEST_TRAVEL_TO=<instant>` (`TestClockTravel` moves every context's clock there); the daily run's
+second pass does that 12 years ahead, so a wall read or a lapsing literal goes red there.
+
 ## Structural tests
 
 `ModularityTests` (`verify()`: cycles, internal access, disallowed dependencies) runs with no
