@@ -3,6 +3,8 @@ package ai.riviera.platform.payout;
 import java.time.Duration;
 import java.time.LocalDate;
 
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -13,6 +15,7 @@ import org.springframework.modulith.test.Scenario;
 
 import ai.riviera.platform.EnabledIfDockerAvailable;
 import ai.riviera.platform.TestcontainersConfiguration;
+import ai.riviera.platform.booking.StayFixtures;
 import ai.riviera.platform.booking.events.BookingConfirmed;
 import ai.riviera.platform.booking.vocabulary.BookingId;
 import ai.riviera.platform.booking.vocabulary.CancellationWindow;
@@ -40,12 +43,24 @@ class PayoutSpineScenarioIT {
 	@Autowired
 	JdbcClient jdbc;
 
+	/** This test's own venue: its bookings and ledger rows reach no other class, and leave with it (#2, #9). */
+	private StayFixtures.Venue venue;
+
+	@BeforeEach
+	void ownVenue() {
+		venue = StayFixtures.venue(jdbc, "INSTANT", null, false);
+	}
+
+	@AfterEach
+	void removeVenue() {
+		StayFixtures.cleanup(jdbc, venue.id());
+	}
+
 	private record Ref(long bookingId, long venueId, long setId) {
 	}
 
 	private Ref insertConfirmedBooking(String code) {
-		var set = jdbc.sql("SELECT id, venue_id FROM set_position WHERE pool = 'ONLINE' ORDER BY id LIMIT 1")
-				.query((rs, n) -> new long[] {rs.getLong("id"), rs.getLong("venue_id")}).single();
+		long[] set = {venue.online().getFirst().value(), venue.id()};
 		long customer = jdbc.sql("INSERT INTO customer (email, full_name, phone) "
 						+ "VALUES (:e, 'Guest', '+355600') RETURNING id")
 				.param("e", code + "@example.com").query(Long.class).single();

@@ -4,17 +4,21 @@ import java.time.Duration;
 import java.time.LocalDate;
 
 import org.awaitility.Awaitility;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.context.annotation.Import;
 import org.springframework.jdbc.core.simple.JdbcClient;
+import org.springframework.modulith.events.IncompleteEventPublications;
 import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.support.TransactionTemplate;
 
 import ai.riviera.platform.EnabledIfDockerAvailable;
 import ai.riviera.platform.TestcontainersConfiguration;
+import ai.riviera.platform.booking.StayFixtures;
 import ai.riviera.platform.booking.events.BookingCancelled;
 import ai.riviera.platform.booking.events.BookingDayRefunded;
 import ai.riviera.platform.booking.vocabulary.BookingId;
@@ -46,6 +50,9 @@ class PayoutDayReversalIT {
 	JdbcClient jdbc;
 
 	@Autowired
+	IncompleteEventPublications incompletePublications;
+
+	@Autowired
 	PayoutLedger ledger;
 
 	@Autowired
@@ -54,13 +61,25 @@ class PayoutDayReversalIT {
 	@Autowired
 	PlatformTransactionManager txManager;
 
+	/** This test's own venue: its bookings and ledger rows reach no other class, and leave with it (#2, #9). */
+	private StayFixtures.Venue venue;
+
+	@BeforeEach
+	void ownVenue() {
+		venue = StayFixtures.venue(jdbc, "INSTANT", null, false);
+	}
+
+	@AfterEach
+	void removeVenue() {
+		StayFixtures.cleanup(jdbc, venue.id());
+	}
+
 	private record Ref(long bookingId, long venueId, long setId) {
 	}
 
 	/** A 14-day CONFIRMED booking at 3000/day with its ACCRUAL (gross 42000, 15% → commission 6300, net 35700). */
 	private Ref stayWithAccrual(String code) {
-		long[] set = jdbc.sql("SELECT id, venue_id FROM set_position WHERE pool = 'ONLINE' ORDER BY id LIMIT 1")
-				.query((rs, n) -> new long[] {rs.getLong("id"), rs.getLong("venue_id")}).single();
+		long[] set = {venue.online().getFirst().value(), venue.id()};
 		long customer = jdbc.sql("INSERT INTO customer (email, full_name, phone) "
 						+ "VALUES (:e, 'Guest', '+355600') RETURNING id")
 				.param("e", code + "@example.com").query(Long.class).single();
@@ -117,6 +136,9 @@ class PayoutDayReversalIT {
 		assertEquals("WEATHER", jdbc.sql("SELECT reason FROM payout_ledger_entry "
 						+ "WHERE booking_id = :id AND entry_type = 'DAY_REVERSAL'")
 				.param("id", b.bookingId()).query(String.class).single());
+
+		// The identical second publish can lose its registry completion race; re-drive it so none stays open.
+		incompletePublications.resubmitIncompletePublications(publication -> event.equals(publication.getEvent()));
 	}
 
 	@Test
@@ -150,8 +172,9 @@ class PayoutDayReversalIT {
 	@Test
 	void aVenueDayReversalCarriesTheReasonAndALaterCancellationTakesTheRemainder() {
 		Ref b = stayWithAccrual("DAYREV004");
-		publishInTransaction(dayRefunded(b, DAY_8, RefundReason.VENUE));
-		publishInTransaction(dayRefunded(b, DAY_8, RefundReason.VENUE));
+		BookingDayRefunded event = dayRefunded(b, DAY_8, RefundReason.VENUE);
+		publishInTransaction(event);
+		publishInTransaction(event);
 		Awaitility.await().atMost(WAIT).untilAsserted(() -> assertEquals(1L, rows(b.bookingId(), "DAY_REVERSAL")));
 		assertEquals("VENUE", jdbc.sql("SELECT reason FROM payout_ledger_entry "
 						+ "WHERE booking_id = :id AND entry_type = 'DAY_REVERSAL'")
@@ -163,5 +186,8 @@ class PayoutDayReversalIT {
 
 		Awaitility.await().atMost(WAIT).untilAsserted(() -> assertEquals(1L, rows(b.bookingId(), "REVERSAL")));
 		assertEquals(0L, net(b.bookingId()), "reversed in parts, the booking nets exactly zero (invariant #9)");
+
+		// The identical second publish can lose its registry completion race; re-drive it so none stays open.
+		incompletePublications.resubmitIncompletePublications(publication -> event.equals(publication.getEvent()));
 	}
 }

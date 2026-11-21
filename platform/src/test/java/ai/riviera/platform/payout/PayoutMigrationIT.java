@@ -2,6 +2,8 @@ package ai.riviera.platform.payout;
 
 import java.time.LocalDate;
 
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -11,6 +13,7 @@ import org.springframework.jdbc.core.simple.JdbcClient;
 
 import ai.riviera.platform.EnabledIfDockerAvailable;
 import ai.riviera.platform.TestcontainersConfiguration;
+import ai.riviera.platform.booking.StayFixtures;
 
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertThrows;
@@ -35,9 +38,21 @@ class PayoutMigrationIT {
 	@Autowired
 	JdbcClient jdbc;
 
+	/** This test's own venue; its rows are written as stored and publish nothing, so it leaves without waiting. */
+	private StayFixtures.Venue venue;
+
+	@BeforeEach
+	void ownVenue() {
+		venue = StayFixtures.venue(jdbc, "INSTANT", null, false);
+	}
+
+	@AfterEach
+	void removeVenue() {
+		StayFixtures.cleanupNow(jdbc, venue.id());
+	}
+
 	private long insertBooking(String code) {
-		var set = jdbc.sql("SELECT id, venue_id FROM set_position WHERE pool = 'ONLINE' ORDER BY id LIMIT 1")
-				.query((rs, n) -> new long[] {rs.getLong("id"), rs.getLong("venue_id")}).single();
+		long[] set = {venue.online().getFirst().value(), venue.id()};
 		long customer = jdbc.sql("INSERT INTO customer (email, full_name, phone) "
 						+ "VALUES (:e, 'Guest', '+355600') RETURNING id")
 				.param("e", code + "@example.com").query(Long.class).single();
