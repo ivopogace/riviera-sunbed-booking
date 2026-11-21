@@ -821,6 +821,74 @@ describe('VenueMap: reloading under the visitor (#1810)', () => {
       venueReq().flush(freeBeach());
     });
 
+    describe('the sales-closed alert (#1822)', () => {
+      const alert = (): HTMLElement | null =>
+        dom().querySelector('[data-testid="map-sales-closed"]');
+      const closed = () => ({ ...freeBeach(), salesOpen: false });
+
+      async function leaveClosedDay(): Promise<void> {
+        await mount();
+        venueReq().flush(closed());
+        await settle();
+        expect(alert()?.textContent).toContain('Online sales for today have closed');
+        pickDays(otherDay);
+        await settle();
+      }
+
+      it('is withheld while the new days load: the old day’s verdict is not the new day’s', async () => {
+        await leaveClosedDay();
+
+        expect(alert()).toBeNull();
+        expect(dom().querySelector('[role="alert"]')).toBeNull();
+        venueReq().flush(freeBeach());
+        await settle();
+        expect(alert()).toBeNull();
+      });
+
+      it('returns as a new alert, worded for the new day, when its read answers closed too', async () => {
+        await leaveClosedDay();
+
+        venueReq().flush(closed());
+        await settle();
+
+        expect(alert()?.getAttribute('role')).toBe('alert');
+        expect(alert()?.textContent).toContain('Online sales for that date have closed');
+      });
+
+      it('stays through a same-days re-read', async () => {
+        await mount();
+        venueReq().flush(closed());
+        await settle();
+        const shown = alert();
+
+        (fixture.componentInstance as unknown as { refresh(): void }).refresh();
+        await settle();
+
+        expect(shown).not.toBeNull();
+        expect(alert()).toBe(shown);
+        venueReq().flush(closed());
+      });
+
+      it('leaves the season notice in place: it speaks of the venue, not of the picked day', async () => {
+        const season = { ...closed(), closedForSeason: true, reopensOn: addDays(otherDay, 30) };
+        await mount();
+        venueReq().flush(season);
+        await settle();
+        const notice = one('map-closed-for-season');
+        const text = notice.textContent;
+
+        pickDays(otherDay);
+        await settle();
+
+        expect(one('map-closed-for-season')).toBe(notice);
+        expect(notice.textContent).toBe(text);
+        expect(alert()).toBeNull();
+        venueReq().flush(season);
+        await settle();
+        expect(one('map-closed-for-season')).toBe(notice);
+      });
+    });
+
     it('the availability line says it is checking the new days, never the old count', async () => {
       await loadFree();
       const region = one('availability');

@@ -466,7 +466,8 @@
             >
           }
         </p>
-      } @else if (salesClosed()) {
+      } @else if (salesClosed() && !staleDays()) {
+        <!-- Not while other days load: it would give the old day's verdict as the new day's (#1822). The season notice above stays, as it speaks of the venue. -->
         <p
           role="alert"
           data-testid="map-sales-closed"
