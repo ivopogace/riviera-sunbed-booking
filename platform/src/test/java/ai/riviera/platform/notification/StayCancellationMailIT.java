@@ -4,6 +4,7 @@ import java.time.Clock;
 import java.time.Duration;
 import java.time.Instant;
 import java.time.LocalDate;
+import java.util.ArrayList;
 import java.util.List;
 
 import org.awaitility.Awaitility;
@@ -101,9 +102,13 @@ class StayCancellationMailIT {
 		venue = StayFixtures.venue(jdbc, "INSTANT", null, true);
 	}
 
+	/** The operators {@link #endedByRemodel} made, removed once the cleanup has taken their receipts. */
+	private final List<Long> operators = new ArrayList<>();
+
 	@AfterEach
 	void removeVenue() {
 		StayFixtures.cleanup(jdbc, venue.id());
+		operators.forEach(id -> jdbc.sql("DELETE FROM operator WHERE id = :o").param("o", id).update());
 	}
 
 	/** Thirty days out: on sale and inside the free cancellation window, so a guest's cancel refunds in full. */
@@ -248,6 +253,7 @@ class StayCancellationMailIT {
 	private void endedByRemodel(SetRef set, long bookingId, LocalDate date, ReceiptOutcomeKind kind) {
 		long operator = jdbc.sql("INSERT INTO operator (username, status) VALUES (:u, 'ACTIVE') RETURNING id")
 				.param("u", "stay-remodel-" + System.nanoTime()).query(Long.class).single();
+		operators.add(operator);
 		boolean refund = kind == ReceiptOutcomeKind.REFUND;
 		receipts.store(new NewReceipt(new VenueId(set.venueId()), new OperatorId(operator), Instant.now(), List.of(),
 				List.of(new ReceiptOutcome(new BookingId(bookingId), date, new SpotRef(new SetId(set.setId()), "A", 1),

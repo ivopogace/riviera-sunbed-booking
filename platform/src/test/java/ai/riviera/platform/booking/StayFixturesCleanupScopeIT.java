@@ -34,7 +34,8 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 /**
  * {@link StayFixtures#cleanup} waits only on {@link StayFixtures#pendingPublicationsOf}: a pending publication
  * another class left in the shared registry neither counts nor holds the cleanup up (#1444), while one naming
- * the venue's booking or stay counts. The cleanup removes the operator the fixture created and no other.
+ * the venue's booking or stay counts. The cleanup removes the operator the fixture created and no other, and the
+ * guests its bookings named that no other booking still names.
  * Payloads come from the registry's own serializer. Real Postgres via Testcontainers.
  */
 @EnabledIfDockerAvailable
@@ -111,6 +112,34 @@ class StayFixturesCleanupScopeIT {
 		assertEquals(0L, operators(fixtureOperator), "the operator the fixture created goes with its venue");
 		assertEquals(1L, operators(another), "an owner a test linked itself is that test's to remove");
 		jdbc.sql("DELETE FROM operator WHERE id = :o").param("o", another).update();
+	}
+
+	@Test
+	void cleanupRemovesTheCustomersOfItsBookingsButNotOneAnotherVenueStillBooks() {
+		Venue venue = venue();
+		long customer = customerOf(seedStay(venue, "SCOPE-CUSTOMER").stretches().get(0));
+		Venue other = venue();
+		long kept = customerOf(seedStay(venue, "SCOPE-SHARED").stretches().get(0));
+		jdbc.sql("""
+				INSERT INTO booking (code, venue_id, set_id, customer_id, booking_date, amount_minor, amount_currency, status)
+				VALUES (:code, :v, :s, :c, :d, 4500, 'EUR', 'PENDING_REQUEST')
+				""").param("code", "SCOPE-OTHER-" + System.nanoTime()).param("v", other.id())
+				.param("s", other.online().get(0).value()).param("c", kept).param("d", firstDay(clock)).update();
+
+		StayFixtures.cleanupNow(jdbc, venue.id());
+
+		assertEquals(0L, customers(customer), "a guest only the venue's bookings named goes with them");
+		assertEquals(1L, customers(kept), "a guest another venue still books stays until that venue goes");
+		StayFixtures.cleanupNow(jdbc, other.id());
+		assertEquals(0L, customers(kept));
+	}
+
+	private long customerOf(long booking) {
+		return jdbc.sql("SELECT customer_id FROM booking WHERE id = :b").param("b", booking).query(Long.class).single();
+	}
+
+	private long customers(long id) {
+		return jdbc.sql("SELECT count(*) FROM customer WHERE id = :c").param("c", id).query(Long.class).single();
 	}
 
 	private long operators(long id) {

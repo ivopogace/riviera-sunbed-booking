@@ -3,6 +3,8 @@ package ai.riviera.platform.booking;
 import java.time.Clock;
 import java.time.LocalDate;
 
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -43,9 +45,21 @@ class BookingServiceIT {
 	@Autowired
 	JdbcClient jdbc;
 
+	/** This test's own visible venue: the booking confirms on its sets, which no other class holds (#2). */
+	private StayFixtures.Venue venue;
+
+	@BeforeEach
+	void ownVenue() {
+		venue = StayFixtures.venue(jdbc, "INSTANT", null, true);
+	}
+
+	@AfterEach
+	void removeVenue() {
+		StayFixtures.cleanup(jdbc, venue.id());
+	}
+
 	private SetId freeOnlineSet() {
-		// An online set with no availability row yet for the test date.
-		return new SetId(VisibleOnlineSets.newest(jdbc).id());
+		return venue.online().getFirst();
 	}
 
 	private LocalDate farFutureDate() {
