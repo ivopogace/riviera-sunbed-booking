@@ -112,7 +112,7 @@ class WithdrawRequestIT {
 				""")
 				.param("code", code).param("venue", venueId).param("set", setId)
 				.param("cust", customer).param("date", date)
-				.param("expires", java.sql.Timestamp.from(Instant.now().plusSeconds(3600)))
+				.param("expires", java.sql.Timestamp.from(clock.instant().plusSeconds(3600)))
 				.query(Long.class).single();
 		return booking;
 	}
@@ -149,7 +149,7 @@ class WithdrawRequestIT {
 		try {
 			StayFixtures.SeededStay stay = StayFixtures.insertPendingStay(jdbc, venue, uniqueCode("WDSTAY"),
 					StayFixtures.firstDay(clock), venue.online().get(0), 2, venue.online().get(1), 2,
-					Instant.now().plusSeconds(3600));
+					clock.instant().plusSeconds(3600));
 
 			mvc.perform(post("/api/bookings/{code}/withdraw", stay.code() + "-1"))
 					.andExpect(status().isNotFound())
@@ -180,7 +180,8 @@ class WithdrawRequestIT {
 	void aBookingThatLeftPendingIsAConflict() throws Exception {
 		String code = uniqueCode("WDCONF");
 		long bookingId = insertPendingRequest(code, bookable());
-		jdbc.sql("UPDATE booking SET status = 'CONFIRMED', confirmed_at = now() WHERE id = :id")
+		jdbc.sql("UPDATE booking SET status = 'CONFIRMED', confirmed_at = :now WHERE id = :id")
+				.param("now", java.sql.Timestamp.from(clock.instant()))
 				.param("id", bookingId).update();
 
 		mvc.perform(post("/api/bookings/{code}/withdraw", code))

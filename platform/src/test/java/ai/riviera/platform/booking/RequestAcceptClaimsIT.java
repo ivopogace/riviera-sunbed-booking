@@ -1,8 +1,7 @@
 package ai.riviera.platform.booking;
 
-import java.time.Instant;
+import java.time.Clock;
 import java.time.LocalDate;
-import java.time.ZoneId;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -13,6 +12,7 @@ import org.springframework.jdbc.core.simple.JdbcClient;
 
 import ai.riviera.platform.EnabledIfDockerAvailable;
 import ai.riviera.platform.TestcontainersConfiguration;
+import ai.riviera.platform.TiraneDaytimeClock;
 import ai.riviera.platform.availability.api.AvailabilityClaim;
 import ai.riviera.platform.availability.vocabulary.ClaimOutcome;
 import ai.riviera.platform.booking.application.request.AcceptOutcome;
@@ -40,8 +40,6 @@ import static org.junit.jupiter.api.Assertions.assertSame;
 @SpringBootTest
 class RequestAcceptClaimsIT {
 
-	private static final ZoneId TIRANE = ZoneId.of("Europe/Tirane");
-
 	@Autowired
 	RespondToRequest respondToRequest;
 
@@ -53,6 +51,9 @@ class RequestAcceptClaimsIT {
 
 	@Autowired
 	JdbcClient jdbc;
+
+	@Autowired
+	Clock clock;
 
 	private long venueId;
 	private OperatorId operator;
@@ -77,7 +78,7 @@ class RequestAcceptClaimsIT {
 				VALUES (:venue, 'A', 1, 'STANDARD', 'ONLINE', 4500, 'EUR', 1, 1)
 				RETURNING id
 				""").param("venue", venueId).query(Long.class).single();
-		day = LocalDate.now(TIRANE).plusDays(10);
+		day = TiraneDaytimeClock.today(clock).plusDays(10);
 	}
 
 	/** A one-day {@code PENDING_REQUEST} on {@code day}, holding nothing. */
@@ -100,7 +101,7 @@ class RequestAcceptClaimsIT {
 				.param("code", code).param("venue", venueId).param("set", setId).param("cust", customer)
 				.param("first", first).param("last", last)
 				.param("amount", 4500L * (last.toEpochDay() - first.toEpochDay() + 1))
-				.param("expires", java.sql.Timestamp.from(Instant.now().plusSeconds(3600)))
+				.param("expires", java.sql.Timestamp.from(clock.instant().plusSeconds(3600)))
 				.query(Long.class).single();
 	}
 

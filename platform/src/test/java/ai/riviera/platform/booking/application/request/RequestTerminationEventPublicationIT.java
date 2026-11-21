@@ -107,7 +107,7 @@ class RequestTerminationEventPublicationIT {
 	@Test
 	void declinePublishesTheDeclineFact() {
 		LocalDate date = TiraneDaytimeClock.today(clock).plusMonths(3);
-		long bookingId = insertRequest(uniqueCode("DECMAIL"), date, Instant.now().plusSeconds(3600));
+		long bookingId = insertRequest(uniqueCode("DECMAIL"), date, clock.instant().plusSeconds(3600));
 
 		assertThat(requestRelease.decline(new BookingId(bookingId), new VenueId(venueId))).isTrue();
 
@@ -118,7 +118,7 @@ class RequestTerminationEventPublicationIT {
 	@Test
 	void expiryPublishesTheExpiryFact() {
 		LocalDate date = TiraneDaytimeClock.today(clock).plusMonths(3);
-		long bookingId = insertRequest(uniqueCode("EXPMAIL"), date, Instant.now().minusSeconds(30));
+		long bookingId = insertRequest(uniqueCode("EXPMAIL"), date, clock.instant().minusSeconds(30));
 
 		assertThat(expireRequests.sweep()).isEqualTo(1);
 
@@ -128,7 +128,7 @@ class RequestTerminationEventPublicationIT {
 
 	@Test
 	void cleanSweepPublishesNothing() {
-		insertRequest(uniqueCode("FRESH"), TiraneDaytimeClock.today(clock).plusMonths(3), Instant.now().plusSeconds(3600));
+		insertRequest(uniqueCode("FRESH"), TiraneDaytimeClock.today(clock).plusMonths(3), clock.instant().plusSeconds(3600));
 
 		assertThat(expireRequests.sweep()).isZero();
 
@@ -138,7 +138,7 @@ class RequestTerminationEventPublicationIT {
 	@Test
 	void withdrawPublishesNothing() {
 		String code = uniqueCode("WDQUIET");
-		insertRequest(code, TiraneDaytimeClock.today(clock).plusMonths(3), Instant.now().plusSeconds(3600));
+		insertRequest(code, TiraneDaytimeClock.today(clock).plusMonths(3), clock.instant().plusSeconds(3600));
 
 		assertThat(requestRelease.withdraw(code)).isPresent();
 
@@ -148,7 +148,7 @@ class RequestTerminationEventPublicationIT {
 	@Test
 	void lostDeclinePublishesNothing() {
 		String code = uniqueCode("DECLOST");
-		long bookingId = insertRequest(code, TiraneDaytimeClock.today(clock).plusMonths(3), Instant.now().plusSeconds(3600));
+		long bookingId = insertRequest(code, TiraneDaytimeClock.today(clock).plusMonths(3), clock.instant().plusSeconds(3600));
 		requestRelease.withdraw(code);
 		recorded.reset();
 

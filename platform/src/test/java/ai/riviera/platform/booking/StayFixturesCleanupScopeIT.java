@@ -124,7 +124,7 @@ class StayFixturesCleanupScopeIT {
 	}
 
 	private SeededStay seedStay(Venue venue, String code) {
-		return StayFixtures.insertStay(jdbc, venue, code + "-" + System.nanoTime(), firstDay(clock),
+		return StayFixtures.insertStay(jdbc, clock, venue, code + "-" + System.nanoTime(), firstDay(clock),
 				venue.online().get(0), 1, "CONFIRMED", venue.online().get(1), 1, "CONFIRMED");
 	}
 

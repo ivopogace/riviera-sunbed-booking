@@ -1,5 +1,6 @@
 package ai.riviera.platform.booking;
 
+import java.time.Clock;
 import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
@@ -19,6 +20,7 @@ import org.springframework.transaction.support.TransactionTemplate;
 
 import ai.riviera.platform.EnabledIfDockerAvailable;
 import ai.riviera.platform.TestcontainersConfiguration;
+import ai.riviera.platform.TiraneDaytimeClock;
 import ai.riviera.platform.booking.StayFixtures.Venue;
 import ai.riviera.platform.booking.application.checkin.CheckInBooking;
 import ai.riviera.platform.booking.application.checkin.CheckInResult;
@@ -46,6 +48,9 @@ class StayCheckInIT {
 
 	@Autowired
 	JdbcClient jdbc;
+
+	@Autowired
+	Clock clock;
 
 	@Autowired
 	TransactionTemplate tx;
@@ -81,8 +86,9 @@ class StayCheckInIT {
 		jdbc.sql("""
 				INSERT INTO booking (code, venue_id, set_id, customer_id, booking_date, last_date, amount_minor,
 				                     amount_currency, status, confirmed_at, stay_id)
-				VALUES (:code, :venue, :set, :cust, :first, :last, 4500, 'EUR', 'CONFIRMED', now(), :stay)
-				""").param("code", rowCode).param("venue", venue.id()).param("set", set.value()).param("cust", customer)
+				VALUES (:code, :venue, :set, :cust, :first, :last, 4500, 'EUR', 'CONFIRMED', :now, :stay)
+				""").param("now", java.sql.Timestamp.from(clock.instant()))
+				.param("code", rowCode).param("venue", venue.id()).param("set", set.value()).param("cust", customer)
 				.param("first", first).param("last", last).param("stay", stay).update();
 	}
 
@@ -91,7 +97,7 @@ class StayCheckInIT {
 		Venue venue = StayFixtures.venue(jdbc, "INSTANT", null, true);
 		venues.add(venue.id());
 		OperatorId operator = ownerOf(venue.id());
-		LocalDate today = LocalDate.now(StayFixtures.TIRANE);
+		LocalDate today = TiraneDaytimeClock.today(clock);
 		String code = insertConfirmedStay(venue, today.minusDays(3), 3, 3);
 
 		CheckInResult result = checkIn.checkIn(operator, new VenueId(venue.id()), code);
@@ -112,7 +118,7 @@ class StayCheckInIT {
 		Venue venue = StayFixtures.venue(jdbc, "INSTANT", null, true);
 		venues.add(venue.id());
 		OperatorId operator = ownerOf(venue.id());
-		LocalDate first = LocalDate.now(StayFixtures.TIRANE).plusDays(5);
+		LocalDate first = TiraneDaytimeClock.today(clock).plusDays(5);
 		String code = insertConfirmedStay(venue, first, 2, 2);
 
 		CheckInResult result = checkIn.checkIn(operator, new VenueId(venue.id()), code);
@@ -124,7 +130,7 @@ class StayCheckInIT {
 	void aStretchsRowCodeIsNoCredential() {
 		Venue venue = StayFixtures.venue(jdbc, "INSTANT", null, true);
 		venues.add(venue.id());
-		String code = insertConfirmedStay(venue, LocalDate.now(StayFixtures.TIRANE).minusDays(3), 3, 3);
+		String code = insertConfirmedStay(venue, TiraneDaytimeClock.today(clock).minusDays(3), 3, 3);
 
 		assertInstanceOf(CheckInResult.NotFound.class, checkIn.checkIn(ownerOf(venue.id()), new VenueId(venue.id()), code + "-2"));
 	}
@@ -134,7 +140,7 @@ class StayCheckInIT {
 		Venue venue = StayFixtures.venue(jdbc, "INSTANT", null, true);
 		venues.add(venue.id());
 		OperatorId operator = ownerOf(venue.id());
-		String code = insertConfirmedStay(venue, LocalDate.now(StayFixtures.TIRANE).minusDays(3), 3, 3);
+		String code = insertConfirmedStay(venue, TiraneDaytimeClock.today(clock).minusDays(3), 3, 3);
 		long firstStretch = jdbc.sql("SELECT id FROM booking WHERE venue_id = :v ORDER BY booking_date LIMIT 1")
 				.param("v", venue.id()).query(Long.class).single();
 		CountDownLatch rowLocked = new CountDownLatch(1);

@@ -87,7 +87,7 @@ class RemodelReleaseStayIT {
 
 	/** A stay of two stretches, {@code daysOnA} on the first online set then {@code daysOnB} on the second, holding its days. */
 	private StayFixtures.SeededStay seedHeldStay(String statusA, int daysOnA, String statusB, int daysOnB) {
-		StayFixtures.SeededStay stay = StayFixtures.insertStay(jdbc, venue, "RRS" + System.nanoTime() % 100_000_000L,
+		StayFixtures.SeededStay stay = StayFixtures.insertStay(jdbc, clock, venue, "RRS" + System.nanoTime() % 100_000_000L,
 				first, venue.online().get(0), daysOnA, statusA, venue.online().get(1), daysOnB, statusB);
 		for (int day = 0; day < daysOnA; day++) {
 			StayFixtures.take(jdbc, venue.online().get(0), first.plusDays(day));

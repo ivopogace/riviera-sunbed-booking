@@ -59,7 +59,7 @@ class StayRequestQueueIT {
 		SetId a = venue.online().get(0);
 		SetId b = venue.online().get(1);
 		SetId c = venue.online().get(2);
-		Instant expires = Instant.now().plusSeconds(3600);
+		Instant expires = clock.instant().plusSeconds(3600);
 		String tag = String.valueOf(System.nanoTime() % 100_000_000L);
 		StayFixtures.SeededStay stay = StayFixtures.insertPendingStay(jdbc, venue, "SQS" + tag, d0, a, 2, b, 2, expires);
 		long lone = StayFixtures.insertPendingLone(jdbc, venue, "SQL" + tag, b, d0.plusDays(2), d0.plusDays(2), expires);

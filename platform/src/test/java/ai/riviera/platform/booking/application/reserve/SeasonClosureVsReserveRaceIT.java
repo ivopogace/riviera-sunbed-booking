@@ -1,8 +1,8 @@
 package ai.riviera.platform.booking.application.reserve;
 
+import java.time.Clock;
 import java.time.Duration;
 import java.time.LocalDate;
-import java.time.ZoneId;
 import java.util.List;
 import java.util.concurrent.Callable;
 import java.util.concurrent.CompletableFuture;
@@ -25,6 +25,7 @@ import org.springframework.transaction.support.TransactionTemplate;
 
 import ai.riviera.platform.EnabledIfDockerAvailable;
 import ai.riviera.platform.TestcontainersConfiguration;
+import ai.riviera.platform.TiraneDaytimeClock;
 import ai.riviera.platform.customer.vocabulary.GuestContact;
 import ai.riviera.platform.operator.vocabulary.OperatorId;
 import ai.riviera.platform.venue.application.CloseForSeason;
@@ -46,8 +47,6 @@ import static org.junit.jupiter.api.Assertions.assertInstanceOf;
 @SpringBootTest
 class SeasonClosureVsReserveRaceIT {
 
-	private static final ZoneId TIRANE = ZoneId.of("Europe/Tirane");
-
 	@Autowired
 	ReserveSetService reserveSet;
 
@@ -61,10 +60,13 @@ class SeasonClosureVsReserveRaceIT {
 	JdbcClient jdbc;
 
 	@Autowired
+	Clock clock;
+
+	@Autowired
 	PlatformTransactionManager txManager;
 
-	private final LocalDate day = LocalDate.now(TIRANE).plusDays(30);
-	private final SeasonClosure closure = SeasonClosure.closed(LocalDate.now(TIRANE).plusDays(60), false);
+	private LocalDate day;
+	private SeasonClosure closure;
 	private long venueId;
 	private long operatorId;
 	private long setA;
@@ -73,6 +75,8 @@ class SeasonClosureVsReserveRaceIT {
 
 	@BeforeEach
 	void seedVenue() {
+		day = TiraneDaytimeClock.today(clock).plusDays(30);
+		closure = SeasonClosure.closed(day.plusDays(30), false);
 		venueId = jdbc.sql("""
 				INSERT INTO venue (name, beach, booking_mode, commission_bps, payout_currency)
 				VALUES (:name, 'KSAMIL', 'INSTANT', 1500, 'EUR') RETURNING id

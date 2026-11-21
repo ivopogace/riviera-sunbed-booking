@@ -1,7 +1,7 @@
 package ai.riviera.platform.booking;
 
+import java.time.Clock;
 import java.time.LocalDate;
-import java.time.ZoneId;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -16,6 +16,7 @@ import org.springframework.test.web.servlet.MvcResult;
 import ai.riviera.platform.EnabledIfDockerAvailable;
 import ai.riviera.platform.SessionLoginSupport;
 import ai.riviera.platform.TestcontainersConfiguration;
+import ai.riviera.platform.TiraneDaytimeClock;
 
 import jakarta.servlet.http.Cookie;
 
@@ -48,13 +49,15 @@ class CheckInFlowIT {
 
 	private static final String OPERATOR = "operator";
 	private static final String PASSWORD = "test-operator-pw";
-	private static final ZoneId TIRANE = ZoneId.of("Europe/Tirane");
 
 	@Autowired
 	MockMvc mvc;
 
 	@Autowired
 	JdbcClient jdbc;
+
+	@Autowired
+	Clock clock;
 
 	@Autowired
 	ai.riviera.platform.booking.application.checkin.MarkNoShows markNoShows;
@@ -80,9 +83,9 @@ class CheckInFlowIT {
 		long id = jdbc.sql("""
 				INSERT INTO booking (code, venue_id, set_id, customer_id, booking_date,
 				                     amount_minor, amount_currency, status, confirmed_at)
-				VALUES (:code, :venue, :set, :cust, :date, 4500, 'EUR', 'CONFIRMED', now())
+				VALUES (:code, :venue, :set, :cust, :date, 4500, 'EUR', 'CONFIRMED', :now)
 				RETURNING id
-				""")
+				""").param("now", java.sql.Timestamp.from(clock.instant()))
 				.param("code", code).param("venue", venueId).param("set", set)
 				.param("cust", customer).param("date", date)
 				.query(Long.class).single();
@@ -107,8 +110,8 @@ class CheckInFlowIT {
 		return prefix + System.nanoTime() % 1_000_000;
 	}
 
-	private static LocalDate today() {
-		return LocalDate.now(TIRANE);
+	private LocalDate today() {
+		return TiraneDaytimeClock.today(clock);
 	}
 
 	@Test
@@ -222,7 +225,8 @@ class CheckInFlowIT {
 		long venue = newOwnedVenue("CI Gone Club");
 		String code = uniqueCode("CIGONE");
 		long bookingId = insertConfirmed(code, venue, today());
-		jdbc.sql("UPDATE booking SET status = 'CANCELLED', cancelled_at = now() WHERE id = :id")
+		jdbc.sql("UPDATE booking SET status = 'CANCELLED', cancelled_at = :now WHERE id = :id")
+				.param("now", java.sql.Timestamp.from(clock.instant()))
 				.param("id", bookingId).update();
 
 		mvc.perform(post("/api/venues/{v}/bookings/{code}/check-in", venue, code)
@@ -310,10 +314,11 @@ class CheckInFlowIT {
 				.param("id", id).update();
 		jdbc.sql("""
 				INSERT INTO booking_day (booking_id, service_date, refunded_at, refund_minor, refund_reason)
-				VALUES (:id, :d, NOW(), 1500, 'WEATHER')
-				ON CONFLICT (booking_id, service_date) DO UPDATE SET refunded_at = NOW(), refund_minor = 1500,
+				VALUES (:id, :d, :now, 1500, 'WEATHER')
+				ON CONFLICT (booking_id, service_date) DO UPDATE SET refunded_at = :now, refund_minor = 1500,
 				    refund_reason = 'WEATHER'
-				""").param("id", id).param("d", today()).update();
+				""").param("now", java.sql.Timestamp.from(clock.instant()))
+				.param("id", id).param("d", today()).update();
 
 		MvcResult result = mvc.perform(post("/api/venues/{v}/bookings/{code}/check-in", venue, code)
 						.cookie(operatorSession).with(csrf()))
@@ -338,10 +343,11 @@ class CheckInFlowIT {
 		jdbc.sql("""
 				INSERT INTO booking_day (booking_id, service_date, refunded_at, refund_minor, refund_reason, released_at,
 				                         refunded_by_operator_id)
-				VALUES (:id, :d, NOW(), 1500, 'VENUE', NOW(), 1)
-				ON CONFLICT (booking_id, service_date) DO UPDATE SET refunded_at = NOW(), refund_minor = 1500,
-				    refund_reason = 'VENUE', released_at = NOW(), refunded_by_operator_id = 1
-				""").param("id", id).param("d", today()).update();
+				VALUES (:id, :d, :now, 1500, 'VENUE', :now, 1)
+				ON CONFLICT (booking_id, service_date) DO UPDATE SET refunded_at = :now, refund_minor = 1500,
+				    refund_reason = 'VENUE', released_at = :now, refunded_by_operator_id = 1
+				""").param("now", java.sql.Timestamp.from(clock.instant()))
+				.param("id", id).param("d", today()).update();
 
 		MvcResult result = mvc.perform(post("/api/venues/{v}/bookings/{code}/check-in", venue, code)
 						.cookie(operatorSession).with(csrf()))

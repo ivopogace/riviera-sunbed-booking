@@ -1,8 +1,8 @@
 package ai.riviera.platform.booking;
 
+import java.time.Clock;
 import java.util.Optional;
 import java.time.LocalDate;
-import java.time.ZoneId;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -13,6 +13,7 @@ import org.springframework.jdbc.core.simple.JdbcClient;
 
 import ai.riviera.platform.EnabledIfDockerAvailable;
 import ai.riviera.platform.TestcontainersConfiguration;
+import ai.riviera.platform.TiraneDaytimeClock;
 import ai.riviera.platform.booking.application.cancel.CancelBooking;
 import ai.riviera.platform.booking.application.cancel.CancelOutcome;
 import ai.riviera.platform.booking.application.checkin.CheckInBooking;
@@ -42,8 +43,6 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 @Import(TestcontainersConfiguration.class)
 @SpringBootTest
 class HiddenVenueSoldBookingRegressionIT {
-
-	private static final ZoneId TIRANE = ZoneId.of("Europe/Tirane");
 	private static final String OWNER = "hidden-sold-owner";
 	private static final GuestContact GUEST =
 			new GuestContact("sold@example.com", "Sol D. Guest", "+355699");
@@ -60,6 +59,9 @@ class HiddenVenueSoldBookingRegressionIT {
 	VenueCatalog catalog;
 	@Autowired
 	JdbcClient jdbc;
+
+	@Autowired
+	Clock clock;
 
 	private OperatorId owner;
 	private long venueId;
@@ -97,7 +99,7 @@ class HiddenVenueSoldBookingRegressionIT {
 
 	@Test
 	void soldBookingSurvivesOwnerSuspension() {
-		LocalDate future = LocalDate.now(TIRANE).plusDays(30);
+		LocalDate future = TiraneDaytimeClock.today(clock).plusDays(30);
 		long setId = onlineSet(1);
 		BookingOutcome outcome =
 				createBooking.create(new CreateBookingCommand(new SetId(setId), future, GUEST));
@@ -119,7 +121,7 @@ class HiddenVenueSoldBookingRegressionIT {
 
 	@Test
 	void checkInStillWorksAfterOwnerSuspension() {
-		LocalDate today = LocalDate.now(TIRANE);
+		LocalDate today = TiraneDaytimeClock.today(clock);
 		long setId = onlineSet(2);
 		long customer = jdbc.sql("INSERT INTO customer (email, full_name, phone) "
 						+ "VALUES ('sold-ci@example.com', 'Guest', '+355600') RETURNING id")
@@ -128,8 +130,8 @@ class HiddenVenueSoldBookingRegressionIT {
 		jdbc.sql("""
 				INSERT INTO booking (code, venue_id, set_id, customer_id, booking_date,
 				                     amount_minor, amount_currency, status, confirmed_at)
-				VALUES (:code, :venue, :set, :cust, :date, 4500, 'EUR', 'CONFIRMED', now())
-				""")
+				VALUES (:code, :venue, :set, :cust, :date, 4500, 'EUR', 'CONFIRMED', :now)
+				""").param("now", java.sql.Timestamp.from(clock.instant()))
 				.param("code", code).param("venue", venueId).param("set", setId)
 				.param("cust", customer).param("date", today).update();
 

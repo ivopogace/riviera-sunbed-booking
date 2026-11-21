@@ -1,7 +1,7 @@
 package ai.riviera.platform.booking;
 
+import java.time.Clock;
 import java.time.LocalDate;
-import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.Callable;
@@ -20,6 +20,7 @@ import org.springframework.jdbc.core.simple.JdbcClient;
 
 import ai.riviera.platform.EnabledIfDockerAvailable;
 import ai.riviera.platform.TestcontainersConfiguration;
+import ai.riviera.platform.TiraneDaytimeClock;
 import ai.riviera.platform.booking.application.checkin.MarkNoShows;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -38,13 +39,14 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 @SpringBootTest
 class NoShowSweepIT {
 
-	private static final ZoneId TIRANE = ZoneId.of("Europe/Tirane");
-
 	@Autowired
 	MarkNoShows markNoShows;
 
 	@Autowired
 	JdbcClient jdbc;
+
+	@Autowired
+	Clock clock;
 
 	private long venueId;
 
@@ -63,8 +65,8 @@ class NoShowSweepIT {
 		markNoShows.sweep();
 	}
 
-	private static LocalDate today() {
-		return LocalDate.now(TIRANE);
+	private LocalDate today() {
+		return TiraneDaytimeClock.today(clock);
 	}
 
 	private static String uniqueCode(String prefix) {
@@ -90,10 +92,10 @@ class NoShowSweepIT {
 				                     amount_minor, amount_currency, status, confirmed_at,
 				                     request_expires_at)
 				VALUES (:code, :venue, :set, :cust, :date, 4500, 'EUR', :status,
-				        CASE WHEN :confirmed THEN now() END,
-				        CASE WHEN :pending THEN now() + interval '1 day' END)
+				        CASE WHEN :confirmed THEN CAST(:now AS timestamptz) END,
+				        CASE WHEN :pending THEN CAST(:now AS timestamptz) + interval '1 day' END)
 				RETURNING id
-				""")
+				""").param("now", java.sql.Timestamp.from(clock.instant()))
 				.param("code", code).param("venue", venueId).param("set", set)
 				.param("cust", customer).param("date", date).param("status", status)
 				.param("confirmed", everConfirmed)
@@ -131,7 +133,8 @@ class NoShowSweepIT {
 	@Test
 	void neverTouchesCheckedInBooking() {
 		long completed = insert(uniqueCode("NSDONE"), today().minusDays(1), "CONFIRMED");
-		jdbc.sql("UPDATE booking SET status = 'COMPLETED', completed_at = now() WHERE id = :id")
+		jdbc.sql("UPDATE booking SET status = 'COMPLETED', completed_at = :now WHERE id = :id")
+				.param("now", java.sql.Timestamp.from(clock.instant()))
 				.param("id", completed).update();
 
 		assertEquals(0, markNoShows.sweep());

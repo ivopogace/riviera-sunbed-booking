@@ -1,7 +1,7 @@
 package ai.riviera.platform.booking;
 
+import java.time.Clock;
 import java.time.LocalDate;
-import java.time.ZoneId;
 import java.util.List;
 import java.util.Map;
 
@@ -20,6 +20,7 @@ import org.springframework.test.web.servlet.MvcResult;
 import ai.riviera.platform.EnabledIfDockerAvailable;
 import ai.riviera.platform.SessionLoginSupport;
 import ai.riviera.platform.TestcontainersConfiguration;
+import ai.riviera.platform.TiraneDaytimeClock;
 import ai.riviera.platform.operator.api.OperatorProvisioning;
 
 import jakarta.servlet.http.Cookie;
@@ -51,12 +52,14 @@ class AdminDayRefundControllerIT {
 	private static final String PLAIN_OPERATOR = "adr-plain-op";
 	private static final String PLAIN_OPERATOR_PW = "adr-plain-op-pw";
 	private static final String LOOKUP_PATH = "/api/admin/bookings/lookup";
-	private static final ZoneId TIRANE = ZoneId.of("Europe/Tirane");
 
 	@Autowired
 	MockMvc mvc;
 	@Autowired
 	JdbcClient jdbc;
+
+	@Autowired
+	Clock clock;
 	@Autowired
 	OperatorProvisioning provisioning;
 	@Autowired
@@ -105,9 +108,9 @@ class AdminDayRefundControllerIT {
 				INSERT INTO booking (code, venue_id, set_id, customer_id, booking_date, last_date,
 				                     amount_minor, amount_currency, status, confirmed_at)
 				VALUES (:code, :venue, :set, :cust, :first, :last, :amount, 'EUR', :status,
-				        CASE WHEN :status = 'CONFIRMED' THEN now() END)
+				        CASE WHEN :status = 'CONFIRMED' THEN CAST(:now AS timestamptz) END)
 				RETURNING id
-				""")
+				""").param("now", java.sql.Timestamp.from(clock.instant()))
 				.param("code", code).param("venue", venueId).param("set", set).param("cust", customer)
 				.param("first", first).param("last", first.plusDays(days - 1)).param("amount", amountMinor)
 				.param("status", status)
@@ -138,8 +141,8 @@ class AdminDayRefundControllerIT {
 		return prefix + System.nanoTime() % 1_000_000;
 	}
 
-	private static LocalDate today() {
-		return LocalDate.now(TIRANE);
+	private LocalDate today() {
+		return TiraneDaytimeClock.today(clock);
 	}
 
 	private List<Map<String, Object>> auditRows(String path) {
@@ -161,7 +164,8 @@ class AdminDayRefundControllerIT {
 		String email = ("adr-lookup-" + code + "@example.com").toLowerCase(java.util.Locale.ROOT);
 		LocalDate first = today().plusDays(40);
 		long id = insertSpan(code, email, venue, first, 3, 9000L, "CONFIRMED");
-		jdbc.sql("UPDATE booking_day SET attended_at = now() WHERE booking_id = :id AND service_date = :d")
+		jdbc.sql("UPDATE booking_day SET attended_at = :now WHERE booking_id = :id AND service_date = :d")
+				.param("now", java.sql.Timestamp.from(clock.instant()))
 				.param("id", id).param("d", first).update();
 		long pending = insertSpan(uniqueCode("ADRPEND"), email, venue, first.plusDays(10), 1, 4500L, "AWAITING_PAYMENT");
 
@@ -246,7 +250,8 @@ class AdminDayRefundControllerIT {
 		String code = uniqueCode("ADRATT");
 		LocalDate first = today().minusDays(2);
 		long attended = insertSpan(code, "adr-att-" + code + "@example.com", venue, first, 3, 9000L, "CONFIRMED");
-		jdbc.sql("UPDATE booking_day SET attended_at = now() WHERE booking_id = :id AND service_date = :d")
+		jdbc.sql("UPDATE booking_day SET attended_at = :now WHERE booking_id = :id AND service_date = :d")
+				.param("now", java.sql.Timestamp.from(clock.instant()))
 				.param("id", attended).param("d", first).update();
 		long unpaid = insertSpan(uniqueCode("ADRUNP"), "adr-unp-" + code + "@example.com", venue, first.plusDays(10), 2,
 				9000L, "AWAITING_PAYMENT");

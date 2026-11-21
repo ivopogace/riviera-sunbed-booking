@@ -1,7 +1,7 @@
 package ai.riviera.platform.booking;
 
+import java.time.Clock;
 import java.time.LocalDate;
-import java.time.ZoneId;
 import java.util.List;
 
 import org.junit.jupiter.api.Test;
@@ -14,6 +14,7 @@ import org.springframework.test.context.event.RecordApplicationEvents;
 
 import ai.riviera.platform.EnabledIfDockerAvailable;
 import ai.riviera.platform.TestcontainersConfiguration;
+import ai.riviera.platform.TiraneDaytimeClock;
 import ai.riviera.platform.availability.api.AvailabilityClaim;
 import ai.riviera.platform.availability.vocabulary.ClaimOutcome;
 import ai.riviera.platform.booking.application.cancel.CancelBooking;
@@ -49,8 +50,6 @@ import static org.junit.jupiter.api.Assertions.assertNull;
 @RecordApplicationEvents
 class VenueDayRefundServiceIT {
 
-	private static final ZoneId TIRANE = ZoneId.of("Europe/Tirane");
-
 	@Autowired
 	RefundVenueDay refundVenueDay;
 
@@ -65,6 +64,9 @@ class VenueDayRefundServiceIT {
 
 	@Autowired
 	JdbcClient jdbc;
+
+	@Autowired
+	Clock clock;
 
 	@Autowired
 	ApplicationEvents events;
@@ -97,9 +99,9 @@ class VenueDayRefundServiceIT {
 		long bookingId = jdbc.sql("""
 				INSERT INTO booking (code, venue_id, set_id, customer_id, booking_date, last_date,
 				                     amount_minor, amount_currency, status, confirmed_at)
-				VALUES (:code, :venue, :set, :cust, :first, :last, :amount, 'EUR', 'CONFIRMED', NOW())
+				VALUES (:code, :venue, :set, :cust, :first, :last, :amount, 'EUR', 'CONFIRMED', :now)
 				RETURNING id
-				""")
+				""").param("now", java.sql.Timestamp.from(clock.instant()))
 				.param("code", code).param("venue", venueId).param("set", setId)
 				.param("cust", customer).param("first", first).param("last", first.plusDays(days - 1))
 				.param("amount", amountMinor)
@@ -142,8 +144,8 @@ class VenueDayRefundServiceIT {
 				.param("s", setId).param("d", date).query(Long.class).single();
 	}
 
-	private static LocalDate today() {
-		return LocalDate.now(TIRANE);
+	private LocalDate today() {
+		return TiraneDaytimeClock.today(clock);
 	}
 
 	/** AC-1: day 3 of a 5-day stay, refunded at its rate, released, the claim re-claimable, the rest untouched. */
@@ -185,7 +187,8 @@ class VenueDayRefundServiceIT {
 		LocalDate first = today().plusDays(120);
 		long venueId = venueWithOnlineSets();
 		Seeded stay = confirmedStay(venueId, onlineSets(venueId, 1).getFirst(), first, 4, "VDSTAY0002", 8000L);
-		jdbc.sql("UPDATE booking_day SET attended_at = NOW() WHERE booking_id = :id AND service_date = :d")
+		jdbc.sql("UPDATE booking_day SET attended_at = :now WHERE booking_id = :id AND service_date = :d")
+				.param("now", java.sql.Timestamp.from(clock.instant()))
 				.param("id", stay.bookingId()).param("d", first).update();
 		refundForWeather.refundForWeather(bootstrap(), new VenueId(venueId), first.plusDays(1));
 
@@ -216,7 +219,8 @@ class VenueDayRefundServiceIT {
 		LocalDate missed = first.plusDays(1);
 		long venueId = venueWithOnlineSets();
 		Seeded stay = confirmedStay(venueId, onlineSets(venueId, 1).getFirst(), first, 3, "VDSTAY0003", 9000L);
-		jdbc.sql("UPDATE booking_day SET missed_at = NOW() WHERE booking_id = :id").param("id", stay.bookingId()).update();
+		jdbc.sql("UPDATE booking_day SET missed_at = :now WHERE booking_id = :id")
+				.param("now", java.sql.Timestamp.from(clock.instant())).param("id", stay.bookingId()).update();
 		jdbc.sql("UPDATE booking SET status = 'NO_SHOW' WHERE id = :id").param("id", stay.bookingId()).update();
 
 		VenueDayRefundOutcome outcome = refundVenueDay.refundDay(bootstrap(), new VenueId(venueId), "VDSTAY0003", missed);

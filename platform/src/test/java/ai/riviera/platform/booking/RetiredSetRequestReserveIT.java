@@ -2,7 +2,6 @@ package ai.riviera.platform.booking;
 
 import java.time.Clock;
 import java.time.Duration;
-import java.time.Instant;
 import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
@@ -66,7 +65,8 @@ class RetiredSetRequestReserveIT {
 	}
 
 	private void retire(SetId set) {
-		jdbc.sql("UPDATE set_position SET retired_at = now() WHERE id = :id").param("id", set.value()).update();
+		jdbc.sql("UPDATE set_position SET retired_at = :now WHERE id = :id")
+				.param("now", java.sql.Timestamp.from(clock.instant())).param("id", set.value()).update();
 	}
 
 	private long bookingsAt(Venue venue) {
@@ -126,7 +126,7 @@ class RetiredSetRequestReserveIT {
 		SetId set = venue.online().getFirst();
 		String code = "RSRV" + System.nanoTime();
 		StayFixtures.insertPendingLone(jdbc, venue, code, set, firstDay(clock), firstDay(clock),
-				Instant.now().plus(Duration.ofHours(12)));
+				clock.instant().plus(Duration.ofHours(12)));
 		retire(set);
 
 		mvc.perform(get("/api/bookings/{code}", code)

@@ -83,29 +83,31 @@ public final class StayFixtures {
 	 * given status (the trigger writes the days of a {@code CONFIRMED} one). {@code first} is the stay's
 	 * first day; the guest is on {@code a} for {@code daysOnA} days, then on {@code b} for {@code daysOnB}.
 	 */
-	static SeededStay insertStay(JdbcClient jdbc, Venue venue, String code, LocalDate first, SetId a, int daysOnA,
-			String statusA, SetId b, int daysOnB, String statusB) {
+	static SeededStay insertStay(JdbcClient jdbc, Clock clock, Venue venue, String code, LocalDate first, SetId a,
+			int daysOnA, String statusA, SetId b, int daysOnB, String statusB) {
 		long customer = jdbc.sql("INSERT INTO customer (email, full_name, phone) VALUES (:e, 'Guest', '+355600') RETURNING id")
 				.param("e", code + "@example.com").query(Long.class).single();
 		LocalDate switchDay = first.plusDays(daysOnA);
 		LocalDate last = switchDay.plusDays(daysOnB - 1L);
 		long stay = jdbc.sql("INSERT INTO stay (code, venue_id, first_date, last_date) VALUES (:c, :v, :f, :l) RETURNING id")
 				.param("c", code).param("v", venue.id()).param("f", first).param("l", last).query(Long.class).single();
-		long onA = insertStretch(jdbc, code + "-1", venue, a, customer, first, switchDay.minusDays(1), stay, statusA);
-		long onB = insertStretch(jdbc, code + "-2", venue, b, customer, switchDay, last, stay, statusB);
+		java.sql.Timestamp confirmedAt = java.sql.Timestamp.from(clock.instant());
+		long onA = insertStretch(jdbc, code + "-1", venue, a, customer, first, switchDay.minusDays(1), stay, statusA,
+				confirmedAt);
+		long onB = insertStretch(jdbc, code + "-2", venue, b, customer, switchDay, last, stay, statusB, confirmedAt);
 		return new SeededStay(stay, code, List.of(onA, onB));
 	}
 
 	private static long insertStretch(JdbcClient jdbc, String rowCode, Venue venue, SetId set, long customer,
-			LocalDate first, LocalDate last, long stay, String status) {
+			LocalDate first, LocalDate last, long stay, String status, java.sql.Timestamp confirmedAt) {
 		return jdbc.sql("""
 				INSERT INTO booking (code, venue_id, set_id, customer_id, booking_date, last_date, amount_minor,
 				                     amount_currency, status, confirmed_at, stay_id)
-				VALUES (:code, :venue, :set, :cust, :first, :last, :price, 'EUR', :status, now(), :stay)
+				VALUES (:code, :venue, :set, :cust, :first, :last, :price, 'EUR', :status, :confirmedAt, :stay)
 				RETURNING id
 				""").param("code", rowCode).param("venue", venue.id()).param("set", set.value()).param("cust", customer)
 				.param("first", first).param("last", last).param("price", PRICE).param("status", status).param("stay", stay)
-				.query(Long.class).single();
+				.param("confirmedAt", confirmedAt).query(Long.class).single();
 	}
 
 	/**

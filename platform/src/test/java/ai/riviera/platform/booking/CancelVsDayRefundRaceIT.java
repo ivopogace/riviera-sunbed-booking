@@ -113,7 +113,7 @@ class CancelVsDayRefundRaceIT {
 	void aMoveReminderStampWaitingOnTheMoveDayRefundStampsNothing() throws Exception {
 		Venue venue = venue();
 		LocalDate first = firstDay(clock);
-		SeededStay stay = StayFixtures.insertStay(jdbc, venue, "RACEMOVE" + System.nanoTime() % 1_000_000, first,
+		SeededStay stay = StayFixtures.insertStay(jdbc, clock, venue, "RACEMOVE" + System.nanoTime() % 1_000_000, first,
 				venue.online().get(0), 2, "CONFIRMED", venue.online().get(1), 2, "CONFIRMED");
 		long arriving = stay.stretches().get(1);
 
@@ -129,7 +129,7 @@ class CancelVsDayRefundRaceIT {
 	void aStayCancelWaitingOnADayRefundRefundsTheRemainder() throws Exception {
 		Venue venue = venue();
 		LocalDate first = firstDay(clock);
-		SeededStay stay = StayFixtures.insertStay(jdbc, venue, "RACESTAY" + System.nanoTime() % 1_000_000, first,
+		SeededStay stay = StayFixtures.insertStay(jdbc, clock, venue, "RACESTAY" + System.nanoTime() % 1_000_000, first,
 				venue.online().get(0), 3, "CONFIRMED", venue.online().get(1), 4, "CONFIRMED");
 		stay.stretches().forEach(stretch -> accrue(venue, stretch, PRICE));
 		long second = stay.stretches().get(1);

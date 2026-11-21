@@ -1,7 +1,7 @@
 package ai.riviera.platform.booking;
 
+import java.time.Clock;
 import java.time.LocalDate;
-import java.time.ZoneId;
 import java.time.ZoneOffset;
 import java.util.ArrayList;
 import java.util.List;
@@ -20,6 +20,7 @@ import ai.riviera.platform.EnabledIfDockerAvailable;
 import ai.riviera.platform.OwnershipFixtures;
 import ai.riviera.platform.SessionLoginSupport;
 import ai.riviera.platform.TestcontainersConfiguration;
+import ai.riviera.platform.TiraneDaytimeClock;
 
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
@@ -39,13 +40,14 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 @AutoConfigureMockMvc
 class SeasonClosureReserveIT {
 
-	private static final ZoneId TIRANE = ZoneId.of("Europe/Tirane");
-
 	@Autowired
 	MockMvc mvc;
 
 	@Autowired
 	JdbcClient jdbc;
+
+	@Autowired
+	Clock clock;
 
 	private final List<Long> venues = new ArrayList<>();
 
@@ -54,8 +56,8 @@ class SeasonClosureReserveIT {
 		venues.forEach(venue -> StayFixtures.cleanup(jdbc, venue));
 	}
 
-	private static LocalDate reopen() {
-		return LocalDate.now(TIRANE).plusYears(1);
+	private LocalDate reopen() {
+		return TiraneDaytimeClock.today(clock).plusYears(1);
 	}
 
 	private String body(long setId, LocalDate date) {
@@ -152,7 +154,7 @@ class SeasonClosureReserveIT {
 				RETURNING id
 				""")
 				.param("name", name).param("mode", mode)
-				.param("closedAt", java.time.Instant.now().atOffset(ZoneOffset.UTC))
+				.param("closedAt", clock.instant().atOffset(ZoneOffset.UTC))
 				.param("reopenOn", reopenOn).param("advanceSales", advanceSales)
 				.query(Long.class).single();
 		jdbc.sql("""

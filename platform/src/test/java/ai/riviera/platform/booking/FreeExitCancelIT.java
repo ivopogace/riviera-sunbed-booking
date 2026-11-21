@@ -1,5 +1,6 @@
 package ai.riviera.platform.booking;
 
+import java.time.Clock;
 import java.time.Duration;
 import java.time.Instant;
 import java.time.LocalDate;
@@ -18,6 +19,7 @@ import org.springframework.test.web.servlet.MockMvc;
 import ai.riviera.platform.EnabledIfDockerAvailable;
 import ai.riviera.platform.OwnershipFixtures;
 import ai.riviera.platform.TestcontainersConfiguration;
+import ai.riviera.platform.TiraneDaytimeClock;
 import ai.riviera.platform.booking.application.remodel.NewReceipt;
 import ai.riviera.platform.booking.application.remodel.ReceiptMove;
 import ai.riviera.platform.booking.application.remodel.RemodelReceipts;
@@ -60,11 +62,14 @@ class FreeExitCancelIT {
 	JdbcClient jdbc;
 
 	@Autowired
+	Clock clock;
+
+	@Autowired
 	RemodelReceipts receipts;
 
 	@Test
 	void aMovedBookingInsideItsExitCancelsInFullAsAVenueChangeWhileAnUnmovedOneKeepsTheLateShare() throws Exception {
-		LocalDate tomorrow = LocalDate.now(TIRANE).plusDays(1);
+		LocalDate tomorrow = TiraneDaytimeClock.today(clock).plusDays(1);
 		long venue = insertLateRefundVenue();
 		long a1 = insertSet(venue, 1);
 		long a2 = insertSet(venue, 2);
@@ -73,7 +78,7 @@ class FreeExitCancelIT {
 		String stayedCode = "FXST" + (System.nanoTime() % 1_000_000);
 		long moved = seedConfirmed(venue, a2, movedCode, tomorrow);
 		long stayed = seedConfirmed(venue, a3, stayedCode, tomorrow);
-		Instant movedAt = Instant.now().minus(Duration.ofHours(1));
+		Instant movedAt = clock.instant().minus(Duration.ofHours(1));
 		jdbc.sql("UPDATE booking SET moved_at = :at WHERE id = :id").param("at", java.sql.Timestamp.from(movedAt))
 				.param("id", moved).update();
 		receipts.store(new NewReceipt(new VenueId(venue), bootstrapOperator(), movedAt, List.of(new ReceiptMove(
@@ -151,8 +156,9 @@ class FreeExitCancelIT {
 		long booking = jdbc.sql("""
 				INSERT INTO booking (code, venue_id, set_id, customer_id, booking_date, amount_minor, amount_currency,
 				                     status, confirmed_at, created_at)
-				VALUES (:code, :v, :s, :c, :d, 4500, 'EUR', 'CONFIRMED', NOW(), :createdAt) RETURNING id
-				""").param("code", code).param("v", venue).param("s", set).param("c", customer).param("d", date)
+				VALUES (:code, :v, :s, :c, :d, 4500, 'EUR', 'CONFIRMED', :now, :createdAt) RETURNING id
+				""").param("now", java.sql.Timestamp.from(clock.instant()))
+				.param("code", code).param("v", venue).param("s", set).param("c", customer).param("d", date)
 				.param("createdAt", java.sql.Timestamp.from(createdAt)).query(Long.class).single();
 		jdbc.sql("""
 				INSERT INTO payout_ledger_entry (venue_id, booking_id, entry_type, gross_minor, commission_minor, net_minor, currency)
