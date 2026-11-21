@@ -70,6 +70,16 @@ rule 2 instead, and `--riv-cta-grad` stays declared once. The spec keeps the ban
 (› "a lighter dark fill could clear 3:1 and keep the label at AA, which is why leaving it is a
 choice"). **Check the label before proposing a fill change.**
 
+The figures above are the card's. On every other surface the CTA stands on, such a fill also keeps
+the label at AA, with one exception (#1845). The room differs by surface (it is narrower where a
+photo or the map can sit under the glass), so the card's figures are not a floor for the others.
+The exception is the console's sticky save bars (the venue tab's and the layout editor's), which leave
+none: their card glass has no blur, and an uploaded photo or the beach map scrolls
+beneath it, so the lightest host there is the glass over white. A fill light enough for 3:1 against
+that takes the white label under AA, so on those bars the lighter fill is not an alternative at all.
+The spec asserts the answer per host (› "the untaken lighter fill against …: does the label keep
+AA?").
+
 **Caveat, stated rather than buried:** where the hairline is the carrier it is 1px, and the
 normative text of 1.4.11 sets no minimum thickness for a component boundary (2.4.13 Focus
 Appearance, AAA, does for focus indicators; 2.4.11 is Focus Not Obscured and is about hiding, not
@@ -185,7 +195,7 @@ number-bearing surface, not two.
 | `--riv-amenity-tag-border`, `--riv-amenity-water-border` | `app/shared/fixed-fill-token-skins.contrast.spec.ts` (`amenities.contrast.spec.ts` is the same family's ink/fill text pairs, not these borders) |
 | `--riv-warn-edge/50` on `daily-view-tab`'s close-sales trigger — the button's own label carries the identity | `app/operator/daily-view-tab.contrast.spec.ts` |
 | `--riv-solid-fill-brand` as the operator account chip's avatar disc — the chip's non-text anchor on the header glass, measured at ≥ 3:1 over every porcelain stop; the chip's `--riv-chip-border` hairline is the tourist header's token and decoration under rule 2 (the label carries the identity) | `app/operator/operator-account-chip.contrast.spec.ts` |
-| the primary CTA, `[appPrimaryCta]`'s `--riv-cta-grad` fill under the `--riv-cta-border` hairline, **in the dark theme** (#1840): the white label carries the identity, resting and hovered, and the fill against the card is the measured sub-3:1 number. In the light themes the fill clears 3:1 against the card and needs no exemption | `app/shared/cta-border-token.contrast.spec.ts` › "meets rule 2's three conditions: an AA label resting and hovered, a measured boundary, a real border" |
+| the primary CTA, `[appPrimaryCta]`'s `--riv-cta-grad` fill under the `--riv-cta-border` hairline, **in the dark theme** (#1840), on every surface it stands on there (#1845): the white label carries the identity, resting and hovered, and the fill against each dark host is a measured band whose floor is under 3:1. The spec names each host with the call-site files that stand on it and counts the CTAs in each file; it fails when a count changes or a file sits on no host, so a new site cannot merge without the population being revisited. One site needs no exemption: booking-view's Pay now stands on the awaiting banner's fixed light fill in every theme, where the fill clears 3:1 against the banner. In the light themes the fill clears 3:1 against the card and needs no exemption | `app/shared/cta-border-token.contrast.spec.ts` › "meets rule 2's three conditions: an AA label resting and hovered, a measured boundary, a real border" and › "the dark fill against … is a measured band"; the popover host (the calendar's Apply, the partly-free sheet's retry) in `app/shared/availability-calendar.contrast.spec.ts` › "the Apply rests on rule 2 in the dark palette" |
 | the theme row's swatch circle in the account menu and phone sheet (**rule 2a** — an `aria-hidden` ornament; the row's `Colour theme` label and its value carry the meaning). Its white inset hairline clears 3:1 over the darker swatch stops and vanishes over the palest, which is why rule 1 cannot carry it | `app/app.contrast.spec.ts` |
 
 `--riv-console-card-border`'s one remaining consumer is not a control at all: it is the edge of the
@@ -320,3 +330,13 @@ the one above.
 #1840, same day and same pages: the owner chose to record the dark-theme CTA under rule 2 and not
 to change a colour. That pass re-measured the CTA from the tokens and corrected rule 1's corollary,
 which had said no fill could clear 3:1 against the dark card and keep the label at AA.
+
+#1845, same day and same pages: the dark CTA measured on every surface it stands on, not on the card
+glass alone. No colour, token or threshold moved. The surfaces were read from the templates and the
+dark token block, then confirmed in the running app where reading left doubt. Hosts that real
+content can pass under (a photo, the map) are measured over `WORST_PHOTOS`' white and black
+extremes, the photo bands' convention; a dialog, popover or sheet is measured over its scrim and
+that content, since a scrim over a light photo is lighter than any dark page stop. Changes: rule 2's row covers each dark host; booking-view's light banner is
+recorded as the one site where the fill clears 3:1 by itself; the calendar's Apply is restated under
+rule 2 in its own spec, with rule 1's assertion kept beside it; the corollary's "has room" is scoped
+to the hosts where it holds.

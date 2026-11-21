@@ -8,7 +8,9 @@ import {
   composite,
   contrastRatio,
   hexToRgb,
+  relativeLuminance,
   rgbToHex,
+  whiteOnThreeToOneFill,
 } from '../../testing/contrast';
 import {
   CALENDAR_PALETTE,
@@ -20,9 +22,12 @@ import {
   CTA_BORDER,
   CTA_GRAD_STOPS,
   DARK_POP_INK_DISABLED,
+  DARK_UNDER_CONTENT,
   Glass,
   POP_INK_DISABLED,
+  POPOVER_SCRIM,
   expectAaOverStops,
+  stackOver,
   surfaceOver,
 } from '../../testing/glass-tokens';
 import { baseBlock, declarationsOf, themeBlock } from '../../testing/stylesheet-tokens';
@@ -187,9 +192,9 @@ describe('Availability calendar contrast (WCAG AA) — venue/day-availability.ts
     });
 
     /**
-     * The stay's Apply wears the primary CTA skin (`[appPrimaryCta]`), proved against the card glass
-     * in `cta-border-token.contrast.spec.ts`; here against the popover it sits on, by the adjacency rule of
-     * `docs/design/non-text-contrast.md` rule 1: the fill or the white hairline, whichever abuts.
+     * The stay's Apply wears the primary CTA skin (`[appPrimaryCta]`). Rule 1's reading of
+     * `docs/design/non-text-contrast.md` (the fill or the white hairline, whichever abuts) carries
+     * it in the light palettes; in the dark one it is supplementary to rule 2, asserted below.
      */
     it('the Apply button reads against the popover surface over every stop', () => {
       expect(read('shared/availability-calendar.html')).toMatch(
@@ -227,6 +232,34 @@ describe('Availability calendar contrast (WCAG AA) — venue/day-availability.ts
         ).toBeLessThan(contrastRatio(palette.ink, rgbToHex(surface)));
       }
     });
+  });
+
+  /**
+   * Rule 2, the dark CTA's ground (#1840): the label carries the identity at AA and the fill-vs-host
+   * number stays measured. This popover (H4 in `cta-border-token.contrast.spec.ts`) is also the one
+   * the partly-free sheet's retry stands on; both float over their scrim and whatever page lies under.
+   */
+  it('the Apply rests on rule 2 in the dark palette: a measured fill band with its floor under 3:1, an AA label', () => {
+    expect(read('shared/availability-calendar.ts'), 'the scrim').toContain(
+      'bg-[rgba(6,30,40,0.35)]',
+    );
+    const hosts = DARK_UNDER_CONTENT.map((ground) =>
+      stackOver([POPOVER_SCRIM, DARK_CALENDAR_PALETTE.surface], ground),
+    );
+    const ratios = hosts.flatMap((host) =>
+      CTA_GRAD_STOPS.map((fill) => contrastRatio(rgbToHex(fill), rgbToHex(host))),
+    );
+
+    expect(Math.min(...ratios), 'the band floor, under 3:1').toBeCloseTo(2.25, 2);
+    expect(Math.max(...ratios), 'the band ceiling').toBeCloseTo(3.16, 2);
+    for (const fill of CTA_GRAD_STOPS) {
+      expect(contrastRatio('#ffffff', rgbToHex(fill))).toBeGreaterThanOrEqual(AA_NORMAL);
+    }
+    const lightest = Math.max(...hosts.map((host) => relativeLuminance(rgbToHex(host))));
+    expect(
+      whiteOnThreeToOneFill(lightest),
+      'the untaken lighter fill keeps the label at AA here',
+    ).toBeGreaterThanOrEqual(AA_NORMAL);
   });
 
   /**
