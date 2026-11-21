@@ -15,11 +15,11 @@ seed SQL `now()`) read the same clock, so the test and the application agree on 
 
 ## Acceptance criteria
 
-- [ ] **AC-1:** Given the clock at 2038-01-01T10:00Z, when group A's 15 classes run, then all 54 tests red on
+- [x] **AC-1:** Given the clock at 2038-01-01T10:00Z, when group A's 15 classes run, then all 54 tests red on
   `main` are green. *Seam:* the context `Clock` bean moved by `TestClockTravel` · *Pinned by:* the 15 classes.
-- [ ] **AC-2:** Given the real clock, when every caller of `StayFixtures.firstDay` (22 classes) and the rest of
+- [x] **AC-2:** Given the real clock, when every caller of `StayFixtures.firstDay` (22 classes) and the rest of
   the suite run, then they are green. *Seam:* same · *Pinned by:* the 22 classes; the suite in package batches.
-- [ ] **AC-3:** No file under `platform/src/main` in the diff.
+- [x] **AC-3:** No file under `platform/src/main` in the diff.
 
 ## Non-goals
 
@@ -40,12 +40,12 @@ seed SQL `now()`) read the same clock, so the test and the application agree on 
 
 ## Execution status
 
-**Stage pointer:** implement (phase 0)
+**Stage pointer:** review (round 1)
 
-**Next action:** open the draft PR once the no-travel suite is green.
+**Next action:** mark #1849 ready and run the review gate at high.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
-| 0 — `firstDay(Clock)` and the callers' wall reads | ⏳ | |
+| 0 — `firstDay(Clock)` and the callers' wall reads | ✅ | `af4a318` |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
