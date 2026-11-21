@@ -1,5 +1,6 @@
 package ai.riviera.platform.venue;
 
+import java.time.Clock;
 import java.time.LocalDate;
 import java.util.List;
 
@@ -13,6 +14,7 @@ import org.springframework.jdbc.core.simple.JdbcClient;
 
 import ai.riviera.platform.EnabledIfDockerAvailable;
 import ai.riviera.platform.TestcontainersConfiguration;
+import ai.riviera.platform.TiraneDaytimeClock;
 import ai.riviera.platform.venue.api.VenueCatalog;
 import ai.riviera.platform.venue.vocabulary.AvailabilitySummary;
 import ai.riviera.platform.venue.vocabulary.DailyAvailability;
@@ -46,6 +48,9 @@ class VenueAvailabilityCalendarIT {
 
 	@Autowired
 	JdbcClient jdbc;
+
+	@Autowired
+	Clock clock;
 
 	private VenueId venue;
 
@@ -86,6 +91,11 @@ class VenueAvailabilityCalendarIT {
 				.param("v", venue.value()).query(Long.class).list();
 	}
 
+	/** A day whose sales are open whatever the hour: {@code salesOpen} is read against the clock (#4). */
+	private LocalDate aDayOnSale() {
+		return TiraneDaytimeClock.today(clock).plusDays(30);
+	}
+
 	private void hold(long setId, LocalDate date, String state) {
 		jdbc.sql("INSERT INTO set_availability (set_id, booking_date, state) "
 				+ "VALUES (:id, :date, :state)")
@@ -95,7 +105,7 @@ class VenueAvailabilityCalendarIT {
 	@Test
 	void countsEveryDayInTheWindowIncludingUntouchedOnes() {
 		List<Long> sets = setIds();
-		LocalDate from = LocalDate.of(2027, 3, 1);
+		LocalDate from = aDayOnSale();
 		hold(sets.get(0), from.plusDays(1), "BOOKED_ONLINE");
 		hold(sets.get(1), from.plusDays(1), "STAFF_MARKED");
 		hold(sets.get(2), from.plusDays(3), "BOOKED_ONLINE");
@@ -136,7 +146,7 @@ class VenueAvailabilityCalendarIT {
 
 	@Test
 	void singleDayWindowIsOneEntry() {
-		LocalDate day = LocalDate.of(2027, 5, 1);
+		LocalDate day = aDayOnSale();
 
 		assertEquals(List.of(new DailyAvailability(day, new AvailabilitySummary(TOTAL_SETS, TOTAL_SETS), true)),
 				catalog.availabilityBetween(venue, day, day).orElseThrow(),

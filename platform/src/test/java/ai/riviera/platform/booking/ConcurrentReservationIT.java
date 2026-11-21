@@ -1,5 +1,6 @@
 package ai.riviera.platform.booking;
 
+import java.time.Clock;
 import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
@@ -10,6 +11,8 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.RepeatedTest;
 import org.junit.jupiter.api.RepetitionInfo;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -19,6 +22,7 @@ import org.springframework.jdbc.core.simple.JdbcClient;
 
 import ai.riviera.platform.EnabledIfDockerAvailable;
 import ai.riviera.platform.TestcontainersConfiguration;
+import ai.riviera.platform.TiraneDaytimeClock;
 import ai.riviera.platform.booking.application.reserve.BookingOutcome;
 import ai.riviera.platform.booking.application.reserve.CreateBooking;
 import ai.riviera.platform.booking.application.reserve.CreateBookingCommand;
@@ -46,9 +50,20 @@ class ConcurrentReservationIT {
 	@Autowired
 	JdbcClient jdbc;
 
-	private SetId anyOnlineSet() {
-		return new SetId(jdbc.sql("SELECT id FROM set_position WHERE pool = 'ONLINE' ORDER BY id LIMIT 1")
-				.query(Long.class).single());
+	@Autowired
+	Clock clock;
+
+	/** This test's own venue, so no other class's row can sit on the contested {@code (set, date)}. */
+	private StayFixtures.Venue venue;
+
+	@BeforeEach
+	void seedVenue() {
+		venue = StayFixtures.venue(jdbc, "INSTANT", null, true);
+	}
+
+	@AfterEach
+	void removeVenue() {
+		StayFixtures.cleanup(jdbc, venue.id());
 	}
 
 	private long bookingRows(SetId set, LocalDate date) {
@@ -96,8 +111,8 @@ class ConcurrentReservationIT {
 	@RepeatedTest(5)
 	void exactlyOneWins(RepetitionInfo info) throws Exception {
 		int contenders = 12;
-		SetId set = anyOnlineSet();
-		LocalDate date = LocalDate.now().plusYears(2).plusDays(info.getCurrentRepetition());
+		SetId set = venue.online().getFirst();
+		LocalDate date = TiraneDaytimeClock.today(clock).plusYears(2).plusDays(info.getCurrentRepetition());
 
 		List<BookingOutcome> outcomes = race(set, date, contenders);
 

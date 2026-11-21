@@ -1,10 +1,12 @@
 package ai.riviera.platform.booking;
 
+import java.time.Clock;
 import java.time.LocalDate;
-import java.time.ZoneId;
+import java.util.ArrayList;
 import java.util.List;
 
 import org.hamcrest.Matchers;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -17,6 +19,7 @@ import org.springframework.test.web.servlet.MockMvc;
 import ai.riviera.platform.EnabledIfDockerAvailable;
 import ai.riviera.platform.SessionLoginSupport;
 import ai.riviera.platform.TestcontainersConfiguration;
+import ai.riviera.platform.TiraneDaytimeClock;
 
 import jakarta.servlet.http.Cookie;
 
@@ -39,7 +42,6 @@ class StaffBookingControllerIT {
 
 	private static final String OPERATOR = "operator";
 	private static final String PASSWORD = "test-operator-pw";
-	private static final long MIRAMAR = 1L;
 	private static final LocalDate DAY = LocalDate.of(2033, 7, 15);
 
 	@Autowired
@@ -51,24 +53,52 @@ class StaffBookingControllerIT {
 	@Autowired
 	ai.riviera.platform.booking.application.checkin.MarkNoShows markNoShows;
 
+	@Autowired
+	Clock clock;
+
 	private Cookie operatorSession;
+
+	/** This test's own venue: the lists and counts are exact, so no other class's booking may reach them. */
+	private long venue;
+
+	private final List<Long> customers = new ArrayList<>();
 
 	@BeforeEach
 	void logIn() throws Exception {
 		operatorSession = SessionLoginSupport.operatorSession(mvc, OPERATOR, PASSWORD);
+		venue = StayFixtures.venue(jdbc, "INSTANT", null, false).id();
+		jdbc.sql("INSERT INTO operator_venue (venue_id, operator_id) SELECT :venue, id FROM operator WHERE username = :u")
+				.param("venue", venue).param("u", OPERATOR).update();
+		jdbc.sql("""
+				INSERT INTO set_position (venue_id, row_label, position_no, tier, pool, price_minor,
+				                          price_currency, grid_x, grid_y)
+				VALUES (:venue, 'A', 5, 'STANDARD', 'ONLINE', 4500, 'EUR', 5, 1)
+				""").param("venue", venue).update();
+	}
+
+	@AfterEach
+	void removeFixtures() {
+		StayFixtures.cleanupNow(jdbc, venue);
+		customers.forEach(customer -> jdbc.sql("DELETE FROM customer WHERE id = :id").param("id", customer).update());
+	}
+
+	private LocalDate today() {
+		return TiraneDaytimeClock.today(clock);
 	}
 
 	private List<Long> venueSets(int n) {
 		return jdbc.sql("SELECT id FROM set_position WHERE venue_id = :v ORDER BY id LIMIT :n")
-				.param("v", MIRAMAR).param("n", n)
+				.param("v", venue).param("n", n)
 				.query(Long.class).list();
 	}
 
 	private long newCustomer(String email) {
-		return jdbc.sql("""
+		long customer = jdbc.sql("""
 				INSERT INTO customer (email, full_name, phone)
 				VALUES (:email, 'Daily Guest', '+355699') RETURNING id
 				""").param("email", email).query(Long.class).single();
+		customers.add(customer);
+		return customer;
 	}
 
 	private void seedBooking(String code, long setId, long customerId, String status) {
@@ -82,7 +112,7 @@ class StaffBookingControllerIT {
 				                     amount_minor, amount_currency, status)
 				VALUES (:code, :venue, :set, :customer, :date, 4500, 'EUR', :status)
 				""")
-				.param("code", code).param("venue", MIRAMAR).param("set", setId)
+				.param("code", code).param("venue", venue).param("set", setId)
 				.param("customer", customerId).param("date", date).param("status", status)
 				.update();
 	}
@@ -95,7 +125,7 @@ class StaffBookingControllerIT {
 				                     amount_minor, amount_currency, status, stay_id)
 				VALUES (:code, :venue, :set, :customer, :first, :last, 4500, 'EUR', :status, :stay)
 				""")
-				.param("code", code).param("venue", MIRAMAR).param("set", setId)
+				.param("code", code).param("venue", venue).param("set", setId)
 				.param("customer", customerId).param("first", first).param("last", last)
 				.param("status", status).param("stay", stayId)
 				.update();
@@ -110,7 +140,7 @@ class StaffBookingControllerIT {
 		seedBooking("U8AWAITING1", sets.get(2), customer, "AWAITING_PAYMENT");
 		seedBooking("U8CANCELLED", sets.get(3), customer, "CANCELLED");
 
-		mvc.perform(get("/api/venues/{id}/bookings", MIRAMAR).cookie(operatorSession)
+		mvc.perform(get("/api/venues/{id}/bookings", venue).cookie(operatorSession)
 						.param("date", DAY.toString()))
 				.andExpect(status().isOk())
 				.andExpect(jsonPath("$.length()").value(2))
@@ -122,7 +152,7 @@ class StaffBookingControllerIT {
 
 	@Test
 	void dailyViewListsSweptNoShows() throws Exception {
-		LocalDate past = LocalDate.now(ZoneId.of("Europe/Tirane")).minusDays(4);
+		LocalDate past = today().minusDays(4);
 		List<Long> sets = venueSets(2);
 		long customer = newCustomer("noshow-" + past + "@e.com");
 		seedBookingOn("U8NOSHOW1", sets.get(0), customer, "CONFIRMED", past);
@@ -130,7 +160,7 @@ class StaffBookingControllerIT {
 
 		markNoShows.sweep();
 
-		mvc.perform(get("/api/venues/{id}/bookings", MIRAMAR).cookie(operatorSession)
+		mvc.perform(get("/api/venues/{id}/bookings", venue).cookie(operatorSession)
 						.param("date", past.toString()))
 				.andExpect(status().isOk())
 				.andExpect(jsonPath("$.length()").value(2))
@@ -141,12 +171,12 @@ class StaffBookingControllerIT {
 	@Test
 	void sameDayConfirmedBookingAppearsInTodaysList() throws Exception {
 		// AC-11 (#791): a same-day confirmed booking lists exactly like an advance one.
-		LocalDate today = LocalDate.now(ZoneId.of("Europe/Tirane"));
+		LocalDate today = today();
 		List<Long> sets = venueSets(1);
 		long customer = newCustomer("today-" + today + "@e.com");
 		seedBookingOn("U8TODAY001", sets.get(0), customer, "CONFIRMED", today);
 
-		mvc.perform(get("/api/venues/{id}/bookings", MIRAMAR).cookie(operatorSession)
+		mvc.perform(get("/api/venues/{id}/bookings", venue).cookie(operatorSession)
 						.param("date", today.toString()))
 				.andExpect(status().isOk())
 				.andExpect(jsonPath("$.length()").value(1))
@@ -164,12 +194,12 @@ class StaffBookingControllerIT {
 		jdbc.sql("UPDATE booking SET last_date = :last WHERE code = 'U8STAY0001'")
 				.param("last", middle.plusDays(1)).update();
 
-		mvc.perform(get("/api/venues/{id}/bookings", MIRAMAR).cookie(operatorSession)
+		mvc.perform(get("/api/venues/{id}/bookings", venue).cookie(operatorSession)
 						.param("date", middle.toString()))
 				.andExpect(status().isOk())
 				.andExpect(jsonPath("$.length()").value(1))
 				.andExpect(jsonPath("$[0].code").value("U8STAY0001"));
-		mvc.perform(get("/api/venues/{id}/bookings", MIRAMAR).cookie(operatorSession)
+		mvc.perform(get("/api/venues/{id}/bookings", venue).cookie(operatorSession)
 						.param("date", middle.plusDays(2).toString()))
 				.andExpect(status().isOk())
 				.andExpect(jsonPath("$.length()").value(0));
@@ -185,7 +215,7 @@ class StaffBookingControllerIT {
 		seedSpan("U8SPANMID1", sets.get(1), customer, "CONFIRMED", day.minusDays(1), day.plusDays(1), null);
 		seedSpan("U8SPANEND1", sets.get(2), customer, "CONFIRMED", day.minusDays(2), day, null);
 
-		mvc.perform(get("/api/venues/{id}/bookings", MIRAMAR).cookie(operatorSession)
+		mvc.perform(get("/api/venues/{id}/bookings", venue).cookie(operatorSession)
 						.param("date", day.toString()))
 				.andExpect(status().isOk())
 				.andExpect(jsonPath("$.length()").value(3))
@@ -207,12 +237,12 @@ class StaffBookingControllerIT {
 		long stay = jdbc.sql("""
 				INSERT INTO stay (code, venue_id, first_date, last_date)
 				VALUES ('U8STITCH01', :venue, :first, :last) RETURNING id
-				""").param("venue", MIRAMAR).param("first", moveDay.minusDays(2)).param("last", moveDay.plusDays(1))
+				""").param("venue", venue).param("first", moveDay.minusDays(2)).param("last", moveDay.plusDays(1))
 				.query(Long.class).single();
 		seedSpan("U8STITCHA1", sets.get(0), customer, "CONFIRMED", moveDay.minusDays(2), moveDay.minusDays(1), stay);
 		seedSpan("U8STITCHB1", sets.get(1), customer, "CONFIRMED", moveDay, moveDay.plusDays(1), stay);
 
-		mvc.perform(get("/api/venues/{id}/bookings", MIRAMAR).cookie(operatorSession)
+		mvc.perform(get("/api/venues/{id}/bookings", venue).cookie(operatorSession)
 						.param("date", moveDay.toString()))
 				.andExpect(status().isOk())
 				.andExpect(jsonPath("$.length()").value(1))
@@ -229,8 +259,7 @@ class StaffBookingControllerIT {
 	 */
 	@Test
 	void attendanceIsTheDaysNotTheStays() throws Exception {
-		// Nine to seven days back: clear of the swept no-show case's day, which shares this venue.
-		LocalDate first = LocalDate.now(ZoneId.of("Europe/Tirane")).minusDays(9);
+		LocalDate first = today().minusDays(9);
 		List<Long> sets = venueSets(1);
 		long customer = newCustomer("attend-" + first + "@e.com");
 		seedSpan("U8ATTEND01", sets.get(0), customer, "CONFIRMED", first, first.plusDays(2), null);
@@ -243,7 +272,7 @@ class StaffBookingControllerIT {
 
 		for (int offset = 0; offset < 3; offset++) {
 			String expected = offset < 2 ? "ATTENDED" : "MISSED";
-			mvc.perform(get("/api/venues/{id}/bookings", MIRAMAR).cookie(operatorSession)
+			mvc.perform(get("/api/venues/{id}/bookings", venue).cookie(operatorSession)
 							.param("date", first.plusDays(offset).toString()))
 					.andExpect(status().isOk())
 					.andExpect(jsonPath("$[?(@.code == 'U8ATTEND01')].attendance").value(expected))
@@ -268,17 +297,17 @@ class StaffBookingControllerIT {
 				WHERE service_date = :d AND booking_id = (SELECT id FROM booking WHERE code = 'U8RELEASE1')
 				""").param("d", first.plusDays(1)).update();
 
-		mvc.perform(get("/api/venues/{id}/bookings", MIRAMAR).cookie(operatorSession).param("date", first.toString()))
+		mvc.perform(get("/api/venues/{id}/bookings", venue).cookie(operatorSession).param("date", first.toString()))
 				.andExpect(status().isOk())
 				.andExpect(jsonPath("$[?(@.code == 'U8RELEASE1')].attendance").value("REFUNDED"))
 				.andExpect(jsonPath("$[?(@.code == 'U8RELEASE1')].released").value(false));
-		mvc.perform(get("/api/venues/{id}/bookings", MIRAMAR).cookie(operatorSession)
+		mvc.perform(get("/api/venues/{id}/bookings", venue).cookie(operatorSession)
 						.param("date", first.plusDays(1).toString()))
 				.andExpect(status().isOk())
 				.andExpect(jsonPath("$[?(@.code == 'U8RELEASE1')].attendance").value("REFUNDED"))
 				.andExpect(jsonPath("$[?(@.code == 'U8RELEASE1')].released").value(true))
 				.andExpect(jsonPath("$[?(@.code == 'U8RELEASE1')].status").value("CONFIRMED"));
-		mvc.perform(get("/api/venues/{id}/bookings", MIRAMAR).cookie(operatorSession)
+		mvc.perform(get("/api/venues/{id}/bookings", venue).cookie(operatorSession)
 						.param("date", first.plusDays(2).toString()))
 				.andExpect(jsonPath("$[?(@.code == 'U8RELEASE1')].attendance").value("EXPECTED"))
 				.andExpect(jsonPath("$[?(@.code == 'U8RELEASE1')].released").value(false));
@@ -296,7 +325,7 @@ class StaffBookingControllerIT {
 		seedBookingOn("U8COUNTAW1", sets.get(3), customer, "AWAITING_PAYMENT", day);
 		seedBookingOn("U8COUNTCX1", sets.get(4), customer, "CANCELLED", day);
 
-		mvc.perform(get("/api/venues/{id}/bookings/count", MIRAMAR).cookie(operatorSession)
+		mvc.perform(get("/api/venues/{id}/bookings/count", venue).cookie(operatorSession)
 						.param("date", day.toString()))
 				.andExpect(status().isOk())
 				.andExpect(jsonPath("$.date").value(day.toString()))
@@ -320,11 +349,11 @@ class StaffBookingControllerIT {
 				WHERE service_date = :d AND booking_id = (SELECT id FROM booking WHERE code = 'U8COUNTRL1')
 				""").param("d", first.plusDays(1)).update();
 
-		mvc.perform(get("/api/venues/{id}/bookings/count", MIRAMAR).cookie(operatorSession)
+		mvc.perform(get("/api/venues/{id}/bookings/count", venue).cookie(operatorSession)
 						.param("date", first.toString()))
 				.andExpect(status().isOk())
 				.andExpect(jsonPath("$.count").value(1));
-		mvc.perform(get("/api/venues/{id}/bookings/count", MIRAMAR).cookie(operatorSession)
+		mvc.perform(get("/api/venues/{id}/bookings/count", venue).cookie(operatorSession)
 						.param("date", first.plusDays(1).toString()))
 				.andExpect(status().isOk())
 				.andExpect(jsonPath("$.count").value(0));
@@ -332,21 +361,21 @@ class StaffBookingControllerIT {
 
 	@Test
 	void bookedOnlineDefaultsToTodayInTirane() throws Exception {
-		mvc.perform(get("/api/venues/{id}/bookings/count", MIRAMAR).cookie(operatorSession))
+		mvc.perform(get("/api/venues/{id}/bookings/count", venue).cookie(operatorSession))
 				.andExpect(status().isOk())
-				.andExpect(jsonPath("$.date").value(LocalDate.now(ZoneId.of("Europe/Tirane")).toString()));
+				.andExpect(jsonPath("$.date").value(today().toString()));
 	}
 
 	@Test
 	void bookedOnlineCountRequiresOperator() throws Exception {
-		mvc.perform(get("/api/venues/{id}/bookings/count", MIRAMAR).param("date", DAY.toString()))
+		mvc.perform(get("/api/venues/{id}/bookings/count", venue).param("date", DAY.toString()))
 				.andExpect(status().isUnauthorized());
 	}
 
 	@Test
 	void bookingsListRequiresOperator() throws Exception {
 		// AC-9: no operator credential → 401, never a public read of booking codes (invariant #7).
-		mvc.perform(get("/api/venues/{id}/bookings", MIRAMAR).param("date", DAY.toString()))
+		mvc.perform(get("/api/venues/{id}/bookings", venue).param("date", DAY.toString()))
 				.andExpect(status().isUnauthorized());
 	}
 }

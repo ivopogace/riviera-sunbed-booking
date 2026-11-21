@@ -3,8 +3,9 @@ package ai.riviera.platform.venue;
 import ai.riviera.platform.EnabledIfDockerAvailable;
 import ai.riviera.platform.SessionLoginSupport;
 import ai.riviera.platform.TestcontainersConfiguration;
+import ai.riviera.platform.TiraneDaytimeClock;
+import java.time.Clock;
 import java.time.LocalDate;
-import java.time.ZoneId;
 
 import jakarta.servlet.http.Cookie;
 import org.hamcrest.Matchers;
@@ -62,7 +63,15 @@ class VenueAdminControllerIT {
 	@Autowired
 	org.springframework.jdbc.core.simple.JdbcClient jdbc;
 
+	@Autowired
+	Clock clock;
+
 	private Cookie operatorSession;
+
+	/** The day the guards and the lock read call today: the application's clock, never the wall. */
+	private LocalDate today() {
+		return TiraneDaytimeClock.today(clock);
+	}
 
 	@BeforeEach
 	void logIn() throws Exception {
@@ -391,14 +400,16 @@ class VenueAdminControllerIT {
 		long booked = addSet(venue, setBody("A", 1, "STANDARD", "ONLINE", 3000, "EUR", 1, 1));
 		long staffHeld = addSet(venue, setBody("A", 2, "STANDARD", "ONLINE", 3000, "EUR", 2, 1));
 		addSet(venue, setBody("A", 3, "STANDARD", "WALK_IN", 2500, "EUR", 3, 1));
-		seedBooking("PINNED01", venue, booked, "CONFIRMED", LocalDate.of(2027, 7, 1));
-		seedBooking("PINNED02", venue, booked, "CONFIRMED", LocalDate.of(2027, 7, 3));
-		jdbc.sql("UPDATE booking SET last_date = DATE '2027-07-05' WHERE code = 'PINNED02'").update();
+		// Ahead of the clock: the read lists holds and bookings from today on.
+		LocalDate firstBooked = today().plusDays(60);
+		LocalDate lastBooked = firstBooked.plusDays(4);
+		seedBooking("PINNED01", venue, booked, "CONFIRMED", firstBooked);
+		seedBooking("PINNED02", venue, booked, "CONFIRMED", firstBooked.plusDays(2));
+		jdbc.sql("UPDATE booking SET last_date = :last WHERE code = 'PINNED02'").param("last", lastBooked).update();
 		jdbc.sql("INSERT INTO set_availability (set_id, booking_date, state) "
-						+ "VALUES (:set, DATE '2027-07-01', 'BOOKED_ONLINE')")
-				.param("set", booked).update();
-		// Tomorrow, not today: this test's clock and the guard's may straddle midnight (see removeSet…).
-		LocalDate tomorrow = LocalDate.now(ZoneId.of("Europe/Tirane")).plusDays(1);
+						+ "VALUES (:set, :day, 'BOOKED_ONLINE')")
+				.param("set", booked).param("day", firstBooked).update();
+		LocalDate tomorrow = today().plusDays(1);
 		jdbc.sql("INSERT INTO set_availability (set_id, booking_date, state) "
 						+ "VALUES (:set, :day, 'STAFF_MARKED')")
 				.param("set", staffHeld).param("day", tomorrow).update();
@@ -410,9 +421,9 @@ class VenueAdminControllerIT {
 				.andExpect(jsonPath("$.map.setVersion").isNumber())
 				.andExpect(jsonPath("$.locks.length()").value(2))
 				.andExpect(jsonPath("$.locks[0].setId").value(booked))
-				.andExpect(jsonPath("$.locks[0].bookedOn").value("2027-07-01"))
-				.andExpect(jsonPath("$.locks[0].bookedUntil").value("2027-07-05"))
-				.andExpect(jsonPath("$.locks[0].heldOn").value("2027-07-01"))
+				.andExpect(jsonPath("$.locks[0].bookedOn").value(firstBooked.toString()))
+				.andExpect(jsonPath("$.locks[0].bookedUntil").value(lastBooked.toString()))
+				.andExpect(jsonPath("$.locks[0].heldOn").value(firstBooked.toString()))
 				.andExpect(jsonPath("$.locks[1].setId").value(staffHeld))
 				.andExpect(jsonPath("$.locks[1].bookedOn").value(Matchers.nullValue()))
 				.andExpect(jsonPath("$.locks[1].bookedUntil").value(Matchers.nullValue()))
@@ -428,7 +439,7 @@ class VenueAdminControllerIT {
 		jdbc.sql("INSERT INTO set_availability (set_id, booking_date, state) "
 						+ "VALUES (:set, :day, 'STAFF_MARKED')")
 				.param("set", setId)
-				.param("day", LocalDate.now(ZoneId.of("Europe/Tirane")).minusDays(1)).update();
+				.param("day", today().minusDays(1)).update();
 
 		mvc.perform(get("/api/venues/{v}/beach-map", venue).cookie(operatorSession))
 				.andExpect(status().isOk())
@@ -546,11 +557,8 @@ class VenueAdminControllerIT {
 	}
 
 	/**
-	 * The hold is dated tomorrow rather than today because this test reads its own clock while the
-	 * guard reads the application's: a midnight rollover between the two would turn a today-dated
-	 * hold into history and flip the expected 409 to a 204. The inclusive today edge is pinned
-	 * where the clock is controlled — {@code AvailabilityLookupIT} on the SQL predicate,
-	 * {@code VenueAdminServiceTest} on the date the guard passes.
+	 * The inclusive today edge is pinned where the clock is moved: {@code AvailabilityLookupIT} on the
+	 * SQL predicate, {@code VenueAdminServiceTest} on the date the guard passes.
 	 */
 	@Test
 	void removeSetKeepsAStaffHoldAndAnswers409() throws Exception {
@@ -559,7 +567,7 @@ class VenueAdminControllerIT {
 		jdbc.sql("INSERT INTO set_availability (set_id, booking_date, state) "
 						+ "VALUES (:set, :day, 'STAFF_MARKED')")
 				.param("set", setId)
-				.param("day", LocalDate.now(ZoneId.of("Europe/Tirane")).plusDays(1))
+				.param("day", today().plusDays(1))
 				.update();
 
 		mvc.perform(delete("/api/venues/{v}/sets/{s}", venue, setId).cookie(operatorSession).with(csrf()))
@@ -581,7 +589,7 @@ class VenueAdminControllerIT {
 		jdbc.sql("INSERT INTO set_availability (set_id, booking_date, state) "
 						+ "VALUES (:set, :day, 'STAFF_MARKED')")
 				.param("set", setId)
-				.param("day", LocalDate.now(ZoneId.of("Europe/Tirane")).minusDays(400))
+				.param("day", today().minusDays(400))
 				.update();
 
 		mvc.perform(delete("/api/venues/{v}/sets/{s}", venue, setId).cookie(operatorSession).with(csrf()))
@@ -604,9 +612,10 @@ class VenueAdminControllerIT {
 		jdbc.sql("""
 				INSERT INTO booking (code, venue_id, set_id, customer_id, booking_date,
 				                     amount_minor, amount_currency, status)
-				VALUES ('BOOKCLB1', :venue, :set, :cust, DATE '2027-07-01', 3000, 'EUR', 'CONFIRMED')
+				VALUES ('BOOKCLB1', :venue, :set, :cust, :day, 3000, 'EUR', 'CONFIRMED')
 				""")
-				.param("venue", venue).param("set", setId).param("cust", customer).update();
+				.param("venue", venue).param("set", setId).param("cust", customer)
+				.param("day", today().plusDays(60)).update();
 
 		mvc.perform(delete("/api/venues/{v}/sets/{s}", venue, setId).cookie(operatorSession).with(csrf()))
 				.andExpect(status().isConflict())
@@ -622,7 +631,7 @@ class VenueAdminControllerIT {
 		jdbc.sql("INSERT INTO set_availability (set_id, booking_date, state) "
 						+ "VALUES (:set, :day, 'BOOKED_ONLINE')")
 				.param("set", setId)
-				.param("day", LocalDate.now(ZoneId.of("Europe/Tirane")).plusDays(30))
+				.param("day", today().plusDays(30))
 				.update();
 
 		mvc.perform(patch("/api/venues/{v}/sets/{s}", venue, setId).cookie(operatorSession).with(csrf())
