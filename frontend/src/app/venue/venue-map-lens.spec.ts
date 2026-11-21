@@ -423,6 +423,7 @@ describe('VenueMap on a phone: the row lens (#1762)', () => {
       const seed = panAgain();
       expect(document.activeElement).toBe(one('pick-book'));
       expect(one('pick-status')!.textContent.trim()).not.toBe('');
+      const focus = vi.spyOn(one('lens-open')!, 'focus');
 
       venueReq().flush(beach(['taken', 'free', 'taken', 'free', 'free', 'free']));
       await settle();
@@ -431,6 +432,8 @@ describe('VenueMap on a phone: the row lens (#1762)', () => {
       expect(one('pick-status')!.textContent.trim()).toBe('');
       expect(all('lens-cell').filter((cell) => cell.dataset['state'] === 'pick')).toHaveLength(0);
       expect(document.activeElement).toBe(one('lens-open'));
+      // The bar is fixed to the screen, so the row may be far off it: the page stays put (#1821).
+      expect(focus).toHaveBeenCalledWith({ preventScroll: true });
       expect(one('lens-open')!.getAttribute('aria-label')).toBe('Row A, €45, 4 of 6 free');
       // The visitor's scroll in the open row is theirs: a refresh never asks the lens to pan again.
       expect(panAgain()).toBe(seed);
@@ -482,10 +485,11 @@ describe('VenueMap on a phone: the row lens (#1762)', () => {
       expect(document.activeElement).toBe(one('map-not-found'));
     });
 
-    it('a re-read that shows the pick taken drops it with its bar, and focus the bar held lands on the open row', async () => {
+    it('a re-read that shows the pick taken drops it with its bar, and focus the bar held lands on the open row, unscrolled as for a refresh', async () => {
       await load();
       await tap(tile(3));
       one('pick-book')!.focus();
+      const focus = vi.spyOn(one('lens-open')!, 'focus');
 
       await reread(beach(['taken', 'free', 'taken', 'free', 'free', 'free']));
 
@@ -495,6 +499,7 @@ describe('VenueMap on a phone: the row lens (#1762)', () => {
       expect(openCodes()).toEqual(['A']);
       // The open row names itself with the fresh count, so the landing says what changed.
       expect(document.activeElement).toBe(one('lens-open'));
+      expect(focus).toHaveBeenCalledWith({ preventScroll: true });
       expect(one('lens-open')!.getAttribute('aria-label')).toBe('Row A, €45, 4 of 6 free');
     });
 

@@ -1568,8 +1568,8 @@ The SPA rules whose TSDoc points here; structure is `riviera-frontend`'s, stylin
   `load()` in flight rather than superseding it (superseding a date change and then failing would leave the old
   days' map under the new header); that load may predate the refusal, so its answer is followed by the one
   refresh owed, unless a later load was dispatched. It re-asks no open stay plan and does not reseed the lens.
-  Focus on a tile follows the set, not the element (#1817): free turned partly free swaps the button and
-  keeps focus on the new one, a set left with none hands it to the map, and neither move scrolls.
+  Focus on a tile follows the set (#1817): free turned partly free keeps it on the new button, a set left with none
+  hands it to the map. A read that drops the pick moves focus its fixed bar held to the open row (#1821). None scrolls.
 - **While other days load, the availability card states nothing from the old read** (`VenueMap.staleDays`, #1815): an
   in-page date change leaves the old days' map on screen, `inert` and at half opacity, and the availability line
   reads "Checking availability for <new days>…" until the read answers. The line is the one voice: a persistent
