@@ -9,6 +9,7 @@ import java.util.List;
 import io.micrometer.core.instrument.MeterRegistry;
 
 import org.awaitility.Awaitility;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -22,6 +23,7 @@ import org.springframework.transaction.PlatformTransactionManager;
 import ai.riviera.platform.EnabledIfDockerAvailable;
 import ai.riviera.platform.RegistryRows;
 import ai.riviera.platform.TestcontainersConfiguration;
+import ai.riviera.platform.booking.StayFixtures;
 import ai.riviera.platform.booking.events.BookingPaymentDue;
 import ai.riviera.platform.booking.vocabulary.BookingId;
 import ai.riviera.platform.booking.vocabulary.CancellationWindow;
@@ -93,10 +95,19 @@ class RequestPaymentDueMailIT {
 	private record SetRef(long setId, long venueId, String venueName) {
 	}
 
+	/** This test's own venue: its bookings reach no other class's sets, and leave with it (#2). */
+	private StayFixtures.Venue venue;
+
 	@BeforeEach
 	void isolateOutbox() {
 		mailer.clear();
 		fixtures = new BookingMailFixtures(jdbc, txManager, publisher);
+		venue = StayFixtures.venue(jdbc, "INSTANT", null, false);
+	}
+
+	@AfterEach
+	void removeVenue() {
+		StayFixtures.cleanup(jdbc, venue.id());
 	}
 
 	/**
@@ -308,8 +319,8 @@ class RequestPaymentDueMailIT {
 		return jdbc.sql("""
 				SELECT sp.id, sp.venue_id, v.name
 				FROM set_position sp JOIN venue v ON v.id = sp.venue_id
-				WHERE sp.pool = 'ONLINE' ORDER BY sp.id LIMIT 1
-				""")
+				WHERE sp.id = :set
+				""").param("set", venue.online().getFirst().value())
 				.query((rs, n) -> new SetRef(rs.getLong("id"), rs.getLong("venue_id"), rs.getString("name")))
 				.single();
 	}

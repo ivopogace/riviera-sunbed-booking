@@ -4,6 +4,7 @@ import java.time.Duration;
 import java.time.LocalDate;
 
 import org.awaitility.Awaitility;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -62,6 +63,11 @@ class DayRefundMailIT {
 	void isolateOutbox() {
 		mailer.clear();
 		fixtures = new BookingMailFixtures(jdbc, txManager, publisher);
+	}
+
+	@AfterEach
+	void removeVenue() {
+		fixtures.removeVenue();
 	}
 
 	private String venueNameOf(long venueId) {

@@ -5,6 +5,7 @@ import java.time.LocalDate;
 import java.util.UUID;
 
 import org.awaitility.Awaitility;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -97,6 +98,11 @@ class MailOutboxScopeIT {
 	void resetTransport() {
 		fixtures = new BookingMailFixtures(jdbc, txManager, publisher);
 		transport.reset();
+	}
+
+	@AfterEach
+	void removeVenue() {
+		fixtures.removeVenue();
 	}
 
 	/**

@@ -6,6 +6,8 @@ import java.util.List;
 import java.util.UUID;
 
 import org.awaitility.Awaitility;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -51,9 +53,20 @@ class PayoutSpineRetryIT {
 	@Autowired
 	PayoutSpineRetry retry;
 
+	private BookingMailFixtures fixtures;
+
+	@BeforeEach
+	void newFixtures() {
+		fixtures = new BookingMailFixtures(jdbc, txManager, publisher);
+	}
+
+	@AfterEach
+	void removeVenue() {
+		fixtures.removeVenue();
+	}
+
 	@Test
 	void reDrivesAFailedAccrualAndLeavesAFailedMailAlone() {
-		BookingMailFixtures fixtures = new BookingMailFixtures(jdbc, txManager, publisher);
 		SetRef set = fixtures.onlineSet();
 		LocalDate date = LocalDate.of(2032, 8, 3);
 		long bookingId = fixtures.seedBooking(set, "SPINE001", date, "spine-retry@example.com", AMOUNT_MINOR,

@@ -13,6 +13,7 @@ import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.support.TransactionTemplate;
 
 import ai.riviera.platform.RegistryRows;
+import ai.riviera.platform.booking.StayFixtures;
 import ai.riviera.platform.booking.events.BookingCancelled;
 import ai.riviera.platform.booking.events.BookingConfirmed;
 import ai.riviera.platform.booking.events.BookingDayRefunded;
@@ -40,9 +41,9 @@ import ai.riviera.platform.venue.vocabulary.VenueId;
  * would have invited a second near-copy. Not a Spring bean: each IT builds one from its own
  * autowired collaborators, which keeps it out of every other context in the suite.
  *
- * <p><strong>Bookings are SQL-seeded and never claimed through {@code availability}.</strong> A
- * claimed {@code (set, date)} row is never released (invariant #2), so classes that seed bookings
- * must not compete for dates; each caller picks dates no other IT uses.
+ * <p><strong>Bookings are SQL-seeded on the fixture's own venue and never claimed through
+ * {@code availability}.</strong> {@link #onlineSet} makes the venue; the caller's {@code @AfterEach}
+ * runs {@link #removeVenue}, so no row outlives the test (invariant #2).
  *
  * <p><strong>Publications are matched on the event's {@code bookingId} field</strong>
  * ({@link RegistryRows#NAMES_BOOKING}) beside the listener's pinned {@code event_type}. A seeded
@@ -93,6 +94,9 @@ public final class BookingMailFixtures {
 	private final TransactionTemplate transactions;
 	private final ApplicationEventPublisher publisher;
 
+	/** The venue {@link #onlineSet} creates, so this fixture's bookings reach no other class's sets. */
+	private StayFixtures.Venue venue;
+
 	public BookingMailFixtures(JdbcClient jdbc, PlatformTransactionManager txManager,
 			ApplicationEventPublisher publisher) {
 		this.jdbc = jdbc;
@@ -100,13 +104,24 @@ public final class BookingMailFixtures {
 		this.publisher = publisher;
 	}
 
-	/** A seeded set, carrying the venue it belongs to so a booking row can name both. */
+	/** A set, carrying the venue it belongs to so a booking row can name both. */
 	public record SetRef(long setId, long venueId) {
 	}
 
+	/** The first online set of this fixture's own venue, made on first use; {@link #removeVenue} undoes it. */
 	public SetRef onlineSet() {
-		return jdbc.sql("SELECT id, venue_id FROM set_position WHERE pool = 'ONLINE' ORDER BY id LIMIT 1")
-				.query((rs, n) -> new SetRef(rs.getLong("id"), rs.getLong("venue_id"))).single();
+		if (venue == null) {
+			venue = StayFixtures.venue(jdbc, "INSTANT", null, false);
+		}
+		return new SetRef(venue.online().getFirst().value(), venue.id());
+	}
+
+	/** Waits out the venue's publications, then removes it with every row on it (#2). */
+	public void removeVenue() {
+		if (venue != null) {
+			StayFixtures.cleanup(jdbc, venue.id());
+			venue = null;
+		}
 	}
 
 	public long seedBooking(SetRef set, String code, LocalDate date, String contactEmail, long amountMinor,
