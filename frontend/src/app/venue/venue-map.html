@@ -201,13 +201,20 @@
           <!-- The wrapper seats the progress mark beside the line, outside the live region: a node arriving inside it could be read as a second message. -->
           <div class="mb-2 flex items-center gap-2">
             <!-- aria-live: changing the date silently swaps the grid, so announce the new count. Only the CONTENT branches (#717) — swapping the element would rebuild the live region, which announces unreliably. While other days load it says so, which also makes an unchanged count a new message (#1815). -->
+            <!-- min-height: while other days load the line is never shorter than the count line it replaced, so the page under it does not move up (#1836). -->
             <p
+              #availabilityLine
               class="text-[16px] text-riv-card-ink"
               data-testid="availability"
               aria-live="polite"
               aria-atomic="true"
+              [style.min-height.px]="staleDays() ? heldLineHeight() : null"
             >
               @if (staleDays()) {
+                @if (totalCount()) {
+                  <!-- The count's empty twin: its 19px box keeps the line as tall as the count made it, with the text on the same baseline. -->
+                  <span class="text-[19px] font-bold" aria-hidden="true"></span>
+                }
                 <ng-container i18n="The venue page's availability line while newly picked days load"
                   >Checking availability for
                   {{
