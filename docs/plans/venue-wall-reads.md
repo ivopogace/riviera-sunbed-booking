@@ -18,14 +18,14 @@ and its literal 2040 expiry probes become "now plus the cert lifetime".
 
 ## Acceptance criteria
 
-- [ ] **AC-1:** Given the clock at 2038-01-01T10:00Z, when the 13 group-D classes and `TemWebhookIT` run, then the 58
+- [x] **AC-1:** Given the clock at 2038-01-01T10:00Z, when the 13 group-D classes and `TemWebhookIT` run, then the 58
   tests red on `main` are green. *Seam:* the context `Clock` moved by `TestClockTravel` · *Pinned by:* those classes.
-- [ ] **AC-2:** Given the clock at 2038, when the whole suite runs, then the only red is group F
+- [x] **AC-2:** Given the clock at 2038, when the whole suite runs, then the only red is group F
   (`GuestContactRetentionIT`, #1854). *Seam:* same · *Pinned by:* the suite in package batches.
-- [ ] **AC-3:** Given the real clock, the touched classes, `SnsMessageVerifierTest` and the rest of the suite are green;
+- [x] **AC-3:** Given the real clock, the touched classes, `SnsMessageVerifierTest` and the rest of the suite are green;
   the expiry, lapsed-cert and rogue-signer refusals still fail for their own reason. *Pinned by:*
   `SnsMessageVerifierTest`, `TemWebhookIT`.
-- [ ] **AC-4:** No file under `platform/src/main` in the diff.
+- [x] **AC-4:** No file under `platform/src/main` in the diff.
 
 ## Non-goals
 
@@ -46,12 +46,12 @@ and its literal 2040 expiry probes become "now plus the cert lifetime".
 
 ## Execution status
 
-**Stage pointer:** implement (phase 0)
+**Stage pointer:** review (round 1)
 
-**Next action:** open the draft PR; finish the whole suite at 2038 and with no travel.
+**Next action:** mark #1855 ready and run the review gate at high.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
-| 0 — D + E read the clock | ⏳ | |
+| 0 — D + E read the clock | ✅ | `a057517` |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
