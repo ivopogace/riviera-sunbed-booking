@@ -203,6 +203,8 @@ const DARK_HOSTS: readonly DarkHost[] = [
 const POPOVER_HOST = {
   measuredIn: 'shared/availability-calendar.contrast.spec.ts',
   sites: ['shared/availability-calendar.html', 'venue/partly-free-sheet.ts'],
+  scrim: 'bg-[rgba(6,30,40,0.35)]',
+  scrimSources: ['shared/availability-calendar.ts', 'venue/partly-free-sheet.ts'],
 } as const;
 
 /**
@@ -557,6 +559,10 @@ describe('--riv-cta-border — the CTA hairline (#853)', () => {
     }
   });
 
+  it('the lighter-fill measure refuses a host too light for any fill to reach 3:1', () => {
+    expect(() => whiteOnThreeToOneFill(0.4)).toThrow(RangeError);
+  });
+
   it('every dark host mirror matches the dark block of the stylesheet', () => {
     const dark = themeBlock('dark');
     const mirrors = [
@@ -592,6 +598,9 @@ describe('--riv-cta-border — the CTA hairline (#853)', () => {
       for (const site of sites) {
         expect(read(site), `${host}: ${site}`).toContain(scrim);
       }
+    }
+    for (const source of POPOVER_HOST.scrimSources) {
+      expect(read(source), `H4: ${source}`).toContain(POPOVER_HOST.scrim);
     }
     expect(themeBlock('dark'), 'the console scrim').toContain(
       `--riv-console-scrim: ${rgbToHex(DARK_CONSOLE_SCRIM.color)};`,
