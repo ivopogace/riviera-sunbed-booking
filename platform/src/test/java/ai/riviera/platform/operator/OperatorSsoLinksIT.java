@@ -1,5 +1,7 @@
 package ai.riviera.platform.operator;
 
+import java.time.Clock;
+import java.time.Duration;
 import java.util.List;
 import java.util.UUID;
 
@@ -39,6 +41,8 @@ class OperatorSsoLinksIT {
 	private static final String APPLE = "https://appleid.apple.com";
 	private static final String HASH = "{bcrypt}not-checked-here";
 
+	@Autowired
+	Clock clock;
 	@Autowired
 	OperatorSsoLinks links;
 	@Autowired
@@ -132,7 +136,7 @@ class OperatorSsoLinksIT {
 		links.link(operator, GOOGLE, uniqueName());
 		links.link(operator, APPLE, uniqueName());
 		String tokenHash = uniqueName();
-		passwordReset.issue(operator, tokenHash, java.time.Instant.now().plusSeconds(600));
+		passwordReset.issue(operator, tokenHash, clock.instant().plus(Duration.ofMinutes(10)));
 
 		assertInstanceOf(OperatorResetOutcome.Reset.class, passwordReset.resetPassword(tokenHash, HASH));
 		assertTrue(links.links(operator).isEmpty());

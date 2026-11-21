@@ -1,6 +1,7 @@
 package ai.riviera.platform.operator.adapter.out;
 
 import java.sql.Timestamp;
+import java.time.Clock;
 import java.time.Instant;
 import java.util.Optional;
 
@@ -12,9 +13,10 @@ import ai.riviera.platform.operator.vocabulary.OperatorId;
 import ai.riviera.platform.operator.vocabulary.OperatorStatus;
 
 /**
- * JDBC adapter for {@link OperatorResetTokens} (invariant #1). A token is live while unconsumed and
- * unexpired by the DB clock ({@code NOW()}), so no application clock crosses this seam; {@link #consume}
- * is one guarded {@code UPDATE … RETURNING}, so at most one redeemer wins.
+ * JDBC adapter for {@link OperatorResetTokens} (invariant #1). A token is live while unconsumed and its
+ * {@code expires_at} is after {@code :now}, the injected {@link Clock} that {@code auth} mints the expiry from, so each
+ * comparison and stamp reads one time source (invariant #6); {@link #consume} is one guarded {@code UPDATE … RETURNING},
+ * so at most one redeemer wins.
  */
 @Repository
 class JdbcOperatorResetTokens implements OperatorResetTokens {
@@ -22,11 +24,14 @@ class JdbcOperatorResetTokens implements OperatorResetTokens {
 	private static final String ID_PARAM = "id";
 	private static final String TOKEN_HASH_PARAM = "tokenHash";
 	private static final String ACTIVE_PARAM = "active";
+	private static final String NOW_PARAM = "now";
 
 	private final JdbcClient jdbc;
+	private final Clock clock;
 
-	JdbcOperatorResetTokens(JdbcClient jdbc) {
+	JdbcOperatorResetTokens(JdbcClient jdbc, Clock clock) {
 		this.jdbc = jdbc;
+		this.clock = clock;
 	}
 
 	@Override
@@ -49,10 +54,11 @@ class JdbcOperatorResetTokens implements OperatorResetTokens {
 	@Override
 	public void retireAll(OperatorId operatorId) {
 		jdbc.sql("""
-				UPDATE operator_password_reset_token SET consumed_at = NOW()
+				UPDATE operator_password_reset_token SET consumed_at = :now
 				WHERE operator_id = :id AND consumed_at IS NULL
 				""")
 				.param(ID_PARAM, operatorId.value())
+				.param(NOW_PARAM, now())
 				.update();
 	}
 
@@ -72,9 +78,10 @@ class JdbcOperatorResetTokens implements OperatorResetTokens {
 	public Optional<OperatorId> operatorFor(String tokenHash) {
 		return jdbc.sql("""
 				SELECT operator_id FROM operator_password_reset_token
-				WHERE token_hash = :tokenHash AND consumed_at IS NULL AND expires_at > NOW()
+				WHERE token_hash = :tokenHash AND consumed_at IS NULL AND expires_at > :now
 				""")
 				.param(TOKEN_HASH_PARAM, tokenHash)
+				.param(NOW_PARAM, now())
 				.query(Long.class)
 				.optional()
 				.map(OperatorId::new);
@@ -84,11 +91,12 @@ class JdbcOperatorResetTokens implements OperatorResetTokens {
 	public Optional<String> activeUsernameFor(String tokenHash) {
 		return jdbc.sql("""
 				SELECT o.username FROM operator_password_reset_token t JOIN operator o ON o.id = t.operator_id
-				WHERE t.token_hash = :tokenHash AND t.consumed_at IS NULL AND t.expires_at > NOW()
+				WHERE t.token_hash = :tokenHash AND t.consumed_at IS NULL AND t.expires_at > :now
 				  AND o.status = :active
 				""")
 				.param(TOKEN_HASH_PARAM, tokenHash)
 				.param(ACTIVE_PARAM, OperatorStatus.ACTIVE.name())
+				.param(NOW_PARAM, now())
 				.query(String.class)
 				.optional();
 	}
@@ -96,13 +104,14 @@ class JdbcOperatorResetTokens implements OperatorResetTokens {
 	@Override
 	public boolean consume(OperatorId operatorId, String tokenHash) {
 		return jdbc.sql("""
-				UPDATE operator_password_reset_token SET consumed_at = NOW()
+				UPDATE operator_password_reset_token SET consumed_at = :now
 				WHERE token_hash = :tokenHash AND operator_id = :id
-				  AND consumed_at IS NULL AND expires_at > NOW()
+				  AND consumed_at IS NULL AND expires_at > :now
 				RETURNING id
 				""")
 				.param(TOKEN_HASH_PARAM, tokenHash)
 				.param(ID_PARAM, operatorId.value())
+				.param(NOW_PARAM, now())
 				.query(Long.class)
 				.optional()
 				.isPresent();
@@ -114,5 +123,9 @@ class JdbcOperatorResetTokens implements OperatorResetTokens {
 				.param("hash", passwordHash)
 				.param(ID_PARAM, operatorId.value())
 				.update();
+	}
+
+	private Timestamp now() {
+		return Timestamp.from(clock.instant());
 	}
 }
