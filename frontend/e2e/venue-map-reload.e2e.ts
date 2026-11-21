@@ -1,6 +1,7 @@
 import { expect, type Page, test } from '@playwright/test';
 
 import { mockChallengeFence } from './support/auth-mocks';
+import { expectNoSeriousAxeViolations } from './support/axe';
 import { completeDialog, refuseBookingAsTaken } from './support/booking-dialog';
 import type { MockSetView, MockVenueMapView } from './support/venue-views';
 
@@ -367,6 +368,107 @@ for (const { name, width } of WIDTHS) {
       await expect(mapCard(page)).toHaveCSS('transition-property', 'none');
       await expect(page.getByTestId('availability-wait')).toHaveCSS('animation-name', 'none');
       release();
+    });
+  });
+}
+
+/** Midday in Tirane, mid-month: the calendar opens on one month, so on a month's last day tomorrow has no cell. */
+const PINNED_NOW = new Date('2026-08-15T10:00:00Z');
+const PINNED_TOMORROW = '2026-08-16';
+
+/** The page's two closed panels; the reviews section raises alerts of its own. */
+const closedAlert = (page: Page) =>
+  page.locator('[data-testid="map-sales-closed"], [data-testid="map-closed-for-season"]');
+
+/**
+ * Open venue 1 on the pinned today with `first` as its read, pick tomorrow in the calendar and hold that read
+ * open. Returns the function that answers it with `next`.
+ */
+async function pickTomorrowWithHeldRead(
+  page: Page,
+  first: Partial<MockVenueMapView>,
+  next: Partial<MockVenueMapView>,
+): Promise<() => void> {
+  let release: () => void = () => undefined;
+  const held = new Promise<void>((resolve) => (release = resolve));
+  await page.clock.setFixedTime(PINNED_NOW);
+  await mockVenues(page);
+  let reads = 0;
+  await page.route(/\/api\/venues\/1(\?.*)?$/, async (route) => {
+    reads += 1;
+    const later = reads > 1;
+    if (later) {
+      await held;
+    }
+    return route.fulfill({ json: { ...venue(1, FREE), ...(later ? next : first) } });
+  });
+  await page.goto('/venues/1');
+  await expect(closedAlert(page)).toBeVisible();
+  await page.getByTestId('map-date').click();
+  await page
+    .getByTestId('availability-calendar')
+    .locator(`button[data-date="${PINNED_TOMORROW}"]`)
+    .click();
+  await expect(mapCard(page)).toHaveAttribute('inert', '');
+  return release;
+}
+
+for (const { name, width } of WIDTHS) {
+  test.describe(`the closed alerts while other days load, at ${name} width (#1822)`, () => {
+    test.beforeEach(async ({ page }) => {
+      await page.setViewportSize({ width, height: 844 });
+    });
+
+    test('the sales-closed alert is withheld, and returns worded for the new day if it is closed too', async ({
+      page,
+    }) => {
+      const release = await pickTomorrowWithHeldRead(
+        page,
+        { salesOpen: false },
+        { salesOpen: false },
+      );
+
+      // Nothing on the page gives the old day's verdict under the new day.
+      await expect(page.getByTestId('availability')).toContainText('Checking availability for');
+      await expect(closedAlert(page)).toHaveCount(0);
+
+      release();
+
+      await expect(page.getByTestId('map-sales-closed')).toHaveText(
+        'Online sales for that date have closed at this venue. Pick a later day.',
+      );
+      await expect(page.getByTestId('map-sales-closed')).toHaveRole('alert');
+      await expectNoSeriousAxeViolations(page, 'venue page, sales closed on the day just picked');
+    });
+
+    test('the sales-closed alert does not return for a day that sells', async ({ page }) => {
+      const release = await pickTomorrowWithHeldRead(page, { salesOpen: false }, {});
+      await expect(closedAlert(page)).toHaveCount(0);
+
+      release();
+
+      await expect(mapCard(page)).not.toHaveAttribute('inert');
+      await expect(closedAlert(page)).toHaveCount(0);
+      await expect(tile(page, 1)).toBeVisible();
+    });
+
+    test('the closed-for-season notice stays in place between two closed days', async ({
+      page,
+    }) => {
+      const season = { salesOpen: false, closedForSeason: true, reopensOn: '2026-09-24' };
+      const release = await pickTomorrowWithHeldRead(page, season, season);
+      const notice = page.getByTestId('map-closed-for-season');
+      await notice.evaluate((node) => node.setAttribute('data-kept', ''));
+      const text = await notice.innerText();
+
+      await expect(page.getByTestId('availability')).toContainText('Checking availability for');
+      await expect(closedAlert(page)).toHaveText(text);
+      release();
+
+      await expect(mapCard(page)).not.toHaveAttribute('inert');
+      // The same node throughout: an alert that is not rebuilt is not announced again.
+      await expect(notice).toHaveAttribute('data-kept', '');
+      await expect(notice).toHaveText(text);
     });
   });
 }
