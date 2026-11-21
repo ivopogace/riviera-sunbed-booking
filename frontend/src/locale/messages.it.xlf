@@ -13380,6 +13380,14 @@
         </context-group>
         <note priority="1" from="description">The venue page&apos;s availability line while newly picked days load</note>
       </trans-unit>
+      <trans-unit id="3470963739006455555" datatype="html">
+        <source>Checking availability…</source>
+        <target state="translated">Verifica della disponibilità…</target>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/venue/venue-map.html</context>
+        </context-group>
+        <note priority="1" from="description">The venue page&apos;s availability line while newly picked days load, on a phone</note>
+      </trans-unit>
       <trans-unit id="4743520620509078277" datatype="html">
         <source><x id="START_TAG_STRONG" ctype="x-strong" equiv-text="&lt;strong class=&quot;text-[19px] font-bold text-riv-accent-ink&quot;&gt;"/><x id="FREE" equiv-text="{{
                     freeCount() // i18n(ph=&quot;free&quot;)
