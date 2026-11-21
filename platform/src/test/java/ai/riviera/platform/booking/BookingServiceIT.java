@@ -1,5 +1,6 @@
 package ai.riviera.platform.booking;
 
+import java.time.Clock;
 import java.time.LocalDate;
 
 import org.junit.jupiter.api.Test;
@@ -10,6 +11,7 @@ import org.springframework.jdbc.core.simple.JdbcClient;
 
 import ai.riviera.platform.EnabledIfDockerAvailable;
 import ai.riviera.platform.TestcontainersConfiguration;
+import ai.riviera.platform.TiraneDaytimeClock;
 import ai.riviera.platform.booking.application.reserve.BookingOutcome;
 import ai.riviera.platform.booking.application.reserve.CreateBooking;
 import ai.riviera.platform.booking.application.reserve.CreateBookingCommand;
@@ -36,6 +38,9 @@ class BookingServiceIT {
 	CreateBooking createBooking;
 
 	@Autowired
+	Clock clock;
+
+	@Autowired
 	JdbcClient jdbc;
 
 	private SetId freeOnlineSet() {
@@ -44,7 +49,7 @@ class BookingServiceIT {
 	}
 
 	private LocalDate farFutureDate() {
-		return LocalDate.now().plusYears(1); // comfortably past any evening-before cutoff
+		return TiraneDaytimeClock.today(clock).plusYears(1); // comfortably past any evening-before cutoff
 	}
 
 	@Test

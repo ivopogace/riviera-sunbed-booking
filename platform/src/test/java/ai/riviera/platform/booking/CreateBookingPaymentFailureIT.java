@@ -1,5 +1,6 @@
 package ai.riviera.platform.booking;
 
+import java.time.Clock;
 import java.time.LocalDate;
 
 import com.stripe.StripeClient;
@@ -19,6 +20,7 @@ import org.springframework.test.context.bean.override.mockito.MockitoBean;
 
 import ai.riviera.platform.EnabledIfDockerAvailable;
 import ai.riviera.platform.TestcontainersConfiguration;
+import ai.riviera.platform.TiraneDaytimeClock;
 import ai.riviera.platform.booking.application.reserve.CreateBooking;
 import ai.riviera.platform.booking.application.reserve.CreateBookingCommand;
 import ai.riviera.platform.customer.vocabulary.GuestContact;
@@ -51,6 +53,9 @@ class CreateBookingPaymentFailureIT {
 
 	@Autowired
 	CreateBooking createBooking;
+
+	@Autowired
+	Clock clock;
 
 	@Autowired
 	JdbcClient jdbc;
@@ -89,7 +94,7 @@ class CreateBookingPaymentFailureIT {
 	@Test
 	void releasesClaimWhenPaymentIntentCreationFails() {
 		SetId set = anyOnlineSet();
-		LocalDate date = LocalDate.now().plusYears(1).plusDays(11);
+		LocalDate date = TiraneDaytimeClock.today(clock).plusYears(1).plusDays(11);
 
 		assertThrows(RuntimeException.class, () -> createBooking.create(new CreateBookingCommand(
 				set, date, new GuestContact("f@e.com", "Fail Guest", "+355699"))),

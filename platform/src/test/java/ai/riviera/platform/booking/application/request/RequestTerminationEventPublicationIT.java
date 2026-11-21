@@ -1,5 +1,6 @@
 package ai.riviera.platform.booking.application.request;
 
+import java.time.Clock;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.util.List;
@@ -15,6 +16,7 @@ import org.springframework.transaction.event.TransactionalEventListener;
 
 import ai.riviera.platform.EnabledIfDockerAvailable;
 import ai.riviera.platform.TestcontainersConfiguration;
+import ai.riviera.platform.TiraneDaytimeClock;
 import ai.riviera.platform.booking.events.BookingRequestDeclined;
 import ai.riviera.platform.booking.events.BookingRequestExpired;
 import ai.riviera.platform.booking.vocabulary.BookingId;
@@ -48,6 +50,9 @@ class RequestTerminationEventPublicationIT {
 
 	@Autowired
 	RequestTerminationService requestRelease;
+
+	@Autowired
+	Clock clock;
 
 	@Autowired
 	ExpireRequests expireRequests;
@@ -101,7 +106,7 @@ class RequestTerminationEventPublicationIT {
 
 	@Test
 	void declinePublishesTheDeclineFact() {
-		LocalDate date = LocalDate.now().plusMonths(3);
+		LocalDate date = TiraneDaytimeClock.today(clock).plusMonths(3);
 		long bookingId = insertRequest(uniqueCode("DECMAIL"), date, Instant.now().plusSeconds(3600));
 
 		assertThat(requestRelease.decline(new BookingId(bookingId), new VenueId(venueId))).isTrue();
@@ -112,7 +117,7 @@ class RequestTerminationEventPublicationIT {
 
 	@Test
 	void expiryPublishesTheExpiryFact() {
-		LocalDate date = LocalDate.now().plusMonths(3);
+		LocalDate date = TiraneDaytimeClock.today(clock).plusMonths(3);
 		long bookingId = insertRequest(uniqueCode("EXPMAIL"), date, Instant.now().minusSeconds(30));
 
 		assertThat(expireRequests.sweep()).isEqualTo(1);
@@ -123,7 +128,7 @@ class RequestTerminationEventPublicationIT {
 
 	@Test
 	void cleanSweepPublishesNothing() {
-		insertRequest(uniqueCode("FRESH"), LocalDate.now().plusMonths(3), Instant.now().plusSeconds(3600));
+		insertRequest(uniqueCode("FRESH"), TiraneDaytimeClock.today(clock).plusMonths(3), Instant.now().plusSeconds(3600));
 
 		assertThat(expireRequests.sweep()).isZero();
 
@@ -133,7 +138,7 @@ class RequestTerminationEventPublicationIT {
 	@Test
 	void withdrawPublishesNothing() {
 		String code = uniqueCode("WDQUIET");
-		insertRequest(code, LocalDate.now().plusMonths(3), Instant.now().plusSeconds(3600));
+		insertRequest(code, TiraneDaytimeClock.today(clock).plusMonths(3), Instant.now().plusSeconds(3600));
 
 		assertThat(requestRelease.withdraw(code)).isPresent();
 
@@ -143,7 +148,7 @@ class RequestTerminationEventPublicationIT {
 	@Test
 	void lostDeclinePublishesNothing() {
 		String code = uniqueCode("DECLOST");
-		long bookingId = insertRequest(code, LocalDate.now().plusMonths(3), Instant.now().plusSeconds(3600));
+		long bookingId = insertRequest(code, TiraneDaytimeClock.today(clock).plusMonths(3), Instant.now().plusSeconds(3600));
 		requestRelease.withdraw(code);
 		recorded.reset();
 

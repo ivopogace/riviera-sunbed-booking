@@ -1,5 +1,6 @@
 package ai.riviera.platform.booking;
 
+import java.time.Clock;
 import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
@@ -19,6 +20,7 @@ import org.springframework.jdbc.core.simple.JdbcClient;
 import ai.riviera.platform.EnabledIfDockerAvailable;
 import ai.riviera.platform.OwnershipFixtures;
 import ai.riviera.platform.TestcontainersConfiguration;
+import ai.riviera.platform.TiraneDaytimeClock;
 import ai.riviera.platform.booking.application.reserve.BookingOutcome;
 import ai.riviera.platform.booking.application.reserve.CreateBooking;
 import ai.riviera.platform.booking.application.reserve.CreateBookingCommand;
@@ -44,6 +46,9 @@ class ConcurrentRequestClaimIT {
 	CreateBooking createBooking;
 
 	@Autowired
+	Clock clock;
+
+	@Autowired
 	JdbcClient jdbc;
 
 	private SetId requestModeSet;
@@ -66,7 +71,7 @@ class ConcurrentRequestClaimIT {
 
 	@Test
 	void everyContenderEndsPendingAndNothingIsHeld() throws Exception {
-		LocalDate date = LocalDate.now().plusMonths(2);
+		LocalDate date = TiraneDaytimeClock.today(clock).plusMonths(2);
 		int contenders = 8;
 
 		CountDownLatch startGate = new CountDownLatch(1);
@@ -103,7 +108,7 @@ class ConcurrentRequestClaimIT {
 	private long count(String sql) {
 		return jdbc.sql(sql)
 				.param("id", requestModeSet.value())
-				.param("date", LocalDate.now().plusMonths(2))
+				.param("date", TiraneDaytimeClock.today(clock).plusMonths(2))
 				.query(Long.class).single();
 	}
 }

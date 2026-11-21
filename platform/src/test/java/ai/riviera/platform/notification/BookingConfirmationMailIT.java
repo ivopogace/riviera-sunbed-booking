@@ -1,5 +1,6 @@
 package ai.riviera.platform.notification;
 
+import java.time.Clock;
 import java.time.Duration;
 import java.time.Instant;
 import java.time.LocalDate;
@@ -24,6 +25,7 @@ import com.jayway.jsonpath.JsonPath;
 import ai.riviera.platform.EnabledIfDockerAvailable;
 import ai.riviera.platform.SessionLoginSupport;
 import ai.riviera.platform.TestcontainersConfiguration;
+import ai.riviera.platform.TiraneDaytimeClock;
 import ai.riviera.platform.booking.events.BookingConfirmed;
 import ai.riviera.platform.booking.vocabulary.BookingId;
 import ai.riviera.platform.booking.vocabulary.CancellationWindow;
@@ -75,6 +77,9 @@ class BookingConfirmationMailIT {
 
 	@Autowired
 	MockMvc mvc;
+
+	@Autowired
+	Clock clock;
 
 	@Autowired
 	JdbcClient jdbc;
@@ -165,7 +170,7 @@ class BookingConfirmationMailIT {
 		// (set, date) is never released (invariant #2), so reusing BookingControllerIT's
 		// plusYears(1) on the same first ONLINE set would 409 whichever class ran second. The suite's
 		// other create-booking ITs offset by hand for the same reason (+7, +11 days).
-		LocalDate date = LocalDate.now().plusYears(1).plusDays(23);
+		LocalDate date = TiraneDaytimeClock.today(clock).plusYears(1).plusDays(23);
 
 		String response = mvc.perform(post("/api/bookings")
 						.header(SessionLoginSupport.CHALLENGE_HEADER, SessionLoginSupport.solvedChallenge(mvc))
@@ -193,7 +198,7 @@ class BookingConfirmationMailIT {
 	@Test
 	void aStayNamesItsDays() throws Exception {
 		SetRef set = onlineSet();
-		LocalDate first = LocalDate.now().plusYears(1).plusDays(70);
+		LocalDate first = TiraneDaytimeClock.today(clock).plusYears(1).plusDays(70);
 		String email = "stay-" + GUEST_EMAIL;
 
 		String response = mvc.perform(post("/api/bookings")

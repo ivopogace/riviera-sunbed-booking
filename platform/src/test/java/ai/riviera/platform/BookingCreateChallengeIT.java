@@ -1,5 +1,6 @@
 package ai.riviera.platform;
 
+import java.time.Clock;
 import java.time.Instant;
 import java.time.LocalDate;
 
@@ -69,6 +70,9 @@ class BookingCreateChallengeIT {
 
 	@Autowired
 	MockMvc mvc;
+
+	@Autowired
+	Clock clock;
 	@Autowired
 	JdbcClient jdbc;
 	@Autowired
@@ -89,7 +93,7 @@ class BookingCreateChallengeIT {
 	void seed() {
 		customerProvisioning.register(ACCOUNT_EMAIL, encoder.encode(ACCOUNT_PASSWORD));
 		setId = freshOnlineSet();
-		date = LocalDate.now().plusYears(2);
+		date = TiraneDaytimeClock.today(clock).plusYears(2);
 	}
 
 	@Test

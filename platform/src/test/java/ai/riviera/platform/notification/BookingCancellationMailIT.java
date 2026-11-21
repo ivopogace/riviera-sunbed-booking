@@ -1,5 +1,6 @@
 package ai.riviera.platform.notification;
 
+import java.time.Clock;
 import java.time.Duration;
 import java.time.Instant;
 import java.time.LocalDate;
@@ -25,6 +26,7 @@ import ai.riviera.platform.EnabledIfDockerAvailable;
 import ai.riviera.platform.RegistryRows;
 import ai.riviera.platform.SessionLoginSupport;
 import ai.riviera.platform.TestcontainersConfiguration;
+import ai.riviera.platform.TiraneDaytimeClock;
 import ai.riviera.platform.booking.application.remodel.NewReceipt;
 import ai.riviera.platform.booking.application.remodel.ReceiptOutcome;
 import ai.riviera.platform.booking.application.remodel.ReceiptOutcomeKind;
@@ -85,6 +87,9 @@ class BookingCancellationMailIT {
 	MockMvc mvc;
 
 	@Autowired
+	Clock clock;
+
+	@Autowired
 	JdbcClient jdbc;
 
 	@Autowired
@@ -125,7 +130,7 @@ class BookingCancellationMailIT {
 	@Test
 	void mailsTheGuestOneCancellationRecord() throws Exception {
 		SetRef set = onlineSet();
-		LocalDate date = LocalDate.now().plusYears(1).plusDays(37);
+		LocalDate date = TiraneDaytimeClock.today(clock).plusYears(1).plusDays(37);
 		String guest = "cancel-me@example.com";
 
 		String created = mvc.perform(post("/api/bookings")

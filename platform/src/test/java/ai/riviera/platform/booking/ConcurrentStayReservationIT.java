@@ -1,5 +1,6 @@
 package ai.riviera.platform.booking;
 
+import java.time.Clock;
 import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
@@ -19,6 +20,7 @@ import org.springframework.jdbc.core.simple.JdbcClient;
 
 import ai.riviera.platform.EnabledIfDockerAvailable;
 import ai.riviera.platform.TestcontainersConfiguration;
+import ai.riviera.platform.TiraneDaytimeClock;
 import ai.riviera.platform.booking.StayFixtures.Venue;
 import ai.riviera.platform.booking.application.reserve.BookingOutcome;
 import ai.riviera.platform.booking.application.reserve.CreateBooking;
@@ -48,6 +50,9 @@ class ConcurrentStayReservationIT {
 	CreateStay createStay;
 
 	@Autowired
+	Clock clock;
+
+	@Autowired
 	CreateBooking createBooking;
 
 	@Autowired
@@ -66,7 +71,7 @@ class ConcurrentStayReservationIT {
 		venues.add(venue.id());
 		SetId a = venue.online().get(0);
 		SetId b = venue.online().get(1);
-		LocalDate first = LocalDate.now().plusYears(3).plusDays(info.getCurrentRepetition() * 10L);
+		LocalDate first = TiraneDaytimeClock.today(clock).plusYears(3).plusDays(info.getCurrentRepetition() * 10L);
 		LocalDate contested = first.plusDays(4);
 		CountDownLatch startGate = new CountDownLatch(1);
 

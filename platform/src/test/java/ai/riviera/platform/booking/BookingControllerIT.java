@@ -70,8 +70,8 @@ class BookingControllerIT {
 				""".formatted(setId, date);
 	}
 
-	private static LocalDate bookable() {
-		return LocalDate.now().plusYears(1);
+	private LocalDate bookable() {
+		return today().plusYears(1);
 	}
 
 	/** Today as the pinned clock's Tirane civil date (invariant #6), never the wall's. */

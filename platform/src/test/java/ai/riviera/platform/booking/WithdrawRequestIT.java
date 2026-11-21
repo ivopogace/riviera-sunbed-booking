@@ -1,5 +1,6 @@
 package ai.riviera.platform.booking;
 
+import java.time.Clock;
 import java.time.Instant;
 import java.time.LocalDate;
 
@@ -15,6 +16,7 @@ import org.springframework.test.web.servlet.MockMvc;
 import ai.riviera.platform.EnabledIfDockerAvailable;
 import ai.riviera.platform.SessionLoginSupport;
 import ai.riviera.platform.TestcontainersConfiguration;
+import ai.riviera.platform.TiraneDaytimeClock;
 import ai.riviera.platform.operator.api.OperatorDirectory;
 import ai.riviera.platform.operator.vocabulary.OperatorId;
 
@@ -62,6 +64,9 @@ class WithdrawRequestIT {
 
 	@Autowired
 	MockMvc mvc;
+
+	@Autowired
+	Clock clock;
 
 	@Autowired
 	JdbcClient jdbc;
@@ -116,8 +121,8 @@ class WithdrawRequestIT {
 		return prefix + System.nanoTime() % 1_000_000;
 	}
 
-	private static LocalDate bookable() {
-		return LocalDate.now().plusMonths(3);
+	private LocalDate bookable() {
+		return TiraneDaytimeClock.today(clock).plusMonths(3);
 	}
 
 	/**

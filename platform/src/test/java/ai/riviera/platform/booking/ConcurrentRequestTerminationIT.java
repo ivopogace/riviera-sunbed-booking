@@ -1,5 +1,6 @@
 package ai.riviera.platform.booking;
 
+import java.time.Clock;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.util.ArrayList;
@@ -20,6 +21,7 @@ import org.springframework.jdbc.core.simple.JdbcClient;
 
 import ai.riviera.platform.EnabledIfDockerAvailable;
 import ai.riviera.platform.TestcontainersConfiguration;
+import ai.riviera.platform.TiraneDaytimeClock;
 import ai.riviera.platform.booking.application.request.ExpireRequests;
 import ai.riviera.platform.booking.application.request.WithdrawOutcome;
 import ai.riviera.platform.booking.application.request.WithdrawRequest;
@@ -51,6 +53,9 @@ class ConcurrentRequestTerminationIT {
 
 	@Autowired
 	WithdrawRequest withdrawRequest;
+
+	@Autowired
+	Clock clock;
 
 	@Autowired
 	ExpireRequests expireRequests;
@@ -110,7 +115,7 @@ class ConcurrentRequestTerminationIT {
 
 	@RepeatedTest(3)
 	void withdrawAndExpiryReleaseExactlyOnce() throws Exception {
-		LocalDate date = LocalDate.now().plusMonths(3);
+		LocalDate date = TiraneDaytimeClock.today(clock).plusMonths(3);
 		String code = uniqueCode("WDRACE");
 		long bookingId = insertRequest(code, date, Instant.now().minusSeconds(30));
 
@@ -146,7 +151,7 @@ class ConcurrentRequestTerminationIT {
 
 	@Test
 	void withdrawsAnOverdueButUnsweptRequest() {
-		LocalDate date = LocalDate.now().plusMonths(3);
+		LocalDate date = TiraneDaytimeClock.today(clock).plusMonths(3);
 		String code = uniqueCode("WDLATE");
 		long bookingId = insertRequest(code, date, Instant.now().minusSeconds(30));
 
@@ -158,7 +163,7 @@ class ConcurrentRequestTerminationIT {
 
 	@Test
 	void withdrawnSetIsImmediatelyRebookable() {
-		LocalDate date = LocalDate.now().plusMonths(3);
+		LocalDate date = TiraneDaytimeClock.today(clock).plusMonths(3);
 		String code = uniqueCode("WDFREE");
 		insertRequest(code, date, Instant.now().plusSeconds(3600));
 
@@ -174,7 +179,7 @@ class ConcurrentRequestTerminationIT {
 
 	@Test
 	void withdrawIsRejectedOnceTheVenueHasAccepted() {
-		LocalDate date = LocalDate.now().plusMonths(3);
+		LocalDate date = TiraneDaytimeClock.today(clock).plusMonths(3);
 		String code = uniqueCode("WDACC");
 		long bookingId = insertRequest(code, date, Instant.now().plusSeconds(3600));
 		jdbc.sql("UPDATE booking SET status = 'AWAITING_PAYMENT', accepted_at = now() WHERE id = :id")

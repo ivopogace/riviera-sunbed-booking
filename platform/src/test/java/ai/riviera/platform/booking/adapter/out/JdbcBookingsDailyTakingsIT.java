@@ -49,7 +49,7 @@ class JdbcBookingsDailyTakingsIT {
 	 * {@code CONFIRMED} booking for a {@code (venue_id, booking_date)} — no set filter — and this class
 	 * deletes nothing, so booking against a venue other tests also use makes the expected total a
 	 * function of test order and of the real calendar (several ITs date bookings
-	 * {@code LocalDate.now().plusYears(1).plusDays(N)}). Owning the venue makes the sum contain only
+	 * a year and some days past today). Owning the venue makes the sum contain only
 	 * this test's rows, whatever else the suite does.
 	 */
 	private SetRef ownVenueWithOnlineSet(String name) {
