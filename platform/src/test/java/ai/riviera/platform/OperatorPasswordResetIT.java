@@ -2,6 +2,9 @@ package ai.riviera.platform;
 
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
+import java.sql.Timestamp;
+import java.time.Clock;
+import java.time.Duration;
 import java.util.HexFormat;
 import java.util.List;
 
@@ -65,6 +68,8 @@ class OperatorPasswordResetIT {
 	OperatorProvisioning provisioning;
 	@Autowired
 	PasswordEncoder encoder;
+	@Autowired
+	Clock clock;
 
 	private OperatorId targetId;
 
@@ -107,7 +112,8 @@ class OperatorPasswordResetIT {
 		String used = issue(targetId);
 		redeem(used, NEW_PASSWORD).andExpect(status().isNoContent());
 		String expired = issue(targetId);
-		jdbc.sql("UPDATE operator_password_reset_token SET expires_at = NOW() - INTERVAL '1 minute' WHERE token_hash = :h")
+		jdbc.sql("UPDATE operator_password_reset_token SET expires_at = :lapsed WHERE token_hash = :h")
+				.param("lapsed", Timestamp.from(clock.instant().minus(Duration.ofMinutes(1))))
 				.param("h", sha256(expired)).update();
 		String hashBefore = storedHash();
 

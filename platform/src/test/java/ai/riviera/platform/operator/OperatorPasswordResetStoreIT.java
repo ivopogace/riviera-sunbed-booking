@@ -1,5 +1,6 @@
 package ai.riviera.platform.operator;
 
+import java.time.Clock;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.Optional;
@@ -40,6 +41,8 @@ class OperatorPasswordResetStoreIT {
 
 	@Autowired
 	OperatorPasswordReset reset;
+	@Autowired
+	Clock clock;
 	@Autowired
 	OperatorLifecycle lifecycle;
 	@Autowired
@@ -91,7 +94,7 @@ class OperatorPasswordResetStoreIT {
 	@Test
 	void expiredAndUnknownTokensAreRefusedAndWriteNothing() {
 		OperatorId id = insertOperator("reset-store-expired", OperatorStatus.ACTIVE);
-		reset.issue(id, "hash-expired", Instant.now().minus(Duration.ofMinutes(1)));
+		reset.issue(id, "hash-expired", clock.instant().minus(Duration.ofMinutes(1)));
 
 		assertEquals(Optional.empty(), reset.usernameForResetToken("hash-expired"));
 		assertInstanceOf(OperatorResetOutcome.InvalidOrExpired.class, reset.resetPassword("hash-expired", NEW_HASH));
@@ -153,8 +156,9 @@ class OperatorPasswordResetStoreIT {
 				.update();
 	}
 
-	private static Instant inAnHour() {
-		return Instant.now().plus(Duration.ofHours(1));
+	/** Expiries come from the context clock, the one the token store compares against (#1857). */
+	private Instant inAnHour() {
+		return clock.instant().plus(Duration.ofHours(1));
 	}
 
 	private OperatorId insertOperator(String username, OperatorStatus status) {

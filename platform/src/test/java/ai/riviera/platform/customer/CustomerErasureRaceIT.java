@@ -4,6 +4,7 @@ import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.time.Clock;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.List;
@@ -49,8 +50,9 @@ import static org.assertj.core.api.Assertions.assertThat;
 class CustomerErasureRaceIT {
 
 	private static final Duration WAIT = Duration.ofSeconds(15);
-	private static final Instant FUTURE = Instant.now().plus(Duration.ofHours(1));
 
+	@Autowired
+	Clock clock;
 	@Autowired
 	CustomerAccountProvisioning provisioning;
 	@Autowired
@@ -149,7 +151,7 @@ class CustomerErasureRaceIT {
 		LockOrderRace.Outcome<EraseOutcome, Boolean> outcome = LockOrderRace.race(jdbc, "eraseAccountById",
 				args -> account.equals(args[0]),
 				() -> erasure.eraseAccount(account),
-				() -> recovery.issuePasswordResetToken(account, unique("late-token"), FUTURE));
+				() -> recovery.issuePasswordResetToken(account, unique("late-token"), future()));
 
 		assertThat(outcome.racerWaited()).as("the issue waited on the erasure").isTrue();
 		assertThat(outcome.raced()).as("so no link is mailed").isFalse();
@@ -164,11 +166,11 @@ class CustomerErasureRaceIT {
 
 		LockOrderRace.race(jdbc, "issue", args -> firstLink.equals(args[2]),
 				() -> {
-					recovery.issuePasswordResetToken(account, firstLink, FUTURE);
+					recovery.issuePasswordResetToken(account, firstLink, future());
 					return null;
 				},
 				() -> {
-					recovery.issuePasswordResetToken(account, secondLink, FUTURE);
+					recovery.issuePasswordResetToken(account, secondLink, future());
 					return null;
 				});
 
@@ -236,5 +238,10 @@ class CustomerErasureRaceIT {
 
 	private static String unique(String prefix) {
 		return prefix + "-" + System.nanoTime() + "@example.com";
+	}
+
+	/** Expiries come from the context clock, the one the token store compares against (#1857). */
+	private Instant future() {
+		return clock.instant().plus(Duration.ofHours(1));
 	}
 }

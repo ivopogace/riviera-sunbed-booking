@@ -1,5 +1,6 @@
 package ai.riviera.platform.customer;
 
+import java.time.Clock;
 import java.time.Duration;
 import java.time.Instant;
 
@@ -33,8 +34,9 @@ import static org.assertj.core.api.Assertions.assertThat;
 @SpringBootTest
 class TokenRedemptionLockOrderIT {
 
-	private static final Instant FUTURE = Instant.now().plus(Duration.ofHours(1));
 
+	@Autowired
+	Clock clock;
 	@Autowired
 	CustomerAccountProvisioning provisioning;
 	@Autowired
@@ -48,7 +50,7 @@ class TokenRedemptionLockOrderIT {
 	void aResetAndAnErasureOfTheSameAccountSerialize() throws Exception {
 		CustomerAccountId account = register();
 		String token = "lock-order-reset-" + System.nanoTime();
-		recovery.issuePasswordResetToken(account, token, FUTURE);
+		recovery.issuePasswordResetToken(account, token, future());
 
 		LockOrderRace.Outcome<ResetPasswordOutcome, EraseOutcome> outcome = LockOrderRace.race(jdbc, "consume",
 				args -> token.equals(args[1]),
@@ -64,7 +66,7 @@ class TokenRedemptionLockOrderIT {
 	void aVerificationAndAnErasureOfTheSameAccountSerialize() throws Exception {
 		CustomerAccountId account = register();
 		String token = "lock-order-verify-" + System.nanoTime();
-		recovery.issueEmailVerificationToken(account, token, FUTURE);
+		recovery.issueEmailVerificationToken(account, token, future());
 
 		LockOrderRace.Outcome<VerifyEmailOutcome, EraseOutcome> outcome = LockOrderRace.race(jdbc, "consume",
 				args -> token.equals(args[1]),
@@ -88,5 +90,10 @@ class TokenRedemptionLockOrderIT {
 		RegistrationOutcome outcome = provisioning.register("lock-order-" + System.nanoTime() + "@example.com",
 				"{bcrypt}orig");
 		return ((RegistrationOutcome.Registered) outcome).accountId();
+	}
+
+	/** Expiries come from the context clock, the one the token store compares against (#1857). */
+	private Instant future() {
+		return clock.instant().plus(Duration.ofHours(1));
 	}
 }
