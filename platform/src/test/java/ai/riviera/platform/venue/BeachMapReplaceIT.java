@@ -1,12 +1,13 @@
 package ai.riviera.platform.venue;
 
+import java.time.Clock;
 import java.time.LocalDate;
-import java.time.ZoneId;
 import java.util.List;
 
 import ai.riviera.platform.EnabledIfDockerAvailable;
 import ai.riviera.platform.SessionLoginSupport;
 import ai.riviera.platform.TestcontainersConfiguration;
+import ai.riviera.platform.TiraneDaytimeClock;
 import jakarta.servlet.http.Cookie;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -57,7 +58,6 @@ class BeachMapReplaceIT {
 
 	private static final String OPERATOR = "operator";
 	private static final String PASSWORD = "test-operator-pw";
-	private static final ZoneId TIRANE = ZoneId.of("Europe/Tirane"); // the zone the guard's cutoff reads
 
 	/**
 	 * The row reprice shares this {@code STALE_WRITE} detail, because every token-guarded set-write turns on the
@@ -139,6 +139,14 @@ class BeachMapReplaceIT {
 	private long holdsOn(long setId) {
 		return jdbc.sql("SELECT COUNT(*) FROM set_availability WHERE set_id = :s")
 				.param("s", setId).query(Long.class).single();
+	}
+
+	@Autowired
+	Clock clock;
+
+	/** The day {@link #seedBooking} books: ahead of today, so the booking is one the guard still counts. */
+	private LocalDate bookedDay() {
+		return TiraneDaytimeClock.today(clock).plusDays(40);
 	}
 
 	private void seedHold(long setId, LocalDate day, String state) {
@@ -311,7 +319,7 @@ class BeachMapReplaceIT {
 				cell("A", 2, "PREMIUM", "ONLINE", 3500, 2, 1)), 204);
 		long a1 = setIds(venue).getFirst();
 		seedBooking(venue, a1);
-		seedHold(a1, LocalDate.of(2035, 7, 1), "BOOKED_ONLINE"); // the booked date's own availability row
+		seedHold(a1, bookedDay(), "BOOKED_ONLINE"); // the booked date's own availability row
 
 		// Price, tier and pool are always editable — on a booked set too (RESPONSIBILITIES.md §venue).
 		putLayout(venue, layout(currentSetVersion(venue),
@@ -336,7 +344,7 @@ class BeachMapReplaceIT {
 				cell("A", 3, "STANDARD", "ONLINE", 2000, 3, 1)), 204);
 		List<Long> rowA = setIds(venue);
 		seedBooking(venue, rowA.get(0));
-		LocalDate heldOn = LocalDate.now(TIRANE).plusDays(30);
+		LocalDate heldOn = TiraneDaytimeClock.today(clock).plusDays(30);
 		seedHold(rowA.get(2), heldOn, "STAFF_MARKED"); // deliberately the LAST set: the probe must cover every removal
 
 		// A layout that drops all of row A: the two claimed sets refuse the whole save, nothing is written.
@@ -352,8 +360,8 @@ class BeachMapReplaceIT {
 				.andExpect(jsonPath("$.sets[0].setId").value(rowA.get(0)))
 				.andExpect(jsonPath("$.sets[0].rowLabel").value("A"))
 				.andExpect(jsonPath("$.sets[0].positionNo").value(1))
-				.andExpect(jsonPath("$.sets[0].bookedOn").value("2035-07-01"))
-				.andExpect(jsonPath("$.sets[0].bookedUntil").value("2035-07-01"))
+				.andExpect(jsonPath("$.sets[0].bookedOn").value(bookedDay().toString()))
+				.andExpect(jsonPath("$.sets[0].bookedUntil").value(bookedDay().toString()))
 				.andExpect(jsonPath("$.sets[0].heldOn").doesNotExist())
 				.andExpect(jsonPath("$.sets[1].setId").value(rowA.get(2)))
 				.andExpect(jsonPath("$.sets[1].positionNo").value(3))
@@ -442,7 +450,7 @@ class BeachMapReplaceIT {
 				cell("A", 2, "STANDARD", "WALK_IN", 2000, 2, 1)), 204);
 		long heldSet = setIds(venue).getLast();
 		// Inserted directly: the staff-mark endpoint refuses a past date, which is how history accrues.
-		seedHold(heldSet, LocalDate.now(TIRANE).minusDays(400), "STAFF_MARKED");
+		seedHold(heldSet, TiraneDaytimeClock.today(clock).minusDays(400), "STAFF_MARKED");
 
 		// A2 leaves the map; its only hold is last season's, so nothing refuses and the set is deleted.
 		mvc.perform(put("/api/venues/{v}/beach-map", venue).cookie(operatorSession).with(csrf())
@@ -504,8 +512,9 @@ class BeachMapReplaceIT {
 		jdbc.sql("""
 				INSERT INTO booking (code, venue_id, set_id, customer_id, booking_date,
 				                     amount_minor, amount_currency, status)
-				VALUES (:code, :v, :s, :c, DATE '2035-07-01', 2000, 'EUR', :status)
+				VALUES (:code, :v, :s, :c, :day, 2000, 'EUR', :status)
 				""")
+				.param("day", bookedDay())
 				.param("code", "BK-" + venueId + "-" + setId)
 				.param("v", venueId).param("s", setId).param("c", customerId).param("status", status)
 				.update();

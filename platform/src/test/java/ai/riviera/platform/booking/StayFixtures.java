@@ -12,14 +12,15 @@ import ai.riviera.platform.customer.vocabulary.GuestContact;
 import ai.riviera.platform.venue.vocabulary.SetId;
 
 /**
- * Fixtures the stitched-stay ITs share: a visible Instant venue on {@code KSAMIL} with online sets in
- * one row (position = grid x) plus one walk-in set, a plan over them, and the cleanup that deletes the
- * venue's rows in dependency order.
+ * A venue of a test's own, for any test package: on {@code KSAMIL}, online sets in one row (position = grid x)
+ * plus one walk-in set, and the cleanup that deletes the venue's rows in dependency order. Also the stitched-stay
+ * ITs' plan and stored stays over it.
  */
-final class StayFixtures {
+public final class StayFixtures {
 
 	static final ZoneId TIRANE = ZoneId.of("Europe/Tirane");
 	static final long PRICE = 4500L;
+	private static final String OWNER_PREFIX = "stay-fixture-op-";
 	static final GuestContact GUEST = new GuestContact("stay@example.com", "Stay Guest", "+355699");
 
 	private StayFixtures() {
@@ -30,10 +31,11 @@ final class StayFixtures {
 		return LocalDate.now(TIRANE).plusDays(10);
 	}
 
-	record Venue(long id, List<SetId> online, SetId walkIn) {
+	public record Venue(long id, List<SetId> online, SetId walkIn) {
 	}
 
-	static Venue venue(JdbcClient jdbc, String mode, Integer maxStayDays, boolean visible) {
+	/** {@code visible} gives the venue an {@code ACTIVE} owner of its own ({@link #ownerOf}), which the cleanup removes. */
+	public static Venue venue(JdbcClient jdbc, String mode, Integer maxStayDays, boolean visible) {
 		long venue = jdbc.sql("""
 				INSERT INTO venue (name, beach, booking_mode, commission_bps, payout_currency, max_stay_days)
 				VALUES (:name, 'KSAMIL', :mode, 1500, 'EUR', :max) RETURNING id
@@ -41,7 +43,7 @@ final class StayFixtures {
 				.query(Long.class).single();
 		if (visible) {
 			long operator = jdbc.sql("INSERT INTO operator (username, status) VALUES (:u, 'ACTIVE') RETURNING id")
-					.param("u", "stay-op-" + System.nanoTime()).query(Long.class).single();
+					.param("u", OWNER_PREFIX + System.nanoTime()).query(Long.class).single();
 			jdbc.sql("INSERT INTO operator_venue (venue_id, operator_id) VALUES (:v, :o)")
 					.param("v", venue).param("o", operator).update();
 		}
@@ -155,7 +157,7 @@ final class StayFixtures {
 	}
 
 	/** The operator {@link #venue} made owner of a visible venue. */
-	static ai.riviera.platform.operator.vocabulary.OperatorId ownerOf(JdbcClient jdbc, Venue venue) {
+	public static ai.riviera.platform.operator.vocabulary.OperatorId ownerOf(JdbcClient jdbc, Venue venue) {
 		return new ai.riviera.platform.operator.vocabulary.OperatorId(jdbc.sql(
 				"SELECT operator_id FROM operator_venue WHERE venue_id = :v").param("v", venue.id())
 				.query(Long.class).single());
@@ -204,7 +206,7 @@ final class StayFixtures {
 	 * Waits until {@link #pendingPublicationsOf} this venue is zero, so the async listeners (payout, mail) have
 	 * written, then deletes in dependency order.
 	 */
-	static void cleanup(JdbcClient jdbc, long venue) {
+	public static void cleanup(JdbcClient jdbc, long venue) {
 		org.awaitility.Awaitility.await().atMost(java.time.Duration.ofSeconds(10))
 				.until(() -> pendingPublicationsOf(jdbc, venue) == 0L);
 		cleanupNow(jdbc, venue);
@@ -226,7 +228,7 @@ final class StayFixtures {
 	}
 
 	/** Deletes in dependency order without waiting: for fixtures seeded as stored, which publish nothing. */
-	static void cleanupNow(JdbcClient jdbc, long venue) {
+	public static void cleanupNow(JdbcClient jdbc, long venue) {
 		List<Long> payments = jdbc.sql("SELECT DISTINCT payment_id FROM payment_booking "
 						+ "WHERE booking_ref IN (SELECT id FROM booking WHERE venue_id = :v)").param("v", venue)
 				.query(Long.class).list();
@@ -247,7 +249,11 @@ final class StayFixtures {
 		jdbc.sql("DELETE FROM set_availability WHERE set_id IN (SELECT id FROM set_position WHERE venue_id = :v)")
 				.param("v", venue).update();
 		jdbc.sql("DELETE FROM set_position WHERE venue_id = :v").param("v", venue).update();
+		List<Long> fixtureOwners = jdbc.sql("SELECT o.id FROM operator o JOIN operator_venue ov ON ov.operator_id = o.id "
+						+ "WHERE ov.venue_id = :v AND o.username LIKE :own").param("v", venue).param("own", OWNER_PREFIX + "%")
+				.query(Long.class).list();
 		jdbc.sql("DELETE FROM operator_venue WHERE venue_id = :v").param("v", venue).update();
+		fixtureOwners.forEach(owner -> jdbc.sql("DELETE FROM operator WHERE id = :o").param("o", owner).update());
 		jdbc.sql("DELETE FROM venue WHERE id = :v").param("v", venue).update();
 	}
 }

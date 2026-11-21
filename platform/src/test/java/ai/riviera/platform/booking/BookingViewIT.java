@@ -1,5 +1,6 @@
 package ai.riviera.platform.booking;
 
+import java.time.Clock;
 import java.time.LocalDate;
 import java.time.ZoneId;
 
@@ -19,6 +20,7 @@ import ai.riviera.platform.EnabledIfDockerAvailable;
 import ai.riviera.platform.SessionLoginSupport;
 import ai.riviera.platform.OwnershipFixtures;
 import ai.riviera.platform.TestcontainersConfiguration;
+import ai.riviera.platform.TiraneDaytimeClock;
 
 import static org.hamcrest.Matchers.containsString;
 import static org.hamcrest.Matchers.not;
@@ -51,12 +53,17 @@ class BookingViewIT {
 	@Autowired
 	JdbcClient jdbc;
 
-	// Use the LAST online set + a distinctive far-future date so this (set, date) can't collide with
-	// other create-flow ITs sharing the Testcontainers context (invariant #2 would 409 otherwise).
-	private static final LocalDate UNIQUE_DATE = LocalDate.of(2034, 6, 6);
+	@Autowired
+	Clock clock;
 
-	private long onlineSet() {
-		return VisibleOnlineSets.newest(jdbc).id();
+	/** The venue the create-flow case books on: its own, so no other class holds the {@code (set, date)} (#2). */
+	private StayFixtures.Venue venue;
+
+	@AfterEach
+	void removeVenue() {
+		if (venue != null) {
+			StayFixtures.cleanup(jdbc, venue.id());
+		}
 	}
 
 	private String createBooking(long setId, LocalDate date) throws Exception {
@@ -76,10 +83,9 @@ class BookingViewIT {
 	@Test
 	void viewReturnsDetailWithFullRefundBeforeCutoff() throws Exception {
 		// A future (well-before-cutoff) booking: confirmed, fully cancellable, full refund.
-		long setId = onlineSet();
-		long price = jdbc.sql("SELECT price_minor FROM set_position WHERE id = :id")
-				.param("id", setId).query(Long.class).single();
-		String code = createBooking(setId, UNIQUE_DATE);
+		venue = StayFixtures.venue(jdbc, "INSTANT", null, true);
+		long price = StayFixtures.PRICE;
+		String code = createBooking(venue.online().getFirst().value(), tirane().plusDays(30));
 
 		mvc.perform(get("/api/bookings/{code}", code))
 				.andExpect(status().isOk())
@@ -188,8 +194,8 @@ class BookingViewIT {
 		jdbc.sql("DELETE FROM booking WHERE code LIKE 'VIEWPAY%'").update();
 	}
 
-	private static LocalDate tirane() {
-		return LocalDate.now(ZoneId.of("Europe/Tirane"));
+	private LocalDate tirane() {
+		return TiraneDaytimeClock.today(clock);
 	}
 
 	/**
