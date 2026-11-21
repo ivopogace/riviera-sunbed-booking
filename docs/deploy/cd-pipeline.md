@@ -266,3 +266,13 @@ A release listed here owes one extra step after the old instance has drained.
   hosting is a separate, deferred issue, and per the ADR-0004 amendment it **must** be
   same-origin (a reverse proxy) or same-registrable-domain subdomains or the session cookie
   re-breaks.
+- **The daily backend run (`backend-daily.yml`) has no channel of its own** (#1831). It deploys
+  nothing; a red run only shows in the Actions tab and in GitHub's own notifications. GitHub sends a
+  scheduled workflow's notification to the user who **last modified its cron line**, or who last
+  **re-enabled** it, so the recipient changes with whoever touches the schedule. The recipient keeps
+  *Settings → Notifications → System → Actions* on, **failed workflow runs only** being enough, with
+  email or web delivery; after any edit to the cron line or a re-enable, the new editor checks it
+  too. Nothing else notices a red run, and there is no issue, chat or secret behind it by decision.
+  GitHub also disables scheduled workflows in a public repository after 60 days with no repository
+  activity, and then the daily run stops without a red run: re-enable it under *Actions → Backend
+  daily → Enable workflow*.
