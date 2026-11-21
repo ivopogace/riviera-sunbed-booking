@@ -1,8 +1,8 @@
 package ai.riviera.platform.remodel;
 
+import java.time.Clock;
 import java.time.Duration;
 import java.time.LocalDate;
-import java.time.ZoneId;
 import java.util.List;
 
 import org.awaitility.Awaitility;
@@ -25,6 +25,7 @@ import com.jayway.jsonpath.JsonPath;
 import ai.riviera.platform.EnabledIfDockerAvailable;
 import ai.riviera.platform.SessionLoginSupport;
 import ai.riviera.platform.TestcontainersConfiguration;
+import ai.riviera.platform.TiraneDaytimeClock;
 import ai.riviera.platform.venue.vocabulary.SetPrice;
 
 import static org.hamcrest.Matchers.containsString;
@@ -63,8 +64,6 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 @SpringBootTest
 @AutoConfigureMockMvc
 class RemodelCommitIT {
-
-	private static final ZoneId TIRANE = ZoneId.of("Europe/Tirane");
 	private static final String OPERATOR = "operator";
 	private static final String PASSWORD = "test-operator-pw";
 	private static final String STALE_SETS_DETAIL =
@@ -76,13 +75,16 @@ class RemodelCommitIT {
 	@Autowired
 	JdbcClient jdbc;
 
+	@Autowired
+	Clock clock;
+
 	private Cookie operatorSession;
 	private LocalDate today;
 
 	@BeforeEach
 	void logIn() throws Exception {
 		operatorSession = SessionLoginSupport.operatorSession(mvc, OPERATOR, PASSWORD);
-		today = LocalDate.now(TIRANE);
+		today = TiraneDaytimeClock.today(clock);
 	}
 
 	@Test
@@ -166,7 +168,8 @@ class RemodelCommitIT {
 		assertEquals(0, receiptsOf(venue), "a refusal leaves no receipt");
 
 		String previewedBoth = previewToken(venue, body);
-		jdbc.sql("UPDATE booking SET status = 'CANCELLED', cancelled_at = now() WHERE id = :id").param("id", second).update();
+		jdbc.sql("UPDATE booking SET status = 'CANCELLED', cancelled_at = :now WHERE id = :id")
+				.param("now", java.sql.Timestamp.from(clock.instant())).param("id", second).update();
 		jdbc.sql("DELETE FROM set_availability WHERE set_id = :s AND booking_date = :d").param("s", a1).param("d", day2).update();
 		mvc.perform(commit(venue, body, previewedBoth))
 				.andExpect(status().isOk())
@@ -302,9 +305,9 @@ class RemodelCommitIT {
 		String body = layout(token, cell("A", 2, 2));
 		String previewToken = previewToken(venue, body);
 		jdbc.sql("""
-				UPDATE booking_day SET refunded_at = now(), refund_minor = 2000, refund_reason = 'WEATHER'
+				UPDATE booking_day SET refunded_at = :now, refund_minor = 2000, refund_reason = 'WEATHER'
 				WHERE booking_id = :b
-				""").param("b", booking).update();
+				""").param("now", java.sql.Timestamp.from(clock.instant())).param("b", booking).update();
 
 		mvc.perform(commit(venue, body, previewToken, 1, "Re-laying row A"))
 				.andExpect(status().isConflict())
@@ -609,9 +612,9 @@ class RemodelCommitIT {
 		long id = jdbc.sql("""
 				INSERT INTO booking (code, venue_id, set_id, customer_id, booking_date, last_date,
 				                     amount_minor, amount_currency, status, confirmed_at)
-				VALUES (:code, :v, :s, :c, :first, :last, 6000, 'EUR', 'CONFIRMED', now())
+				VALUES (:code, :v, :s, :c, :first, :last, 6000, 'EUR', 'CONFIRMED', :now)
 				RETURNING id
-				""")
+				""").param("now", java.sql.Timestamp.from(clock.instant()))
 				.param("code", "CMT-" + System.nanoTime()).param("v", venueId).param("s", setId).param("c", customerId)
 				.param("first", first).param("last", first.plusDays(2))
 				.query(Long.class).single();
@@ -619,12 +622,13 @@ class RemodelCommitIT {
 		seedHold(setId, first.plusDays(2), "BOOKED_ONLINE");
 		jdbc.sql("""
 				UPDATE booking_day
-				SET refunded_at = now(), refund_minor = 2000,
+				SET refunded_at = :now, refund_minor = 2000,
 				    refund_reason = CASE WHEN service_date = :middle THEN 'VENUE' ELSE 'WEATHER' END,
-				    released_at = CASE WHEN service_date = :middle THEN now() END,
+				    released_at = CASE WHEN service_date = :middle THEN CAST(:now AS timestamptz) END,
 				    refunded_by_operator_id = CASE WHEN service_date = :middle THEN 1 END
 				WHERE booking_id = :b
-				""").param("middle", first.plusDays(1)).param("b", id).update();
+				""").param("now", java.sql.Timestamp.from(clock.instant()))
+				.param("middle", first.plusDays(1)).param("b", id).update();
 		seedAccrual(venueId, id);
 		return id;
 	}
@@ -745,9 +749,9 @@ class RemodelCommitIT {
 		return jdbc.sql("""
 				INSERT INTO booking (code, venue_id, set_id, customer_id, booking_date,
 				                     amount_minor, amount_currency, status, confirmed_at)
-				VALUES (:code, :v, :s, :c, :date, 2000, 'EUR', :status, now())
+				VALUES (:code, :v, :s, :c, :date, 2000, 'EUR', :status, :now)
 				RETURNING id
-				""")
+				""").param("now", java.sql.Timestamp.from(clock.instant()))
 				.param("code", code).param("v", venueId).param("s", setId).param("c", customerId)
 				.param("date", date).param("status", status)
 				.query(Long.class).single();

@@ -26,8 +26,8 @@ class SnsMessageVerifierTest {
 
 	private static final SnsTestPki PKI = SnsTestPki.get();
 	private static final ObjectMapper JSON = JsonMapper.builder().build();
-	/** The real clock: the PKI is minted at test time, so its certs start now. */
-	private static final Clock NOW = Clock.systemUTC();
+	/** The PKI's clock: its certs are minted around this clock's now. */
+	private static final Clock NOW = SnsTestPki.clock();
 	private static final String BOUNCE = "{\"type\":\"email_dropped\",\"email_to\":\"gone@example.com\"}";
 
 	private final List<URI> fetched = new ArrayList<>();
@@ -139,32 +139,32 @@ class SnsMessageVerifierTest {
 
 	@Test
 	void anExpiredSigningCertFails() {
-		Clock in2040 = Clock.fixed(Instant.parse("2040-01-01T00:00:00Z"), ZoneOffset.UTC);
+		Clock pastExpiry = Clock.fixed(NOW.instant().plus(SnsTestPki.VALIDITY), ZoneOffset.UTC);
 		SnsMessageVerifier verifier = new SnsMessageVerifier(SnsTrustAnchors.parse(PKI.caPem()),
-				SnsTestPki.TOPIC_ARN, SnsEndpointPolicy.defaults(), servedByScaleway, in2040);
+				SnsTestPki.TOPIC_ARN, SnsEndpointPolicy.defaults(), servedByScaleway, pastExpiry);
 
 		assertFalse(verifier.verify(parsed(PKI.notification(BOUNCE))));
 	}
 
 	/**
 	 * One time source: the injected clock decides validity for the whole chain, never the JVM's wall time.
-	 * The cert lapsed two days ago in real time but is inside its window on this clock, so only a verifier
+	 * The cert lapsed two days ago on the PKI's clock but is inside its window on this one, so only a verifier
 	 * that judges the chain by the clock accepts it.
 	 */
 	@Test
 	void theInjectedClockAloneJudgesCertValidity() {
-		Clock insideTheLapsedWindow = Clock.fixed(Instant.now().minus(Duration.ofHours(60)), ZoneOffset.UTC);
+		Clock insideTheLapsedWindow = Clock.fixed(NOW.instant().minus(Duration.ofHours(60)), ZoneOffset.UTC);
 		SnsMessageVerifier onThatClock = new SnsMessageVerifier(SnsTrustAnchors.parse(PKI.caPem()),
 				SnsTestPki.TOPIC_ARN, SnsEndpointPolicy.defaults(), servedByScaleway, insideTheLapsedWindow);
 		String body = PKI.notificationUnderLapsedCert(BOUNCE);
 
 		assertTrue(onThatClock.verify(parsed(body)), "valid at the injected clock's instant");
-		assertFalse(verifier(servedByScaleway).verify(parsed(body)), "lapsed at the real clock's instant");
+		assertFalse(verifier(servedByScaleway).verify(parsed(body)), "lapsed at the PKI clock's instant");
 	}
 
 	@Test
 	void aCachedCertIsRefusedOnceTheClockPassesItsExpiry() {
-		AtomicReference<Instant> now = new AtomicReference<>(Instant.now());
+		AtomicReference<Instant> now = new AtomicReference<>(NOW.instant());
 		Clock movable = new Clock() {
 			@Override
 			public ZoneOffset getZone() {
@@ -185,7 +185,7 @@ class SnsMessageVerifierTest {
 				SnsTestPki.TOPIC_ARN, SnsEndpointPolicy.defaults(), servedByScaleway, movable);
 		assertTrue(verifier.verify(parsed(PKI.notification(BOUNCE))));
 
-		now.set(Instant.parse("2040-01-01T00:00:00Z"));
+		now.set(NOW.instant().plus(SnsTestPki.VALIDITY));
 
 		assertFalse(verifier.verify(parsed(PKI.notification(BOUNCE))), "the cache never outlives the cert");
 		assertEquals(1, fetched.size());

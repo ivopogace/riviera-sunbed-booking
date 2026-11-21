@@ -1,7 +1,7 @@
 package ai.riviera.platform.venue;
 
+import java.time.Clock;
 import java.time.LocalDate;
-import java.time.ZoneId;
 import java.util.Set;
 import java.util.concurrent.Callable;
 import java.util.concurrent.ConcurrentHashMap;
@@ -11,6 +11,7 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.RepeatedTest;
 import org.junit.jupiter.api.RepetitionInfo;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -20,6 +21,7 @@ import org.springframework.jdbc.core.simple.JdbcClient;
 
 import ai.riviera.platform.EnabledIfDockerAvailable;
 import ai.riviera.platform.TestcontainersConfiguration;
+import ai.riviera.platform.TiraneDaytimeClock;
 import ai.riviera.platform.availability.application.MarkOutcome;
 import ai.riviera.platform.availability.application.StaffAvailability;
 import ai.riviera.platform.operator.vocabulary.OperatorId;
@@ -47,8 +49,14 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 @SpringBootTest
 class SetRetireVsMarkConcurrencyIT {
 
-	private static final LocalDate DAY = LocalDate.now(ZoneId.of("Europe/Tirane")).plusDays(30);
-	private static final LocalDate LAST_SEASON = LocalDate.now(ZoneId.of("Europe/Tirane")).minusDays(300);
+	private LocalDate day;
+	private LocalDate lastSeason;
+
+	@BeforeEach
+	void stampDays() {
+		day = TiraneDaytimeClock.today(clock).plusDays(30);
+		lastSeason = TiraneDaytimeClock.today(clock).minusDays(300);
+	}
 	private static final long HEAD_START_MS = 150;
 	private static final Set<String> BRANCHES = ConcurrentHashMap.newKeySet();
 
@@ -94,6 +102,9 @@ class SetRetireVsMarkConcurrencyIT {
 	@Autowired
 	JdbcClient jdbc;
 
+	@Autowired
+	Clock clock;
+
 	@RepeatedTest(6)
 	void aRetireAndAMarkNeverBothWin(RepetitionInfo info) throws Exception {
 		int rep = info.getCurrentRepetition();
@@ -108,7 +119,7 @@ class SetRetireVsMarkConcurrencyIT {
 		Outcomes<MarkOutcome, ChangeOutcome> outcomes = race(
 				() -> {
 					start(gate, ordering, Ordering.MARK_FIRST);
-					return staff.mark(owner, venue, new SetId(setId), DAY);
+					return staff.mark(owner, venue, new SetId(setId), day);
 				},
 				() -> {
 					start(gate, ordering, Ordering.RETIRE_FIRST);
@@ -174,7 +185,7 @@ class SetRetireVsMarkConcurrencyIT {
 				VALUES (:code, :venue, :set, :cust, :day, 3500, 'EUR', 'COMPLETED')
 				""")
 				.param("code", code).param("venue", venueId).param("set", setId)
-				.param("cust", customer).param("day", LAST_SEASON).update();
+				.param("cust", customer).param("day", lastSeason).update();
 		return setId;
 	}
 

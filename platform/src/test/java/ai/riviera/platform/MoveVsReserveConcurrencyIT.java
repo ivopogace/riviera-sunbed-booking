@@ -1,7 +1,7 @@
 package ai.riviera.platform;
 
+import java.time.Clock;
 import java.time.LocalDate;
-import java.time.ZoneId;
 import java.util.List;
 import java.util.Set;
 import java.util.concurrent.Callable;
@@ -12,6 +12,7 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.RepeatedTest;
 import org.junit.jupiter.api.RepetitionInfo;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -54,12 +55,17 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 @SpringBootTest
 class MoveVsReserveConcurrencyIT {
 
-	private static final ZoneId TIRANE = ZoneId.of("Europe/Tirane");
-	private static final LocalDate DAY = LocalDate.now(TIRANE).plusDays(30);
+	private LocalDate day;
 	private static final long HEAD_START_MS = 150;
 	private static final Set<String> BRANCHES = ConcurrentHashMap.newKeySet();
 	private static final Set<String> KEPT_BRANCHES = ConcurrentHashMap.newKeySet();
-	private static final LocalDate TOMORROW = LocalDate.now(TIRANE).plusDays(1);
+	private LocalDate tomorrow;
+
+	@BeforeEach
+	void stampDays() {
+		day = TiraneDaytimeClock.today(clock).plusDays(30);
+		tomorrow = TiraneDaytimeClock.today(clock).plusDays(1);
+	}
 
 	private enum Ordering { SIMULTANEOUS, RESERVE_FIRST, COMMIT_FIRST }
 
@@ -75,6 +81,9 @@ class MoveVsReserveConcurrencyIT {
 	@Autowired
 	JdbcClient jdbc;
 
+	@Autowired
+	Clock clock;
+
 	@RepeatedTest(6)
 	void aMoveAndAReserveNeverBothHoldTheCandidate(RepetitionInfo info) throws Exception {
 		int rep = info.getCurrentRepetition();
@@ -84,7 +93,7 @@ class MoveVsReserveConcurrencyIT {
 		long a3 = insertSet(venue, 3);
 		OperatorId owner = insertOperator("move-race-owner-" + rep);
 		grant(owner, venue.value());
-		long booking = seedConfirmedBooking(venue, a1, DAY);
+		long booking = seedConfirmedBooking(venue, a1, day);
 		PreviewToken token = PreviewToken.of(claims.classify(owner, venue, List.of(new SetId(a1))));
 		List<LayoutCell> keepingA2AndA3 = List.of(cell(2), cell(3));
 
@@ -92,7 +101,7 @@ class MoveVsReserveConcurrencyIT {
 		CountDownLatch gate = new CountDownLatch(1);
 		Callable<ClaimOutcome> reserve = () -> {
 			start(gate, ordering, Ordering.RESERVE_FIRST);
-			return availability.claim(new SetId(a2), DAY);
+			return availability.claim(new SetId(a2), day);
 		};
 		Callable<RemodelCommitOutcome> commit = () -> {
 			start(gate, ordering, Ordering.COMMIT_FIRST);
@@ -145,8 +154,8 @@ class MoveVsReserveConcurrencyIT {
 		long a3 = insertSet(venue, 3);
 		OperatorId owner = insertOperator("kept-race-owner-" + rep);
 		grant(owner, venue.value());
-		long booking = seedConfirmedBooking(venue, a1, DAY);
-		long frozen = seedConfirmedBooking(venue, a1, TOMORROW);
+		long booking = seedConfirmedBooking(venue, a1, day);
+		long frozen = seedConfirmedBooking(venue, a1, tomorrow);
 		PreviewToken token = PreviewToken.of(claims.classify(owner, venue, List.of(new SetId(a1))));
 		List<LayoutCell> keepingA2AndA3 = List.of(cell(2), cell(3));
 
@@ -154,7 +163,7 @@ class MoveVsReserveConcurrencyIT {
 		CountDownLatch gate = new CountDownLatch(1);
 		Callable<ClaimOutcome> reserve = () -> {
 			start(gate, ordering, Ordering.RESERVE_FIRST);
-			return availability.claim(new SetId(a2), DAY);
+			return availability.claim(new SetId(a2), day);
 		};
 		Callable<RemodelCommitOutcome> commit = () -> {
 			start(gate, ordering, Ordering.COMMIT_FIRST);
@@ -183,7 +192,7 @@ class MoveVsReserveConcurrencyIT {
 		assertEquals(1, onlineHolds(seatedOn), "the moved booking holds the row of the set it now names");
 		assertNotNull(movedAt(booking), "the move is stamped");
 		assertEquals(a1, setOf(frozen), "the frozen claim is kept where it is");
-		assertEquals(1, onlineHolds(a1, TOMORROW), "the kept claim keeps its row");
+		assertEquals(1, onlineHolds(a1, tomorrow), "the kept claim keeps its row");
 		assertFalse(retired(a1), "the kept set stays on the map");
 		boolean reserveWon = claimed == ClaimOutcome.CLAIMED;
 		if (reserveWon) {
@@ -256,9 +265,9 @@ class MoveVsReserveConcurrencyIT {
 		return jdbc.sql("""
 				INSERT INTO booking (code, venue_id, set_id, customer_id, booking_date,
 				                     amount_minor, amount_currency, status, confirmed_at)
-				VALUES (:code, :v, :s, :c, :date, 2000, 'EUR', 'CONFIRMED', now())
+				VALUES (:code, :v, :s, :c, :date, 2000, 'EUR', 'CONFIRMED', :now)
 				RETURNING id
-				""")
+				""").param("now", java.sql.Timestamp.from(clock.instant()))
 				.param("code", "MR-" + System.nanoTime())
 				.param("v", venue.value()).param("s", setId).param("c", customerId).param("date", date)
 				.query(Long.class).single();
@@ -275,7 +284,7 @@ class MoveVsReserveConcurrencyIT {
 	}
 
 	private int onlineHolds(long setId) {
-		return onlineHolds(setId, DAY);
+		return onlineHolds(setId, day);
 	}
 
 	private int onlineHolds(long setId, LocalDate day) {

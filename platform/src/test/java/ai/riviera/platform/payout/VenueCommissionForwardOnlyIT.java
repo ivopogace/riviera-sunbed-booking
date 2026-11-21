@@ -1,7 +1,7 @@
 package ai.riviera.platform.payout;
 
+import java.time.Clock;
 import java.time.LocalDate;
-import java.time.ZoneId;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -17,6 +17,7 @@ import org.springframework.test.web.servlet.MockMvc;
 import ai.riviera.platform.EnabledIfDockerAvailable;
 import ai.riviera.platform.SessionLoginSupport;
 import ai.riviera.platform.TestcontainersConfiguration;
+import ai.riviera.platform.TiraneDaytimeClock;
 import ai.riviera.platform.operator.api.OperatorProvisioning;
 import ai.riviera.platform.operator.api.VenueOwnership;
 import ai.riviera.platform.operator.vocabulary.OperatorId;
@@ -67,7 +68,6 @@ class VenueCommissionForwardOnlyIT {
 	 * each evening when Tirane has already rolled over and UTC has not — the assertion would then
 	 * demand the new rate for a date the schedule correctly still governs at the old one.
 	 */
-	private static final ZoneId TIRANE = ZoneId.of("Europe/Tirane");
 
 	private static final int OLD_BPS = 1500;
 	private static final int NEW_BPS = 2500;
@@ -79,6 +79,9 @@ class VenueCommissionForwardOnlyIT {
 	MockMvc mvc;
 	@Autowired
 	JdbcClient jdbc;
+
+	@Autowired
+	Clock clock;
 	@Autowired
 	OperatorProvisioning provisioning;
 	@Autowired
@@ -96,7 +99,7 @@ class VenueCommissionForwardOnlyIT {
 
 	@Test
 	void aRateChangeDoesNotResplitPastServiceDatesNorTouchTheLedger() throws Exception {
-		LocalDate soldOn = LocalDate.now(TIRANE).minusDays(3);
+		LocalDate soldOn = TiraneDaytimeClock.today(clock).minusDays(3);
 		long venueId = ownedVenue();
 		long bookingId = confirmedBooking(venueId, soldOn);
 		accrue(venueId, bookingId);
@@ -120,7 +123,7 @@ class VenueCommissionForwardOnlyIT {
 
 	@Test
 	void theNewRateGovernsTheCurrentServiceDateOnward() throws Exception {
-		LocalDate today = LocalDate.now(TIRANE);
+		LocalDate today = TiraneDaytimeClock.today(clock);
 		long venueId = ownedVenue();
 
 		raiseTheRate(venueId);
@@ -181,9 +184,9 @@ class VenueCommissionForwardOnlyIT {
 		return jdbc.sql("""
 				INSERT INTO booking (code, venue_id, set_id, customer_id, booking_date,
 				                     amount_minor, amount_currency, status, confirmed_at)
-				VALUES (:code, :venue, :set, :customer, :date, :amount, 'EUR', 'CONFIRMED', NOW())
+				VALUES (:code, :venue, :set, :customer, :date, :amount, 'EUR', 'CONFIRMED', :now)
 				RETURNING id
-				""")
+				""").param("now", java.sql.Timestamp.from(clock.instant()))
 				.param("code", "A7FWD" + serviceDate.toEpochDay())
 				.param("venue", venueId)
 				.param("set", setId)

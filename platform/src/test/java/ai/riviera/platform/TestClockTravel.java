@@ -28,14 +28,19 @@ public final class TestClockTravel implements ContextCustomizerFactory {
 		return System.getenv(ENV) == null ? null : Customizer.INSTANCE;
 	}
 
+	/** How far the context clocks run ahead of the wall, zero when unset: for a fixture minted outside any context. */
+	public static Duration ahead() {
+		String target = System.getenv(ENV);
+		return target == null ? Duration.ZERO : Duration.between(Instant.now(), Instant.parse(target));
+	}
+
 	/** Offsets the production {@code clock} bean and a shared {@link MovableClock}; a test's own fixed clock stays. */
 	enum Customizer implements ContextCustomizer {
 		INSTANCE;
 
 		@Override
 		public void customizeContext(ConfigurableApplicationContext context, MergedContextConfiguration mergedConfig) {
-			Instant target = Instant.parse(System.getenv(ENV));
-			Duration ahead = Duration.between(Instant.now(), target);
+			Duration ahead = ahead();
 			context.getBeanFactory().addBeanPostProcessor(new BeanPostProcessor() {
 				@Override
 				public Object postProcessAfterInitialization(Object bean, String beanName) {

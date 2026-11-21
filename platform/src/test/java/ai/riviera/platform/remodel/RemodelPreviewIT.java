@@ -1,7 +1,7 @@
 package ai.riviera.platform.remodel;
 
+import java.time.Clock;
 import java.time.LocalDate;
-import java.time.ZoneId;
 import java.util.List;
 
 import jakarta.servlet.http.Cookie;
@@ -20,6 +20,7 @@ import org.springframework.test.web.servlet.MvcResult;
 import ai.riviera.platform.EnabledIfDockerAvailable;
 import ai.riviera.platform.SessionLoginSupport;
 import ai.riviera.platform.TestcontainersConfiguration;
+import ai.riviera.platform.TiraneDaytimeClock;
 
 import static org.hamcrest.Matchers.containsString;
 import static org.hamcrest.Matchers.not;
@@ -45,8 +46,6 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 @SpringBootTest
 @AutoConfigureMockMvc
 class RemodelPreviewIT {
-
-	private static final ZoneId TIRANE = ZoneId.of("Europe/Tirane");
 	private static final String OPERATOR = "operator";
 	private static final String PASSWORD = "test-operator-pw";
 	/** One {@code set_version} token, one sentence: the preview answers a stale token in the save's words. */
@@ -59,13 +58,16 @@ class RemodelPreviewIT {
 	@Autowired
 	JdbcClient jdbc;
 
+	@Autowired
+	Clock clock;
+
 	private Cookie operatorSession;
 	private LocalDate today;
 
 	@BeforeEach
 	void logIn() throws Exception {
 		operatorSession = SessionLoginSupport.operatorSession(mvc, OPERATOR, PASSWORD);
-		today = LocalDate.now(TIRANE);
+		today = TiraneDaytimeClock.today(clock);
 	}
 
 	@Test

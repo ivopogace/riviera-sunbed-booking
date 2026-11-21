@@ -1,7 +1,7 @@
 package ai.riviera.platform.venue;
 
+import java.time.Clock;
 import java.time.LocalDate;
-import java.time.ZoneId;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -17,6 +17,7 @@ import org.springframework.test.web.servlet.MockMvc;
 import ai.riviera.platform.EnabledIfDockerAvailable;
 import ai.riviera.platform.SessionLoginSupport;
 import ai.riviera.platform.TestcontainersConfiguration;
+import ai.riviera.platform.TiraneDaytimeClock;
 import ai.riviera.platform.operator.api.OperatorProvisioning;
 import ai.riviera.platform.operator.api.VenueOwnership;
 import ai.riviera.platform.operator.vocabulary.OperatorId;
@@ -65,12 +66,14 @@ class AdminVenueCommissionIT {
 	private static final String PLAIN_OPERATOR_PW = "plain-op-pw";
 	private static final String VENUES_PATH = "/api/admin/venues";
 	private static final String COMMISSION_PATH = "/api/admin/venues/{venueId}/commission";
-	private static final ZoneId TIRANE = ZoneId.of("Europe/Tirane");
 
 	@Autowired
 	MockMvc mvc;
 	@Autowired
 	JdbcClient jdbc;
+
+	@Autowired
+	Clock clock;
 	@Autowired
 	OperatorProvisioning provisioning;
 	@Autowired
@@ -116,7 +119,7 @@ class AdminVenueCommissionIT {
 		assertThat(scheduledFrom(venueId, 2000))
 				.as("the new rate is scheduled from today in Europe/Tirane: same-day sales stay open "
 						+ "(invariant #4), so today's reporting must match the live rate accruals use")
-				.isEqualTo(LocalDate.now(TIRANE));
+				.isEqualTo(TiraneDaytimeClock.today(clock));
 		assertThat(scheduledFrom(venueId, 1500))
 				.as("and the superseded rate is pinned back to the floor, so no past day reprices")
 				.isEqualTo(LocalDate.of(1970, 1, 1));
