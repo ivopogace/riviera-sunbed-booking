@@ -8,6 +8,7 @@ import java.util.List;
 import jakarta.servlet.http.Cookie;
 
 import org.awaitility.Awaitility;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -22,6 +23,8 @@ import org.springframework.transaction.PlatformTransactionManager;
 import ai.riviera.platform.EnabledIfDockerAvailable;
 import ai.riviera.platform.SessionLoginSupport;
 import ai.riviera.platform.TestcontainersConfiguration;
+import ai.riviera.platform.booking.StayFixtures;
+import ai.riviera.platform.venue.vocabulary.SetId;
 import ai.riviera.platform.booking.events.StayMoveDue;
 import ai.riviera.platform.booking.vocabulary.BookingId;
 import ai.riviera.platform.booking.vocabulary.StayId;
@@ -44,7 +47,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
  * tomorrow's date and the stay's last day, today's and tomorrow's spots as the live map labels them, the
  * distance and the code-gated link; a suppressed address is skipped with the publication complete; and
  * the mock outbox read answers the mail for a real-backend run without a code or a link. Stays are
- * SQL-seeded on the first seeded venue's online sets on 2033-09-xx, a month no other IT claims (invariant #2).
+ * SQL-seeded on two online sets of the test's own venue, removed after it (invariant #2).
  */
 @EnabledIfDockerAvailable
 @Import(TestcontainersConfiguration.class)
@@ -80,10 +83,19 @@ class MoveReminderMailIT {
 	private record SeededStay(long id, String code, long arriving, LocalDate moveDay, LocalDate last) {
 	}
 
+	/** This test's own venue: its bookings reach no other class's sets, and leave with it (#2). */
+	private StayFixtures.Venue venue;
+
 	@BeforeEach
 	void isolateOutbox() {
 		mailer.clear();
 		fixtures = new BookingMailFixtures(jdbc, txManager, publisher);
+		venue = StayFixtures.venue(jdbc, "INSTANT", null, false);
+	}
+
+	@AfterEach
+	void removeVenue() {
+		StayFixtures.cleanup(jdbc, venue.id());
 	}
 
 	@Test
@@ -142,9 +154,9 @@ class MoveReminderMailIT {
 				SELECT sp.id, sp.venue_id, v.name, sp.row_label, sp.position_no, sp.grid_y
 				FROM set_position sp JOIN venue v ON v.id = sp.venue_id
 				WHERE sp.pool = 'ONLINE' AND sp.retired_at IS NULL
-				  AND sp.venue_id = (SELECT venue_id FROM set_position WHERE pool = 'ONLINE' ORDER BY id LIMIT 1)
-				ORDER BY sp.id LIMIT 2
-				""")
+				  AND sp.id IN (:sets)
+				ORDER BY sp.id
+				""").param("sets", venue.online().subList(0, 2).stream().map(SetId::value).toList())
 				.query((rs, n) -> new Spot(rs.getLong("id"), rs.getLong("venue_id"), rs.getString("name"),
 						rs.getString("row_label"), rs.getInt("position_no"), rs.getInt("grid_y")))
 				.list();

@@ -4,6 +4,8 @@ import java.time.Instant;
 import java.time.LocalDate;
 import java.util.List;
 
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.EnumSource;
@@ -15,6 +17,7 @@ import org.springframework.jdbc.core.simple.JdbcClient;
 
 import ai.riviera.platform.EnabledIfDockerAvailable;
 import ai.riviera.platform.TestcontainersConfiguration;
+import ai.riviera.platform.booking.StayFixtures;
 import ai.riviera.platform.booking.vocabulary.BookingId;
 import ai.riviera.platform.notification.application.ConfirmationMailAttempts;
 import ai.riviera.platform.notification.application.MailAttempt;
@@ -51,6 +54,19 @@ class ConfirmationMailAttemptsIT {
 
 	@Autowired
 	JdbcClient jdbc;
+
+	/** This test's own venue; nothing is published, so it leaves without waiting. */
+	private StayFixtures.Venue venue;
+
+	@BeforeEach
+	void ownVenue() {
+		venue = StayFixtures.venue(jdbc, "INSTANT", null, false);
+	}
+
+	@AfterEach
+	void removeVenue() {
+		StayFixtures.cleanupNow(jdbc, venue.id());
+	}
 
 	@Test
 	void readsBackTheAttemptsForABookingNewestFirst() {
@@ -169,11 +185,11 @@ class ConfirmationMailAttemptsIT {
 		return new BookingId(jdbc.sql("""
 				INSERT INTO booking (code, venue_id, set_id, customer_id, booking_date,
 				                     amount_minor, amount_currency, status)
-				SELECT :code, sp.venue_id, sp.id, :cust, :date, 2500, 'EUR', 'CONFIRMED'
-				FROM set_position sp WHERE sp.pool = 'ONLINE' ORDER BY sp.id LIMIT 1
+				VALUES (:code, :venue, :set, :cust, :date, 2500, 'EUR', 'CONFIRMED')
 				RETURNING id
 				""")
-				.param("code", code).param("cust", customerId)
+				.param("code", code).param("venue", venue.id()).param("set", venue.online().getFirst().value())
+				.param("cust", customerId)
 				.param("date", LocalDate.of(2030, 5, 1))
 				.query(Long.class).single());
 	}

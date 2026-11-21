@@ -125,8 +125,9 @@ class RegistryMailShedDurabilityIT {
 	}
 
 	@AfterEach
-	void releaseTransport() {
+	void releaseTransportThenRemoveVenue() {
 		transport.release();
+		fixtures.removeVenue();
 	}
 
 	private ThreadPoolTaskExecutor mailPool() {

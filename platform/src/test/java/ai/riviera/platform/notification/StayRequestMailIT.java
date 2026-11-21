@@ -6,6 +6,7 @@ import java.time.LocalDate;
 import java.util.List;
 
 import org.awaitility.Awaitility;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -17,6 +18,8 @@ import org.springframework.transaction.PlatformTransactionManager;
 
 import ai.riviera.platform.EnabledIfDockerAvailable;
 import ai.riviera.platform.TestcontainersConfiguration;
+import ai.riviera.platform.booking.StayFixtures;
+import ai.riviera.platform.venue.vocabulary.SetId;
 import ai.riviera.platform.booking.events.StayPaymentDue;
 import ai.riviera.platform.booking.events.StayRequestDeclined;
 import ai.riviera.platform.booking.events.StayRequestExpired;
@@ -36,7 +39,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
  * A stay request's decline, expiry and payment-due each mail the guest once, under the stay's code and
  * whole span, never a stretch's row code (#1267, invariant #7). The request mails name no spot and the
  * payment-due mail carries the stay's total (RESPONSIBILITIES.md §notification). Stays are SQL-seeded on
- * the first seeded venue, never claimed, on 2037 dates no other IT uses. Testcontainers.
+ * the test's own venue, never claimed, and removed with it. Testcontainers.
  */
 @EnabledIfDockerAvailable
 @Import(TestcontainersConfiguration.class)
@@ -69,10 +72,19 @@ class StayRequestMailIT {
 	private record SeededStay(long id, String code, LocalDate first) {
 	}
 
+	/** This test's own venue: its bookings reach no other class's sets, and leave with it (#2). */
+	private StayFixtures.Venue venue;
+
 	@BeforeEach
 	void isolateOutbox() {
 		mailer.clear();
 		fixtures = new BookingMailFixtures(jdbc, txManager, publisher);
+		venue = StayFixtures.venue(jdbc, "INSTANT", null, false);
+	}
+
+	@AfterEach
+	void removeVenue() {
+		StayFixtures.cleanup(jdbc, venue.id());
 	}
 
 	@Test
@@ -126,9 +138,9 @@ class StayRequestMailIT {
 				SELECT sp.id, sp.venue_id, v.name
 				FROM set_position sp JOIN venue v ON v.id = sp.venue_id
 				WHERE sp.pool = 'ONLINE'
-				  AND sp.venue_id = (SELECT venue_id FROM set_position WHERE pool = 'ONLINE' ORDER BY id LIMIT 1)
-				ORDER BY sp.id LIMIT 2
-				""")
+				  AND sp.id IN (:sets)
+				ORDER BY sp.id
+				""").param("sets", venue.online().subList(0, 2).stream().map(SetId::value).toList())
 				.query((rs, n) -> new SetRef(rs.getLong("id"), rs.getLong("venue_id"), rs.getString("name")))
 				.list();
 	}

@@ -10,6 +10,7 @@ import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 
 import org.awaitility.Awaitility;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.RepeatedTest;
 import org.junit.jupiter.api.RepetitionInfo;
@@ -27,6 +28,8 @@ import org.springframework.transaction.support.TransactionTemplate;
 
 import ai.riviera.platform.EnabledIfDockerAvailable;
 import ai.riviera.platform.TestcontainersConfiguration;
+import ai.riviera.platform.booking.StayFixtures;
+import ai.riviera.platform.venue.vocabulary.SetId;
 import ai.riviera.platform.booking.vocabulary.CancellationWindow;
 import ai.riviera.platform.notification.adapter.out.MockMailer;
 import ai.riviera.platform.notification.adapter.out.SentEmail;
@@ -46,8 +49,8 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
  * in its own transaction and racing the other, drives {@code booking}'s confirm; the confirm that
  * completes the stay publishes {@code StayConfirmed}, and the registry delivers exactly one
  * {@code STAY_CONFIRMATION} naming every stop, the stay's code and total, while each stretch's
- * {@code BookingConfirmed} mails nothing; an admin resend on any stretch resends the stay's mail. Stays are SQL-seeded on the first seeded venue, never claimed,
- * on dates no other IT uses. Testcontainers; skipped where Docker is absent.
+ * {@code BookingConfirmed} mails nothing; an admin resend on any stretch resends the stay's mail. Stays are
+ * SQL-seeded on the test's own venue, never claimed, and removed with it. Testcontainers; skipped where Docker is absent.
  */
 @EnabledIfDockerAvailable
 @Import(TestcontainersConfiguration.class)
@@ -82,9 +85,18 @@ class StayConfirmationMailIT {
 	private record SeededStay(String code, List<Long> stretches, LocalDate first) {
 	}
 
+	/** This test's own venue: its bookings reach no other class's sets, and leave with it (#2). */
+	private StayFixtures.Venue venue;
+
 	@BeforeEach
 	void isolateOutbox() {
 		mailer.clear();
+		venue = StayFixtures.venue(jdbc, "INSTANT", null, false);
+	}
+
+	@AfterEach
+	void removeVenue() {
+		StayFixtures.cleanup(jdbc, venue.id());
 	}
 
 	@RepeatedTest(3)
@@ -151,9 +163,9 @@ class StayConfirmationMailIT {
 				SELECT sp.id, sp.venue_id, v.name, sp.row_label, sp.position_no
 				FROM set_position sp JOIN venue v ON v.id = sp.venue_id
 				WHERE sp.pool = 'ONLINE'
-				  AND sp.venue_id = (SELECT venue_id FROM set_position WHERE pool = 'ONLINE' ORDER BY id LIMIT 1)
-				ORDER BY sp.id LIMIT 2
-				""")
+				  AND sp.id IN (:sets)
+				ORDER BY sp.id
+				""").param("sets", venue.online().subList(0, 2).stream().map(SetId::value).toList())
 				.query((rs, n) -> new SetRef(rs.getLong("id"), rs.getLong("venue_id"), rs.getString("name"),
 						rs.getString("row_label"), rs.getInt("position_no")))
 				.list();

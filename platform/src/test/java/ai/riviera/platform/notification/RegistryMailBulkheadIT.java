@@ -54,9 +54,9 @@ import static org.assertj.core.api.Assertions.assertThat;
  * <p>The imported {@link ControllableMailerConfiguration} keeps this class off the suite's shared
  * Spring context — deliberate: a test that wedges a thread pool must not hand that pool to the
  * suite's other classes. Other importers share this context, so the gate is released
- * unconditionally in {@link #releaseTransport()}, which keeps a parked thread from reaching them.
- * Bookings are SQL-seeded on dates no other IT uses via {@link BookingMailFixtures}, and never
- * claimed through {@code availability}.
+ * unconditionally in {@link #releaseTransportThenRemoveVenue()}, which keeps a parked thread from reaching
+ * them. Bookings are SQL-seeded on the {@link BookingMailFixtures} venue, never claimed through
+ * {@code availability}, and removed with it.
  * Testcontainers; skipped where Docker is absent.
  */
 @EnabledIfDockerAvailable
@@ -101,8 +101,9 @@ class RegistryMailBulkheadIT {
 	}
 
 	@AfterEach
-	void releaseTransport() {
+	void releaseTransportThenRemoveVenue() {
 		transport.release();
+		fixtures.removeVenue();
 	}
 
 	private String statusOf(long bookingId) {

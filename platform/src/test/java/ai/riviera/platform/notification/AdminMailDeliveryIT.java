@@ -5,6 +5,7 @@ import java.time.Instant;
 import java.time.LocalDate;
 
 import org.awaitility.Awaitility;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -21,6 +22,7 @@ import org.springframework.transaction.support.TransactionTemplate;
 
 import ai.riviera.platform.EnabledIfDockerAvailable;
 import ai.riviera.platform.TestcontainersConfiguration;
+import ai.riviera.platform.booking.StayFixtures;
 import ai.riviera.platform.booking.events.BookingConfirmed;
 import ai.riviera.platform.booking.vocabulary.BookingId;
 import ai.riviera.platform.booking.vocabulary.CancellationWindow;
@@ -59,8 +61,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
  * <p>The role gate, the request-validation {@code 400} and every resend outcome token are covered
  * Docker-free by {@code AdminMailDeliveryControllerTest}; this class is the wiring and the data.
  *
- * <p>Unique {@code (set, date)} per test, like every IT sharing this context: a claimed pair is never
- * released (invariant #2), so reusing another class's date would 409 whichever ran second.
+ * <p>Each test seeds on a venue of its own and removes it, so no row reaches another class (invariant #2).
  */
 @EnabledIfDockerAvailable
 @Import(TestcontainersConfiguration.class)
@@ -92,9 +93,18 @@ class AdminMailDeliveryIT {
 	private record SetRef(long setId, long venueId, String venueName) {
 	}
 
+	/** This test's own venue: its bookings reach no other class's sets, and leave with it (#2). */
+	private StayFixtures.Venue venue;
+
 	@BeforeEach
 	void isolateOutbox() {
 		mailer.clear();
+		venue = StayFixtures.venue(jdbc, "INSTANT", null, false);
+	}
+
+	@AfterEach
+	void removeVenue() {
+		StayFixtures.cleanup(jdbc, venue.id());
 	}
 
 	@Test
@@ -291,8 +301,8 @@ class AdminMailDeliveryIT {
 		return jdbc.sql("""
 				SELECT sp.id, sp.venue_id, v.name
 				FROM set_position sp JOIN venue v ON v.id = sp.venue_id
-				WHERE sp.pool = 'ONLINE' ORDER BY sp.id LIMIT 1
-				""")
+				WHERE sp.id = :set
+				""").param("set", venue.online().getFirst().value())
 				.query((rs, n) -> new SetRef(rs.getLong("id"), rs.getLong("venue_id"), rs.getString("name")))
 				.single();
 	}
