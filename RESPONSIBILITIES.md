@@ -1575,7 +1575,7 @@ The SPA rules whose TSDoc points here; structure is `riviera-frontend`'s, stylin
   reads "Checking availability for <new days>…" until the read answers. The line is the one voice: a persistent
   polite region whose text changes twice, so a count equal to the old one is still spoken; the load announcer stays
   silent. The bar shows no proportion and the no-cover banner is withheld: each would put the old read's numbers
-  under the new days. No `aria-busy` on the map: an inert node is not exposed, and on the line it would hold the
+  under the new days. No `aria-busy` on the map: an inert node is not exposed, and on the line it may hold the
   announcement back. A progress mark joins the line after a second, outside the live region so its arrival is not read.
   A same-days re-read (the refresh above, Retry) shows none of this.
 - **While other days load, the sales-closed alert is withheld; the closed-for-season notice stays** (#1822): the
