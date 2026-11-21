@@ -1,7 +1,7 @@
 package ai.riviera.platform.venue;
 
+import java.time.Clock;
 import java.time.LocalDate;
-import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.Callable;
@@ -21,6 +21,7 @@ import org.springframework.jdbc.core.simple.JdbcClient;
 
 import ai.riviera.platform.EnabledIfDockerAvailable;
 import ai.riviera.platform.TestcontainersConfiguration;
+import ai.riviera.platform.TiraneDaytimeClock;
 import ai.riviera.platform.operator.vocabulary.OperatorId;
 import ai.riviera.platform.venue.application.EditBeachMap;
 import ai.riviera.platform.venue.application.LayoutCommand;
@@ -54,13 +55,14 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 @SpringBootTest
 class BeachMapDiffConcurrencyIT {
 
-	private static final ZoneId TIRANE = ZoneId.of("Europe/Tirane");
-
 	@Autowired
 	EditBeachMap editBeachMap;
 
 	@Autowired
 	JdbcClient jdbc;
+
+	@Autowired
+	Clock clock;
 
 	@RepeatedTest(5)
 	void exactlyOneDiffSaveWins(RepetitionInfo info) throws Exception {
@@ -96,7 +98,7 @@ class BeachMapDiffConcurrencyIT {
 		long a2 = insertSet(venue, "A", 2, 2, 1);
 		OperatorId owner = insertOperator("diff-race-owner-" + rep);
 		grant(owner, venue.value());
-		LocalDate date = LocalDate.now(TIRANE).plusYears(2).plusDays(rep);
+		LocalDate date = TiraneDaytimeClock.today(clock).plusYears(2).plusDays(rep);
 
 		CountDownLatch gate = new CountDownLatch(1);
 		Callable<Boolean> mark = () -> {

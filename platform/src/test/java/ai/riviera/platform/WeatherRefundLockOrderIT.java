@@ -1,7 +1,7 @@
 package ai.riviera.platform;
 
+import java.time.Clock;
 import java.time.LocalDate;
-import java.time.ZoneId;
 import java.util.List;
 
 import org.junit.jupiter.api.BeforeEach;
@@ -38,8 +38,6 @@ import static org.assertj.core.api.Assertions.assertThat;
 @SpringBootTest
 class WeatherRefundLockOrderIT {
 
-	private static final ZoneId TIRANE = ZoneId.of("Europe/Tirane");
-
 	@Autowired
 	RefundForWeather weather;
 	@Autowired
@@ -50,6 +48,9 @@ class WeatherRefundLockOrderIT {
 	RemodelClaims claims;
 	@Autowired
 	JdbcClient jdbc;
+
+	@Autowired
+	Clock clock;
 
 	private VenueId venue;
 	private OperatorId owner;
@@ -88,7 +89,7 @@ class WeatherRefundLockOrderIT {
 
 	@Test
 	void aWeatherRefundAndARemodelCommitSerialize() throws Exception {
-		LocalDate storm = LocalDate.now(TIRANE).plusDays(20);
+		LocalDate storm = TiraneDaytimeClock.today(clock).plusDays(20);
 		long later = confirmed(sets.get(0), storm, storm.plusDays(1));
 		long earlier = confirmed(sets.get(1), storm.minusDays(1), storm);
 		PreviewToken token = PreviewToken.of(claims.classify(owner, venue,
@@ -116,9 +117,9 @@ class WeatherRefundLockOrderIT {
 		long id = jdbc.sql("""
 				INSERT INTO booking (code, venue_id, set_id, customer_id, booking_date, last_date,
 				                     amount_minor, amount_currency, status, confirmed_at)
-				VALUES (:code, :v, :s, :c, :first, :last, 4000, 'EUR', 'CONFIRMED', NOW())
+				VALUES (:code, :v, :s, :c, :first, :last, 4000, 'EUR', 'CONFIRMED', :now)
 				RETURNING id
-				""")
+				""").param("now", java.sql.Timestamp.from(clock.instant()))
 				.param("code", "SL" + System.nanoTime() % 100_000_000L).param("v", venue.value()).param("s", setId)
 				.param("c", customer).param("first", first).param("last", last)
 				.query(Long.class).single();

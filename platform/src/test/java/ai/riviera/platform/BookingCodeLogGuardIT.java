@@ -1,9 +1,9 @@
 package ai.riviera.platform;
 
 import java.sql.Timestamp;
+import java.time.Clock;
 import java.time.Instant;
 import java.time.LocalDate;
-import java.time.ZoneId;
 import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.List;
@@ -51,13 +51,15 @@ class BookingCodeLogGuardIT {
 
 	private static final String OPERATOR = "operator";
 	private static final String PASSWORD = "test-operator-pw";
-	private static final ZoneId TIRANE = ZoneId.of("Europe/Tirane");
 	private static final String CODE_ALPHABET = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
 
 	@Autowired
 	MockMvc mvc;
 	@Autowired
 	JdbcClient jdbc;
+
+	@Autowired
+	Clock clock;
 
 	private final Logger root = (Logger) LoggerFactory.getLogger(org.slf4j.Logger.ROOT_LOGGER_NAME);
 	private final ListAppender<ILoggingEvent> captured = new ListAppender<>();
@@ -112,7 +114,7 @@ class BookingCodeLogGuardIT {
 
 	@Test
 	void reviewNeverLogsTheCode() throws Exception {
-		String code = booking("COMPLETED", today().minusDays(1), Instant.now().minus(1, ChronoUnit.DAYS));
+		String code = booking("COMPLETED", today().minusDays(1), clock.instant().minus(1, ChronoUnit.DAYS));
 		String review = "{\"stars\":5,\"comment\":\"Lovely\",\"displayName\":\"Ana\"}";
 		mvc.perform(post("/api/bookings/{code}/review", code).with(csrf())
 				.contentType(MediaType.APPLICATION_JSON).content(review)).andExpect(status().isCreated());
@@ -208,10 +210,10 @@ class BookingCodeLogGuardIT {
 				INSERT INTO booking (code, venue_id, set_id, customer_id, booking_date, amount_minor,
 				                     amount_currency, status, confirmed_at, completed_at, request_expires_at)
 				VALUES (:code, :v, :s, :c, :date, 4500, 'EUR', :status,
-				        CASE WHEN :status = 'PENDING_REQUEST' THEN NULL ELSE now() END, :completed,
-				        CASE WHEN :status = 'PENDING_REQUEST' THEN now() + interval '1 hour' END)
+				        CASE WHEN :status = 'PENDING_REQUEST' THEN NULL ELSE CAST(:now AS timestamptz) END, :completed,
+				        CASE WHEN :status = 'PENDING_REQUEST' THEN CAST(:now AS timestamptz) + interval '1 hour' END)
 				RETURNING id
-				""")
+				""").param("now", java.sql.Timestamp.from(clock.instant()))
 				.param("code", code).param("v", venue).param("s", set).param("c", customer)
 				.param("date", date).param("status", status)
 				.param("completed", completedAt == null ? null : Timestamp.from(completedAt))
@@ -240,7 +242,7 @@ class BookingCodeLogGuardIT {
 		return code.toString();
 	}
 
-	private static LocalDate today() {
-		return LocalDate.now(TIRANE);
+	private LocalDate today() {
+		return TiraneDaytimeClock.today(clock);
 	}
 }

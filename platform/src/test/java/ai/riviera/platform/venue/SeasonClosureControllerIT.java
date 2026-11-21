@@ -1,7 +1,7 @@
 package ai.riviera.platform.venue;
 
+import java.time.Clock;
 import java.time.LocalDate;
-import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -21,6 +21,7 @@ import ai.riviera.platform.EnabledIfDockerAvailable;
 import ai.riviera.platform.OwnershipFixtures;
 import ai.riviera.platform.SessionLoginSupport;
 import ai.riviera.platform.TestcontainersConfiguration;
+import ai.riviera.platform.TiraneDaytimeClock;
 
 import static org.hamcrest.Matchers.nullValue;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
@@ -48,13 +49,15 @@ class SeasonClosureControllerIT {
 
 	private static final String OPERATOR = "operator";
 	private static final String PASSWORD = "test-operator-pw";
-	private static final ZoneId TIRANE = ZoneId.of("Europe/Tirane");
 
 	@Autowired
 	MockMvc mvc;
 
 	@Autowired
 	JdbcClient jdbc;
+
+	@Autowired
+	Clock clock;
 
 	private Cookie operatorSession;
 	private final List<Long> venues = new ArrayList<>();
@@ -81,8 +84,8 @@ class SeasonClosureControllerIT {
 		jdbc.sql("DELETE FROM customer WHERE email LIKE 'season-%@example.com'").update();
 	}
 
-	private static LocalDate today() {
-		return LocalDate.now(TIRANE);
+	private LocalDate today() {
+		return TiraneDaytimeClock.today(clock);
 	}
 
 	private static String closure(LocalDate reopenOn, boolean advanceSales) {

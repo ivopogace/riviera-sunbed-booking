@@ -1,7 +1,7 @@
 package ai.riviera.platform.venue;
 
+import java.time.Clock;
 import java.time.LocalDate;
-import java.time.ZoneId;
 
 import jakarta.servlet.http.Cookie;
 import org.junit.jupiter.api.BeforeEach;
@@ -18,6 +18,7 @@ import org.springframework.test.web.servlet.MvcResult;
 import ai.riviera.platform.EnabledIfDockerAvailable;
 import ai.riviera.platform.SessionLoginSupport;
 import ai.riviera.platform.TestcontainersConfiguration;
+import ai.riviera.platform.TiraneDaytimeClock;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
@@ -46,11 +47,10 @@ class SetRetireIT {
 
 	private static final String OPERATOR = "operator";
 	private static final String PASSWORD = "test-operator-pw";
-	private static final ZoneId TIRANE = ZoneId.of("Europe/Tirane");
 	/** A service day that is over: a booking on it can be terminal history, a hold on it is past. */
-	private static final LocalDate LAST_SEASON = LocalDate.now(TIRANE).minusDays(300);
+	private LocalDate lastSeason;
 	/** A service day still ahead: a booking on it is a guest still coming. */
-	private static final LocalDate AHEAD = LocalDate.now(TIRANE).plusDays(30);
+	private LocalDate ahead;
 	private static final String SET_IN_USE_DETAIL = "This set has a booking or a current hold.";
 
 	@Autowired
@@ -59,10 +59,15 @@ class SetRetireIT {
 	@Autowired
 	JdbcClient jdbc;
 
+	@Autowired
+	Clock clock;
+
 	private Cookie operatorSession;
 
 	@BeforeEach
 	void logIn() throws Exception {
+		lastSeason = TiraneDaytimeClock.today(clock).minusDays(300);
+		ahead = TiraneDaytimeClock.today(clock).plusDays(30);
 		operatorSession = SessionLoginSupport.operatorSession(mvc, OPERATOR, PASSWORD);
 	}
 
@@ -70,7 +75,7 @@ class SetRetireIT {
 	void removingASetWithAFinishedBookingRetiresItAndKeepsTheBooking() throws Exception {
 		long venue = createVenue("Retire Club");
 		long setId = addSet(venue, "Row A", 1, 1, 1);
-		seedBooking(venue, setId, "RETIRECL1", "CANCELLED", LAST_SEASON);
+		seedBooking(venue, setId, "RETIRECL1", "CANCELLED", lastSeason);
 
 		mvc.perform(delete("/api/venues/{v}/sets/{s}", venue, setId).cookie(operatorSession).with(csrf()))
 				.andExpect(status().isNoContent());
@@ -84,8 +89,8 @@ class SetRetireIT {
 	void removingASetWithALiveBookingIs409() throws Exception {
 		long venue = createVenue("Live Club");
 		long setId = addSet(venue, "Row A", 1, 1, 1);
-		seedBooking(venue, setId, "LIVECLUB1", "CONFIRMED", AHEAD);
-		seedHold(setId, AHEAD, "BOOKED_ONLINE");
+		seedBooking(venue, setId, "LIVECLUB1", "CONFIRMED", ahead);
+		seedHold(setId, ahead, "BOOKED_ONLINE");
 
 		mvc.perform(delete("/api/venues/{v}/sets/{s}", venue, setId).cookie(operatorSession).with(csrf()))
 				.andExpect(status().isConflict())
@@ -101,8 +106,8 @@ class SetRetireIT {
 		long venue = createVenue("Gone Club");
 		long kept = addSet(venue, "Row A", 1, 1, 1);
 		long retired = addSet(venue, "Row A", 2, 2, 1);
-		seedBooking(venue, retired, "GONECLUB1", "COMPLETED", LAST_SEASON);
-		seedHold(retired, LAST_SEASON, "BOOKED_ONLINE");
+		seedBooking(venue, retired, "GONECLUB1", "COMPLETED", lastSeason);
+		seedHold(retired, lastSeason, "BOOKED_ONLINE");
 		retire(venue, retired);
 
 		mvc.perform(get("/api/venues/{id}", venue))
@@ -116,13 +121,13 @@ class SetRetireIT {
 				.andExpect(jsonPath("$[?(@.id == %d)].availability.free".formatted(venue)).value(1));
 
 		mvc.perform(get("/api/venues/{id}/availability-calendar", venue)
-						.param("from", LAST_SEASON.toString()).param("to", LAST_SEASON.toString()))
+						.param("from", lastSeason.toString()).param("to", lastSeason.toString()))
 				.andExpect(status().isOk())
 				.andExpect(jsonPath("$[0].total").value(1))
 				.andExpect(jsonPath("$[0].free").value(1));
 
 		mvc.perform(get("/api/venues/{id}/availability", venue).cookie(operatorSession)
-						.param("date", LAST_SEASON.toString()))
+						.param("date", lastSeason.toString()))
 				.andExpect(status().isOk())
 				.andExpect(jsonPath("$.length()").value(0));
 
@@ -140,7 +145,7 @@ class SetRetireIT {
 	void aRetiredSetsSpotCanBeReused() throws Exception {
 		long venue = createVenue("Reuse Spot Club");
 		long retired = addSet(venue, "Row A", 1, 1, 1);
-		seedBooking(venue, retired, "REUSECLB1", "CANCELLED", LAST_SEASON);
+		seedBooking(venue, retired, "REUSECLB1", "CANCELLED", lastSeason);
 		retire(venue, retired);
 
 		long replacement = addSet(venue, "Row A", 1, 1, 1);
@@ -154,7 +159,7 @@ class SetRetireIT {
 	void bothClaimPathsRefuseARetiredSet() throws Exception {
 		long venue = createVenue("Claim Club");
 		long retired = addSet(venue, "Row A", 1, 1, 1);
-		seedBooking(venue, retired, "CLAIMCLB1", "CANCELLED", LAST_SEASON);
+		seedBooking(venue, retired, "CLAIMCLB1", "CANCELLED", lastSeason);
 		retire(venue, retired);
 
 		mvc.perform(post("/api/bookings")
@@ -163,14 +168,14 @@ class SetRetireIT {
 						.content("""
 								{"setId": %d, "bookingDate": "%s",
 								 "contact": {"email": "retired@example.com", "fullName": "Late Guest", "phone": "+355699"}}
-								""".formatted(retired, AHEAD)))
+								""".formatted(retired, ahead)))
 				.andExpect(status().isNotFound())
 				.andExpect(jsonPath("$.code").value("NO_SUCH_SET"));
 
 		mvc.perform(post("/api/venues/{v}/sets/{s}/availability", venue, retired)
 						.cookie(operatorSession).with(csrf())
 						.contentType(MediaType.APPLICATION_JSON)
-						.content("{\"date\":\"%s\"}".formatted(AHEAD)))
+						.content("{\"date\":\"%s\"}".formatted(ahead)))
 				.andExpect(status().isNotFound())
 				.andExpect(jsonPath("$.code").value("NO_SUCH_SET"));
 
@@ -182,7 +187,7 @@ class SetRetireIT {
 	void aBookingOnARetiredSetStillRendersItsSpot() throws Exception {
 		long venue = createVenue("History Club");
 		long retired = addSet(venue, "Row A", 3, 3, 1);
-		seedBooking(venue, retired, "HISTCLUB1", "COMPLETED", LAST_SEASON);
+		seedBooking(venue, retired, "HISTCLUB1", "COMPLETED", lastSeason);
 		retire(venue, retired);
 
 		mvc.perform(get("/api/bookings/{code}", "HISTCLUB1"))
@@ -192,7 +197,7 @@ class SetRetireIT {
 				.andExpect(jsonPath("$.positionNo").value(3));
 
 		mvc.perform(get("/api/venues/{v}/bookings", venue).cookie(operatorSession)
-						.param("date", LAST_SEASON.toString()))
+						.param("date", lastSeason.toString()))
 				.andExpect(status().isOk())
 				.andExpect(jsonPath("$.length()").value(1))
 				.andExpect(jsonPath("$[0].setId").value(retired))

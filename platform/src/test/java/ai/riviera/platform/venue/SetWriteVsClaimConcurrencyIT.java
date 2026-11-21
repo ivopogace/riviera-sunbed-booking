@@ -1,7 +1,7 @@
 package ai.riviera.platform.venue;
 
+import java.time.Clock;
 import java.time.LocalDate;
-import java.time.ZoneId;
 import java.util.Set;
 import java.util.concurrent.Callable;
 import java.util.concurrent.ConcurrentHashMap;
@@ -11,6 +11,7 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.RepeatedTest;
 import org.junit.jupiter.api.RepetitionInfo;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -20,6 +21,7 @@ import org.springframework.jdbc.core.simple.JdbcClient;
 
 import ai.riviera.platform.EnabledIfDockerAvailable;
 import ai.riviera.platform.TestcontainersConfiguration;
+import ai.riviera.platform.TiraneDaytimeClock;
 import ai.riviera.platform.availability.api.AvailabilityClaim;
 import ai.riviera.platform.availability.vocabulary.ClaimOutcome;
 import ai.riviera.platform.operator.vocabulary.OperatorId;
@@ -57,7 +59,12 @@ class SetWriteVsClaimConcurrencyIT {
 	 * fixed date would stop the hold registering the moment real time passed it — and the test would
 	 * then let both sides win rather than failing loudly.
 	 */
-	private static final LocalDate DAY = LocalDate.now(ZoneId.of("Europe/Tirane")).plusDays(30);
+	private LocalDate day;
+
+	@BeforeEach
+	void stampDays() {
+		day = TiraneDaytimeClock.today(clock).plusDays(30);
+	}
 	/**
 	 * A head start long enough for one side to take its row lock before the other starts. Half the
 	 * repetitions give it to the claim and half to the layout write, so BOTH branches are exercised
@@ -137,6 +144,9 @@ class SetWriteVsClaimConcurrencyIT {
 	@Autowired
 	JdbcClient jdbc;
 
+	@Autowired
+	Clock clock;
+
 	@RepeatedTest(6)
 	void claimNeverLandsOnAPoolItDidNotReadCommitted(RepetitionInfo info) throws Exception {
 		int rep = info.getCurrentRepetition();
@@ -151,7 +161,7 @@ class SetWriteVsClaimConcurrencyIT {
 		Outcomes<ClaimOutcome, ChangeOutcome> outcomes = race(
 				() -> {
 					start(gate, ordering, Ordering.CLAIM_FIRST);
-					return availability.claim(new SetId(setId), DAY);
+					return availability.claim(new SetId(setId), day);
 				},
 				() -> {
 					start(gate, ordering, Ordering.WRITE_FIRST);
@@ -191,7 +201,7 @@ class SetWriteVsClaimConcurrencyIT {
 		Outcomes<ClaimOutcome, SetBatchOutcome> outcomes = race(
 				() -> {
 					start(gate, ordering, Ordering.CLAIM_FIRST);
-					return availability.claim(new SetId(setId), DAY);
+					return availability.claim(new SetId(setId), day);
 				},
 				() -> {
 					start(gate, ordering, Ordering.WRITE_FIRST);
@@ -228,7 +238,7 @@ class SetWriteVsClaimConcurrencyIT {
 		Outcomes<ClaimOutcome, ChangeOutcome> outcomes = race(
 				() -> {
 					start(gate, ordering, Ordering.CLAIM_FIRST);
-					return availability.claim(new SetId(setId), DAY);
+					return availability.claim(new SetId(setId), day);
 				},
 				() -> {
 					start(gate, ordering, Ordering.WRITE_FIRST);

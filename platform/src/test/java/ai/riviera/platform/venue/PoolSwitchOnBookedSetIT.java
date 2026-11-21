@@ -1,7 +1,7 @@
 package ai.riviera.platform.venue;
 
+import java.time.Clock;
 import java.time.LocalDate;
-import java.time.ZoneId;
 
 import jakarta.servlet.http.Cookie;
 import org.junit.jupiter.api.BeforeEach;
@@ -18,6 +18,7 @@ import org.springframework.test.web.servlet.MvcResult;
 import ai.riviera.platform.EnabledIfDockerAvailable;
 import ai.riviera.platform.SessionLoginSupport;
 import ai.riviera.platform.TestcontainersConfiguration;
+import ai.riviera.platform.TiraneDaytimeClock;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
@@ -44,7 +45,7 @@ class PoolSwitchOnBookedSetIT {
 	private static final String OPERATOR = "operator";
 	private static final String PASSWORD = "test-operator-pw";
 	/** Relative to today: the reserve fence and the staff mark both refuse a past date. */
-	private static final LocalDate BOOKED_DAY = LocalDate.now(ZoneId.of("Europe/Tirane")).plusDays(30);
+	private LocalDate bookedDay;
 
 	@Autowired
 	MockMvc mvc;
@@ -52,10 +53,14 @@ class PoolSwitchOnBookedSetIT {
 	@Autowired
 	JdbcClient jdbc;
 
+	@Autowired
+	Clock clock;
+
 	private Cookie operatorSession;
 
 	@BeforeEach
 	void logIn() throws Exception {
+		bookedDay = TiraneDaytimeClock.today(clock).plusDays(30);
 		operatorSession = SessionLoginSupport.operatorSession(mvc, OPERATOR, PASSWORD);
 	}
 
@@ -70,7 +75,7 @@ class PoolSwitchOnBookedSetIT {
 		mvc.perform(post("/api/bookings")
 						.header(SessionLoginSupport.CHALLENGE_HEADER, SessionLoginSupport.solvedChallenge(mvc))
 						.contentType(MediaType.APPLICATION_JSON)
-						.content(reserveBody(setId, BOOKED_DAY.plusDays(1))))
+						.content(reserveBody(setId, bookedDay.plusDays(1))))
 				.andExpect(status().isUnprocessableEntity())
 				.andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_PROBLEM_JSON))
 				.andExpect(jsonPath("$.code").value("SET_NOT_BOOKABLE_ONLINE"));
@@ -78,13 +83,13 @@ class PoolSwitchOnBookedSetIT {
 		mvc.perform(post("/api/venues/{v}/sets/{s}/availability", venue, setId)
 						.cookie(operatorSession).with(csrf())
 						.contentType(MediaType.APPLICATION_JSON)
-						.content("{\"date\":\"%s\"}".formatted(BOOKED_DAY)))
+						.content("{\"date\":\"%s\"}".formatted(bookedDay)))
 				.andExpect(status().isConflict())
 				.andExpect(jsonPath("$.code").value("ALREADY_TAKEN"));
 
 		assertEquals("BOOKED_ONLINE", jdbc.sql(
 						"SELECT state FROM set_availability WHERE set_id = :set AND booking_date = :day")
-						.param("set", setId).param("day", BOOKED_DAY).query(String.class).single(),
+						.param("set", setId).param("day", bookedDay).query(String.class).single(),
 				"the booked date stays claimed by its own row (invariant #2)");
 	}
 
@@ -97,7 +102,7 @@ class PoolSwitchOnBookedSetIT {
 		switchToWalkIn(venue, setId);
 
 		mvc.perform(get("/api/venues/{v}/bookings", venue).cookie(operatorSession)
-						.param("date", BOOKED_DAY.toString()))
+						.param("date", bookedDay.toString()))
 				.andExpect(status().isOk())
 				.andExpect(jsonPath("$.length()").value(1))
 				.andExpect(jsonPath("$[0].setId").value(setId))
@@ -160,10 +165,10 @@ class PoolSwitchOnBookedSetIT {
 				VALUES (:code, :venue, :set, :cust, :day, 3000, 'EUR', 'CONFIRMED')
 				""")
 				.param("code", code).param("venue", venue).param("set", setId)
-				.param("cust", customer).param("day", BOOKED_DAY).update();
+				.param("cust", customer).param("day", bookedDay).update();
 		jdbc.sql("INSERT INTO set_availability (set_id, booking_date, state) "
 						+ "VALUES (:set, :day, 'BOOKED_ONLINE')")
-				.param("set", setId).param("day", BOOKED_DAY).update();
+				.param("set", setId).param("day", bookedDay).update();
 	}
 
 	private static long idFrom(MvcResult result) throws Exception {

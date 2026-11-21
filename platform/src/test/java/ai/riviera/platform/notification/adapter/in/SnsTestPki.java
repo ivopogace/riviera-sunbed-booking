@@ -10,12 +10,16 @@ import java.security.GeneralSecurityException;
 import java.security.KeyStore;
 import java.security.PrivateKey;
 import java.security.Signature;
+import java.time.Clock;
+import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Base64;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
+
+import ai.riviera.platform.TestClockTravel;
 
 /**
  * A throwaway SNS signing PKI minted at test time with the JDK's {@code keytool}, so no key material is
@@ -30,6 +34,11 @@ final class SnsTestPki {
 	/** The CA-issued signer's key under a cert valid only from three days ago to two days ago. */
 	static final String LAPSED_CERT_URL = "https://messaging.s3.fr-par.scw.cloud/fr-par/sns/sns_certificate_5.crt";
 
+	/** A signing cert's lifetime: a clock past it, from {@link #clock}'s now, is past every cert's expiry. */
+	static final Duration VALIDITY = Duration.ofDays(3650);
+
+	private static final String VALIDITY_DAYS = String.valueOf(VALIDITY.toDays());
+	private static final Duration AHEAD = TestClockTravel.ahead();
 	private static final String STORE_PASSWORD = "test-only";
 	private static final SnsTestPki INSTANCE = new SnsTestPki();
 
@@ -44,18 +53,19 @@ final class SnsTestPki {
 	private SnsTestPki() {
 		try {
 			dir = Files.createTempDirectory("sns-test-pki");
+			String from = start(Duration.ofDays(-1));
 			keytool("-genkeypair", "-alias", "ca", "-keyalg", "RSA", "-keysize", "2048", "-dname", "CN=test-sns-ca",
-					"-ext", "bc:c", "-validity", "3650", "-keystore", store("ca"));
+					"-ext", "bc:c", "-startdate", from, "-validity", VALIDITY_DAYS, "-keystore", store("ca"));
 			keytool("-genkeypair", "-alias", "signer", "-keyalg", "RSA", "-keysize", "2048", "-dname",
-					"CN=test-sns-signer", "-validity", "3650", "-keystore", store("signer"));
+					"CN=test-sns-signer", "-startdate", from, "-validity", VALIDITY_DAYS, "-keystore", store("signer"));
 			keytool("-certreq", "-alias", "signer", "-keystore", store("signer"), "-file", file("signer.csr"));
 			keytool("-gencert", "-alias", "ca", "-keystore", store("ca"), "-infile", file("signer.csr"), "-outfile",
-					file("signer.crt"), "-validity", "3650", "-rfc");
+					file("signer.crt"), "-startdate", from, "-validity", VALIDITY_DAYS, "-rfc");
 			keytool("-gencert", "-alias", "ca", "-keystore", store("ca"), "-infile", file("signer.csr"), "-outfile",
-					file("lapsed.crt"), "-startdate", "-3d", "-validity", "1", "-rfc");
+					file("lapsed.crt"), "-startdate", start(Duration.ofDays(-3)), "-validity", "1", "-rfc");
 			keytool("-exportcert", "-alias", "ca", "-keystore", store("ca"), "-rfc", "-file", file("ca.pem"));
 			keytool("-genkeypair", "-alias", "rogue", "-keyalg", "RSA", "-keysize", "2048", "-dname",
-					"CN=test-sns-rogue", "-validity", "3650", "-keystore", store("rogue"));
+					"CN=test-sns-rogue", "-startdate", from, "-validity", VALIDITY_DAYS, "-keystore", store("rogue"));
 			keytool("-exportcert", "-alias", "rogue", "-keystore", store("rogue"), "-rfc", "-file", file("rogue.crt"));
 			caPem = Files.readAllBytes(dir.resolve("ca.pem"));
 			signerCert = Files.readAllBytes(dir.resolve("signer.crt"));
@@ -70,6 +80,17 @@ final class SnsTestPki {
 		catch (GeneralSecurityException | InterruptedException e) {
 			throw new IllegalStateException("could not mint the test SNS PKI", e);
 		}
+	}
+
+	/** The clock the certs are minted on: the wall, run as far ahead as {@link TestClockTravel} runs the contexts. */
+	static Clock clock() {
+		return Clock.offset(Clock.systemUTC(), AHEAD);
+	}
+
+	/** A keytool start offset, to the second, from {@link #clock}'s now. */
+	private static String start(Duration fromNow) {
+		long seconds = AHEAD.plus(fromNow).toSeconds();
+		return (seconds < 0 ? "" : "+") + seconds + "S";
 	}
 
 	static SnsTestPki get() {
