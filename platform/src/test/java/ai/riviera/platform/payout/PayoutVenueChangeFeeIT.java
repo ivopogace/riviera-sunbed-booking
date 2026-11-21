@@ -47,19 +47,6 @@ class PayoutVenueChangeFeeIT {
 
 	private static final Duration WAIT = Duration.ofSeconds(15);
 
-	/** This test's own venue: its bookings and ledger rows reach no other class, and leave with it (#2, #9). */
-	private StayFixtures.Venue venue;
-
-	@BeforeEach
-	void ownVenue() {
-		venue = StayFixtures.venue(jdbc, "INSTANT", null, false);
-	}
-
-	@AfterEach
-	void removeVenue() {
-		StayFixtures.cleanup(jdbc, venue.id());
-	}
-
 	/** The {@code riviera.payout.venue-change-fee-minor} default, in EUR minor units. */
 	private static final long FEE_MINOR = 500L;
 
@@ -79,6 +66,19 @@ class PayoutVenueChangeFeeIT {
 
 	@Autowired
 	PlatformTransactionManager txManager;
+
+	/** This test's own venue: its bookings and ledger rows reach no other class, and leave with it (#2, #9). */
+	private StayFixtures.Venue venue;
+
+	@BeforeEach
+	void ownVenue() {
+		venue = StayFixtures.venue(jdbc, "INSTANT", null, false);
+	}
+
+	@AfterEach
+	void removeVenue() {
+		StayFixtures.cleanup(jdbc, venue.id());
+	}
 
 	private record Ref(long bookingId, long venueId, long setId) {
 	}
