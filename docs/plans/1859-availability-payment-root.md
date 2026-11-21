@@ -43,10 +43,10 @@ assertions still fail when the guard is broken.
 
 ## Execution status
 
-**Stage pointer:** implement (phase 0)
+**Stage pointer:** PR — CI, then review
 
-**Next action:** commit phase 0, open the draft PR.
+**Next action:** mark the PR ready, run the review gate.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
-| 0 — own venue per test | ⏳ | |
+| 0 — own venue per test | ✅ | 04e1cad |
