@@ -1,5 +1,6 @@
 package ai.riviera.platform.booking;
 
+import java.time.Clock;
 import java.time.LocalDate;
 import java.time.ZoneId;
 import java.util.ArrayList;
@@ -7,6 +8,7 @@ import java.util.List;
 
 import org.springframework.jdbc.core.simple.JdbcClient;
 
+import ai.riviera.platform.TiraneDaytimeClock;
 import ai.riviera.platform.booking.application.reserve.CreateStayCommand;
 import ai.riviera.platform.customer.vocabulary.GuestContact;
 import ai.riviera.platform.venue.vocabulary.SetId;
@@ -26,9 +28,9 @@ public final class StayFixtures {
 	private StayFixtures() {
 	}
 
-	/** Ten days out: inside the guest's free cancellation window, so a cancel is admitted. */
-	static LocalDate firstDay() {
-		return LocalDate.now(TIRANE).plusDays(10);
+	/** Ten days after the clock's Tirane date: inside the guest's free cancellation window, so a cancel is admitted. */
+	static LocalDate firstDay(Clock clock) {
+		return TiraneDaytimeClock.today(clock).plusDays(10);
 	}
 
 	public record Venue(long id, List<SetId> online, SetId walkIn) {

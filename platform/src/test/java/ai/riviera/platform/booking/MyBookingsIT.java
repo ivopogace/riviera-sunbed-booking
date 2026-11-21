@@ -1,5 +1,6 @@
 package ai.riviera.platform.booking;
 
+import java.time.Clock;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.util.ArrayList;
@@ -72,6 +73,9 @@ class MyBookingsIT {
 	MockMvc mvc;
 	@Autowired
 	JdbcClient jdbc;
+
+	@Autowired
+	Clock clock;
 	@Autowired
 	CustomerAccountProvisioning customerProvisioning;
 	@Autowired
@@ -141,7 +145,7 @@ class MyBookingsIT {
 	@Test
 	void aLoneBookingWithEveryDayRefundedHasNothingLeft() throws Exception {
 		Venue venue = venue();
-		LocalDate first = StayFixtures.firstDay();
+		LocalDate first = StayFixtures.firstDay(clock);
 		String code = "MBNL" + System.nanoTime() % 100_000_000L;
 		long booking = insertLone(venue, code, first, first.plusDays(1), 2 * StayFixtures.PRICE);
 		refundDays(booking, first, first.plusDays(1));
@@ -153,7 +157,7 @@ class MyBookingsIT {
 	@Test
 	void aLoneBookingWithAnUnrefundedZeroShareDayHasSomethingLeft() throws Exception {
 		Venue venue = venue();
-		LocalDate first = StayFixtures.firstDay();
+		LocalDate first = StayFixtures.firstDay(clock);
 		String code = "MBZS" + System.nanoTime() % 100_000_000L;
 		long booking = insertLone(venue, code, first, first.plusDays(1), StayFixtures.PRICE / 2);
 		refundDays(booking, first, first);
@@ -165,7 +169,7 @@ class MyBookingsIT {
 	@Test
 	void aStayARemodelEndedOnOneStretchAndRefundedOnTheOtherHasNothingLeft() throws Exception {
 		Venue venue = venue();
-		LocalDate first = StayFixtures.firstDay();
+		LocalDate first = StayFixtures.firstDay(clock);
 		String code = "MBRS" + System.nanoTime() % 100_000_000L;
 		StayFixtures.SeededStay stay = StayFixtures.insertStay(jdbc, venue, code, first, venue.online().get(0), 2,
 				"CONFIRMED", venue.online().get(1), 2, "CONFIRMED");
@@ -179,7 +183,7 @@ class MyBookingsIT {
 	@Test
 	void anOrdinaryStayHasSomethingLeft() throws Exception {
 		Venue venue = venue();
-		LocalDate first = StayFixtures.firstDay();
+		LocalDate first = StayFixtures.firstDay(clock);
 		String code = "MBOS" + System.nanoTime() % 100_000_000L;
 		linkToAccount(StayFixtures.insertStay(jdbc, venue, code, first, venue.online().get(0), 2, "CONFIRMED",
 				venue.online().get(1), 2, "CONFIRMED"));

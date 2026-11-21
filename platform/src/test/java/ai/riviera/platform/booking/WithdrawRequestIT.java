@@ -148,7 +148,7 @@ class WithdrawRequestIT {
 		StayFixtures.Venue venue = StayFixtures.venue(jdbc, "REQUEST", null, true);
 		try {
 			StayFixtures.SeededStay stay = StayFixtures.insertPendingStay(jdbc, venue, uniqueCode("WDSTAY"),
-					StayFixtures.firstDay(), venue.online().get(0), 2, venue.online().get(1), 2,
+					StayFixtures.firstDay(clock), venue.online().get(0), 2, venue.online().get(1), 2,
 					Instant.now().plusSeconds(3600));
 
 			mvc.perform(post("/api/bookings/{code}/withdraw", stay.code() + "-1"))

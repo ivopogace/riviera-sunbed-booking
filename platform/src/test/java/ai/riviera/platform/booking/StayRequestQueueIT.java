@@ -1,5 +1,6 @@
 package ai.riviera.platform.booking;
 
+import java.time.Clock;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.util.List;
@@ -37,6 +38,9 @@ class StayRequestQueueIT {
 	@Autowired
 	JdbcClient jdbc;
 
+	@Autowired
+	Clock clock;
+
 	private StayFixtures.Venue venue;
 
 	@BeforeEach
@@ -51,7 +55,7 @@ class StayRequestQueueIT {
 
 	@Test
 	void oneItemPerStayWithEveryStop() {
-		LocalDate d0 = StayFixtures.firstDay();
+		LocalDate d0 = StayFixtures.firstDay(clock);
 		SetId a = venue.online().get(0);
 		SetId b = venue.online().get(1);
 		SetId c = venue.online().get(2);

@@ -94,7 +94,7 @@ class CreateBookingStripeProfileIT {
 		when(stripeClient.v1().paymentIntents().create(any(), any())).thenReturn(intent);
 		StayFixtures.Venue venue = StayFixtures.venue(jdbc, "INSTANT", null, true);
 		try {
-			LocalDate first = StayFixtures.firstDay();
+			LocalDate first = StayFixtures.firstDay(clock);
 			mvc.perform(post("/api/stays")
 							.header(SessionLoginSupport.CHALLENGE_HEADER, SessionLoginSupport.solvedChallenge(mvc))
 							.contentType(MediaType.APPLICATION_JSON)

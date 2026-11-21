@@ -1,6 +1,6 @@
 package ai.riviera.platform.booking;
 
-import java.time.Instant;
+import java.time.Clock;
 import java.time.LocalDate;
 
 import org.junit.jupiter.api.AfterEach;
@@ -52,6 +52,9 @@ class RequestAcceptLockOrderIT {
 	@Autowired
 	JdbcClient jdbc;
 
+	@Autowired
+	Clock clock;
+
 	private StayFixtures.Venue venue;
 	private OperatorId owner;
 
@@ -70,9 +73,9 @@ class RequestAcceptLockOrderIT {
 	void aStayAcceptAndALayoutSaveSerialize() throws Exception {
 		SetId lower = venue.online().get(0);
 		SetId higher = venue.online().get(1);
-		LocalDate first = StayFixtures.firstDay();
+		LocalDate first = StayFixtures.firstDay(clock);
 		StayFixtures.SeededStay stay = StayFixtures.insertPendingStay(jdbc, venue,
-				"LOA" + System.nanoTime() % 100_000_000L, first, higher, 1, lower, 1, Instant.now().plusSeconds(3600));
+				"LOA" + System.nanoTime() % 100_000_000L, first, higher, 1, lower, 1, clock.instant().plusSeconds(3600));
 		VenueId venueId = new VenueId(venue.id());
 		LayoutCommand sameLayout = currentLayout();
 		long version = jdbc.sql("SELECT set_version FROM venue WHERE id = :v").param("v", venue.id())
@@ -90,9 +93,9 @@ class RequestAcceptLockOrderIT {
 	@Test
 	void aLoneAcceptHoldsItsVenueAgainstASeasonClose() throws Exception {
 		SetId set = venue.online().get(0);
-		LocalDate first = StayFixtures.firstDay();
+		LocalDate first = StayFixtures.firstDay(clock);
 		long request = StayFixtures.insertPendingLone(jdbc, venue, "LOL" + System.nanoTime() % 100_000_000L, set,
-				first, first.plusDays(1), Instant.now().plusSeconds(3600));
+				first, first.plusDays(1), clock.instant().plusSeconds(3600));
 		VenueId venueId = new VenueId(venue.id());
 		SeasonClosure closure = SeasonClosure.closed(first.plusDays(60), false);
 

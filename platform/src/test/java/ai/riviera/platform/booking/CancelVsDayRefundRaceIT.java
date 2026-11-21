@@ -1,7 +1,7 @@
 package ai.riviera.platform.booking;
 
+import java.time.Clock;
 import java.time.Duration;
-import java.time.Instant;
 import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
@@ -78,6 +78,9 @@ class CancelVsDayRefundRaceIT {
 	JdbcClient jdbc;
 
 	@Autowired
+	Clock clock;
+
+	@Autowired
 	TransactionTemplate tx;
 
 	private final List<Long> venues = new ArrayList<>();
@@ -90,7 +93,7 @@ class CancelVsDayRefundRaceIT {
 	@Test
 	void aLoneCancelWaitingOnADayRefundRefundsTheRemainder() throws Exception {
 		Venue venue = venue();
-		LocalDate first = firstDay();
+		LocalDate first = firstDay(clock);
 		String code = "RACELONE" + System.nanoTime() % 1_000_000;
 		long id = insertLone(venue, code, venue.online().getFirst(), first);
 		accrue(venue, id, DAYS * PRICE);
@@ -109,13 +112,13 @@ class CancelVsDayRefundRaceIT {
 	@Test
 	void aMoveReminderStampWaitingOnTheMoveDayRefundStampsNothing() throws Exception {
 		Venue venue = venue();
-		LocalDate first = firstDay();
+		LocalDate first = firstDay(clock);
 		SeededStay stay = StayFixtures.insertStay(jdbc, venue, "RACEMOVE" + System.nanoTime() % 1_000_000, first,
 				venue.online().get(0), 2, "CONFIRMED", venue.online().get(1), 2, "CONFIRMED");
 		long arriving = stay.stretches().get(1);
 
 		var stamped = whileADayRefundHoldsTheLock(arriving, first.plusDays(2), PRICE / 2,
-				() -> bookings.stampMoveReminder(arriving, Instant.now()));
+				() -> bookings.stampMoveReminder(arriving, clock.instant()));
 
 		assertTrue(stamped.isEmpty(), "the move day was refunded under the lock, so there is no move to announce");
 		assertTrue(jdbc.sql("SELECT move_reminder_at IS NULL FROM booking WHERE id = :b").param("b", arriving)
@@ -125,7 +128,7 @@ class CancelVsDayRefundRaceIT {
 	@Test
 	void aStayCancelWaitingOnADayRefundRefundsTheRemainder() throws Exception {
 		Venue venue = venue();
-		LocalDate first = firstDay();
+		LocalDate first = firstDay(clock);
 		SeededStay stay = StayFixtures.insertStay(jdbc, venue, "RACESTAY" + System.nanoTime() % 1_000_000, first,
 				venue.online().get(0), 3, "CONFIRMED", venue.online().get(1), 4, "CONFIRMED");
 		stay.stretches().forEach(stretch -> accrue(venue, stretch, PRICE));
@@ -145,7 +148,7 @@ class CancelVsDayRefundRaceIT {
 	@Test
 	void aRemodelRefundWaitingOnADayRefundRefundsTheRemainder() throws Exception {
 		Venue venue = venue();
-		LocalDate first = firstDay();
+		LocalDate first = firstDay(clock);
 		SetId disturbed = venue.online().getFirst();
 		long id = insertLone(venue, "RACEREMO" + System.nanoTime() % 1_000_000, disturbed, first);
 		accrue(venue, id, DAYS * PRICE);
@@ -169,12 +172,12 @@ class CancelVsDayRefundRaceIT {
 	@Test
 	void aRemodelRefundWaitingOnTheLastDayRefundSettlesAsNothingLeft() throws Exception {
 		Venue venue = venue();
-		LocalDate first = firstDay();
+		LocalDate first = firstDay(clock);
 		SetId disturbed = venue.online().getFirst();
 		long id = insertLone(venue, "RACENONE" + System.nanoTime() % 1_000_000, disturbed, first);
 		accrue(venue, id, DAYS * PRICE);
 		for (int day = 0; day < DAYS - 1; day++) {
-			bookings.refundDay(id, first.plusDays(day), PRICE, Instant.now(), DayRefundStamp.weather()).orElseThrow();
+			bookings.refundDay(id, first.plusDays(day), PRICE, clock.instant(), DayRefundStamp.weather()).orElseThrow();
 		}
 		for (SetId other : venue.online().subList(1, venue.online().size())) {
 			first.datesUntil(first.plusDays(DAYS)).forEach(day -> StayFixtures.take(jdbc, other, day));
@@ -206,13 +209,13 @@ class CancelVsDayRefundRaceIT {
 	@Test
 	void aRemodelMoveWaitingOnTheLastDayRefundSettlesAsNothingLeftAndTakesNoCandidate() throws Exception {
 		Venue venue = venue();
-		LocalDate first = firstDay();
+		LocalDate first = firstDay(clock);
 		SetId from = venue.online().get(0);
 		SetId to = venue.online().get(1);
 		long id = insertLone(venue, "RACEMVNL" + System.nanoTime() % 1_000_000, from, first);
 		accrue(venue, id, DAYS * PRICE);
 		for (int day = 0; day < DAYS - 1; day++) {
-			bookings.refundDay(id, first.plusDays(day), PRICE, Instant.now(), DayRefundStamp.weather()).orElseThrow();
+			bookings.refundDay(id, first.plusDays(day), PRICE, clock.instant(), DayRefundStamp.weather()).orElseThrow();
 		}
 		first.datesUntil(first.plusDays(DAYS)).forEach(day -> StayFixtures.take(jdbc, venue.online().get(2), day));
 		OperatorId owner = StayFixtures.ownerOf(jdbc, venue);
@@ -235,7 +238,7 @@ class CancelVsDayRefundRaceIT {
 	@Test
 	void aRemodelMoveWaitingOnAVenueDayRefundLeavesTheReleasedDayFree() throws Exception {
 		Venue venue = venue();
-		LocalDate first = firstDay();
+		LocalDate first = firstDay(clock);
 		LocalDate refunded = first.plusDays(1);
 		SetId from = venue.online().get(0);
 		SetId to = venue.online().get(1);
@@ -260,7 +263,7 @@ class CancelVsDayRefundRaceIT {
 
 	private <T> T whileADayRefundHoldsTheLock(long bookingId, LocalDate day, long refundMinor, Callable<T> cancel)
 			throws Exception {
-		return whileHeld(() -> bookings.refundDay(bookingId, day, refundMinor, Instant.now(), DayRefundStamp.weather())
+		return whileHeld(() -> bookings.refundDay(bookingId, day, refundMinor, clock.instant(), DayRefundStamp.weather())
 				.orElseThrow(), cancel);
 	}
 
@@ -309,10 +312,11 @@ class CancelVsDayRefundRaceIT {
 		long id = jdbc.sql("""
 				INSERT INTO booking (code, venue_id, set_id, customer_id, booking_date, last_date, amount_minor,
 				                     amount_currency, status, confirmed_at)
-				VALUES (:code, :venue, :set, :cust, :first, :last, :amount, 'EUR', 'CONFIRMED', now())
+				VALUES (:code, :venue, :set, :cust, :first, :last, :amount, 'EUR', 'CONFIRMED', :now)
 				RETURNING id
 				""").param("code", code).param("venue", venue.id()).param("set", set.value()).param("cust", customer)
 				.param("first", first).param("last", first.plusDays(DAYS - 1L)).param("amount", DAYS * PRICE)
+				.param("now", java.sql.Timestamp.from(clock.instant()))
 				.query(Long.class).single();
 		first.datesUntil(first.plusDays(DAYS)).forEach(day -> StayFixtures.take(jdbc, set, day));
 		return id;

@@ -1,6 +1,6 @@
 package ai.riviera.platform.booking;
 
-import java.time.Instant;
+import java.time.Clock;
 import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
@@ -54,6 +54,9 @@ class StayConfirmedPublicationIT {
 	JdbcClient jdbc;
 
 	@Autowired
+	Clock clock;
+
+	@Autowired
 	ApplicationEvents events;
 
 	private final List<Long> venues = new ArrayList<>();
@@ -75,7 +78,7 @@ class StayConfirmedPublicationIT {
 		SetId a = venue.online().get(0);
 		SetId b = venue.online().get(1);
 
-		StayOutcome outcome = createStay.create(plan(a, 3, b, 4, firstDay()));
+		StayOutcome outcome = createStay.create(plan(a, 3, b, 4, firstDay(clock)));
 
 		assertInstanceOf(StayOutcome.Confirmed.class, outcome);
 		long stayId = jdbc.sql("SELECT id FROM stay WHERE venue_id = :v").param("v", venue.id())
@@ -90,7 +93,7 @@ class StayConfirmedPublicationIT {
 	@Test
 	void onlyTheConfirmThatCompletesTheStayPublishesIt() {
 		Venue venue = venue();
-		LocalDate first = firstDay();
+		LocalDate first = firstDay(clock);
 		long customer = jdbc.sql("INSERT INTO customer (email, full_name, phone) VALUES ('webhook-stay@example.com', "
 				+ "'Guest', '+355600') RETURNING id").query(Long.class).single();
 		long stay = jdbc.sql("""
@@ -101,14 +104,14 @@ class StayConfirmedPublicationIT {
 		long secondStretch = awaitingStretch(venue.id(), venue.online().get(1), customer, stay, first.plusDays(2),
 				first.plusDays(3), 2);
 
-		confirmBooking.confirmFromPayment(secondStretch, Instant.now());
+		confirmBooking.confirmFromPayment(secondStretch, clock.instant());
 		assertEquals(List.of(), events.stream(StayConfirmed.class).toList(), "one stretch still awaits payment");
 
-		confirmBooking.confirmFromPayment(firstStretch, Instant.now());
+		confirmBooking.confirmFromPayment(firstStretch, clock.instant());
 		assertEquals(List.of(new StayConfirmed(new StayId(stay), CancellationWindow.FREE, 0)),
 				events.stream(StayConfirmed.class).toList());
 
-		confirmBooking.confirmFromPayment(firstStretch, Instant.now());
+		confirmBooking.confirmFromPayment(firstStretch, clock.instant());
 		assertEquals(1, events.stream(StayConfirmed.class).count(), "a re-delivered confirm publishes nothing");
 	}
 
@@ -117,7 +120,7 @@ class StayConfirmedPublicationIT {
 		Venue venue = venue();
 		long customer = jdbc.sql("INSERT INTO customer (email, full_name, phone) VALUES ('lone@example.com', "
 				+ "'Guest', '+355600') RETURNING id").query(Long.class).single();
-		LocalDate day = firstDay();
+		LocalDate day = firstDay(clock);
 		long booking = jdbc.sql("""
 				INSERT INTO booking (code, venue_id, set_id, customer_id, booking_date, last_date, amount_minor,
 				                     amount_currency, status)
@@ -126,7 +129,7 @@ class StayConfirmedPublicationIT {
 				.param("set", venue.online().get(2).value()).param("c", customer).param("d", day)
 				.query(Long.class).single();
 
-		confirmBooking.confirmFromPayment(booking, Instant.now());
+		confirmBooking.confirmFromPayment(booking, clock.instant());
 
 		assertNull(events.stream(BookingConfirmed.class).findFirst().orElseThrow().stayId());
 		assertEquals(0, events.stream(StayConfirmed.class).count());

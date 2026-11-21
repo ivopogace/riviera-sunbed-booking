@@ -1,5 +1,6 @@
 package ai.riviera.platform.booking;
 
+import java.time.Clock;
 import java.time.Duration;
 import java.time.Instant;
 import java.time.LocalDate;
@@ -48,6 +49,9 @@ class RetiredSetRequestReserveIT {
 	@Autowired
 	JdbcClient jdbc;
 
+	@Autowired
+	Clock clock;
+
 	private final List<Long> venues = new ArrayList<>();
 
 	@AfterEach
@@ -80,7 +84,7 @@ class RetiredSetRequestReserveIT {
 		Venue venue = requestVenue();
 		SetId retired = venue.online().getFirst();
 		retire(retired);
-		LocalDate day = firstDay();
+		LocalDate day = firstDay(clock);
 
 		mvc.perform(post("/api/bookings")
 				.header(SessionLoginSupport.CHALLENGE_HEADER, SessionLoginSupport.solvedChallenge(mvc))
@@ -100,7 +104,7 @@ class RetiredSetRequestReserveIT {
 		SetId retired = venue.online().get(0);
 		SetId active = venue.online().get(1);
 		retire(retired);
-		LocalDate first = firstDay();
+		LocalDate first = firstDay(clock);
 
 		mvc.perform(post("/api/stays")
 				.header(SessionLoginSupport.CHALLENGE_HEADER, SessionLoginSupport.solvedChallenge(mvc))
@@ -121,7 +125,7 @@ class RetiredSetRequestReserveIT {
 		Venue venue = requestVenue();
 		SetId set = venue.online().getFirst();
 		String code = "RSRV" + System.nanoTime();
-		StayFixtures.insertPendingLone(jdbc, venue, code, set, firstDay(), firstDay(),
+		StayFixtures.insertPendingLone(jdbc, venue, code, set, firstDay(clock), firstDay(clock),
 				Instant.now().plus(Duration.ofHours(12)));
 		retire(set);
 
