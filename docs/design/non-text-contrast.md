@@ -70,9 +70,11 @@ rule 2 instead, and `--riv-cta-grad` stays declared once. The spec keeps the ban
 (› "a lighter dark fill could clear 3:1 and keep the label at AA, which is why leaving it is a
 choice"). **Check the label before proposing a fill change.**
 
-That room is measured against the card, and every other surface the CTA stands on in the page's
-flow leaves as much or more (#1845). The console's sticky save bars (the venue tab's and the layout
-editor's) leave none: their card glass has no blur, and an uploaded photo or the beach map scrolls
+The figures above are the card's. On every other surface the CTA stands on, such a fill also keeps
+the label at AA, with one exception (#1845). The room differs by surface (it is narrower where a
+photo or the map can sit under the glass), so the card's figures are not a floor for the others.
+The exception is the console's sticky save bars (the venue tab's and the layout editor's), which leave
+none: their card glass has no blur, and an uploaded photo or the beach map scrolls
 beneath it, so the lightest host there is the glass over white. A fill light enough for 3:1 against
 that takes the white label under AA, so on those bars the lighter fill is not an alternative at all.
 The spec asserts the answer per host (› "the untaken lighter fill against …: does the label keep
