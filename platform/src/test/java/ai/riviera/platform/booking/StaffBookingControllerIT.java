@@ -283,7 +283,7 @@ class StaffBookingControllerIT {
 	/** ADR-0027 §5: a released day keeps the stay's row on that date, marked refunded and released; a held weather day is not. */
 	@Test
 	void aReleasedDayIsListedAndTold() throws Exception {
-		LocalDate first = LocalDate.of(2034, 8, 1);
+		LocalDate first = today().plusDays(30);
 		List<Long> sets = venueSets(1);
 		long customer = newCustomer("released-" + first + "@e.com");
 		seedSpan("U8RELEASE1", sets.get(0), customer, "CONFIRMED", first, first.plusDays(2), null);
@@ -316,7 +316,7 @@ class StaffBookingControllerIT {
 	/** "Booked online" (#1624): the settled bookings covering the day; awaiting payment and a whole cancel are not. */
 	@Test
 	void bookedOnlineCountsSettledBookingsHoldingASet() throws Exception {
-		LocalDate day = LocalDate.of(2035, 7, 10);
+		LocalDate day = today().plusDays(60);
 		List<Long> sets = venueSets(5);
 		long customer = newCustomer("count-" + day + "@e.com");
 		seedBookingOn("U8COUNTCF1", sets.get(0), customer, "CONFIRMED", day);
@@ -335,7 +335,7 @@ class StaffBookingControllerIT {
 	/** ADR-0027: a released day holds no set, so it is not booked online; a refund that kept the claim still is. */
 	@Test
 	void bookedOnlineDropsAReleasedDayAndKeepsAKeptClaim() throws Exception {
-		LocalDate first = LocalDate.of(2035, 8, 1);
+		LocalDate first = today().plusDays(90);
 		List<Long> sets = venueSets(1);
 		long customer = newCustomer("count-released-" + first + "@e.com");
 		seedSpan("U8COUNTRL1", sets.get(0), customer, "CONFIRMED", first, first.plusDays(1), null);

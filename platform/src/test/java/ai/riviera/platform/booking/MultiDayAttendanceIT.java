@@ -42,9 +42,8 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
  *
  * <p>The date-stepping cases drive the {@code Bookings} seam, whose service date is a parameter;
  * the today-bound cases drive {@code CheckInBooking} and {@code MarkNoShows} with service days laid
- * out around today in {@code Europe/Tirane}. Every case drains the sweep first, as {@code
- * NoShowSweepIT} does, and removes its stays afterwards so no live multi-day fixture lingers for
- * another suite's count.
+ * out around today in {@code Europe/Tirane}. Every case runs on a venue of its own, asserts only its
+ * own stays and removes the venue afterwards, so no live multi-day fixture lingers for another suite.
  */
 @EnabledIfDockerAvailable
 @Import(TestcontainersConfiguration.class)
@@ -74,30 +73,16 @@ class MultiDayAttendanceIT {
 	private OperatorId operator;
 
 	@BeforeEach
-	void seedOwnedVenueAndDrain() {
-		venueId = jdbc.sql("""
-				INSERT INTO venue (name, beach, booking_mode, commission_bps, payout_currency)
-				VALUES ('Stay Club', 'KSAMIL', 'INSTANT', 1500, 'EUR')
-				RETURNING id
-				""").query(Long.class).single();
-		setId = jdbc.sql("""
-				INSERT INTO set_position (venue_id, row_label, position_no, tier, pool, price_minor,
-				                          price_currency, grid_x, grid_y)
-				VALUES (:venue, 'A', 1, 'STANDARD', 'ONLINE', 4500, 'EUR', 1, 1)
-				RETURNING id
-				""").param("venue", venueId).query(Long.class).single();
-		long operatorId = jdbc.sql("INSERT INTO operator (username, status) VALUES (:u, 'ACTIVE') RETURNING id")
-				.param("u", uniqueCode("stay-op-")).query(Long.class).single();
-		jdbc.sql("INSERT INTO operator_venue (venue_id, operator_id) VALUES (:v, :o)")
-				.param("v", venueId).param("o", operatorId).update();
-		operator = new OperatorId(operatorId);
-		markNoShows.sweep();
+	void ownVenue() {
+		StayFixtures.Venue venue = StayFixtures.venue(jdbc, "INSTANT", null, true);
+		venueId = venue.id();
+		setId = venue.online().getFirst().value();
+		operator = StayFixtures.ownerOf(jdbc, venue);
 	}
 
 	@AfterEach
-	void removeStays() {
-		jdbc.sql("DELETE FROM booking WHERE code LIKE 'STAY%'").update();
-		jdbc.sql("DELETE FROM customer WHERE email LIKE 'STAY%'").update();
+	void removeVenue() {
+		StayFixtures.cleanup(jdbc, venueId);
 	}
 
 	private LocalDate today() {
@@ -305,7 +290,7 @@ class MultiDayAttendanceIT {
 		attend(stay, today().minusDays(4));
 		attend(stay, today().minusDays(3));
 
-		assertEquals(1, markNoShows.sweep());
+		markNoShows.sweep();
 
 		assertEquals(List.of(today().minusDays(2), today().minusDays(1)), missedDays(stay));
 		assertEquals("COMPLETED", statusOf(stay));
@@ -317,7 +302,7 @@ class MultiDayAttendanceIT {
 		String code = uniqueCode("STAYNONE");
 		long stay = insertStay(code, today().minusDays(3), 3);
 
-		assertEquals(1, markNoShows.sweep());
+		markNoShows.sweep();
 
 		assertEquals(List.of(today().minusDays(3), today().minusDays(2), today().minusDays(1)),
 				missedDays(stay));
@@ -330,7 +315,7 @@ class MultiDayAttendanceIT {
 		String code = uniqueCode("STAYLIVE");
 		long stay = insertStay(code, today().minusDays(2), 4);
 
-		assertEquals(0, markNoShows.sweep(), "today and tomorrow are still ahead");
+		markNoShows.sweep();
 
 		assertEquals(List.of(today().minusDays(2), today().minusDays(1)), missedDays(stay));
 		assertEquals("CONFIRMED", statusOf(stay));

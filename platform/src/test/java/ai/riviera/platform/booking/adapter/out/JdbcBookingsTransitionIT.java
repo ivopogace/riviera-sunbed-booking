@@ -7,7 +7,9 @@ import java.time.LocalDate;
 import java.util.Optional;
 
 import ai.riviera.platform.booking.vocabulary.BookingId;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Assertions;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -16,6 +18,7 @@ import org.springframework.jdbc.core.simple.JdbcClient;
 
 import ai.riviera.platform.EnabledIfDockerAvailable;
 import ai.riviera.platform.TestcontainersConfiguration;
+import ai.riviera.platform.booking.StayFixtures;
 import ai.riviera.platform.booking.application.Bookings;
 import ai.riviera.platform.booking.application.reserve.ClaimRef;
 import ai.riviera.platform.booking.application.reserve.ConfirmedBooking;
@@ -47,9 +50,21 @@ class JdbcBookingsTransitionIT {
 	private record SetRef(long setId, long venueId) {
 	}
 
+	/** This test's own venue; its rows are seeded as stored and publish nothing, so it leaves without waiting. */
+	private StayFixtures.Venue venue;
+
+	@BeforeEach
+	void ownVenue() {
+		venue = StayFixtures.venue(jdbc, "INSTANT", null, false);
+	}
+
+	@AfterEach
+	void removeVenue() {
+		StayFixtures.cleanupNow(jdbc, venue.id());
+	}
+
 	private SetRef onlineSet() {
-		return jdbc.sql("SELECT id, venue_id FROM set_position WHERE pool = 'ONLINE' ORDER BY id LIMIT 1")
-				.query((rs, n) -> new SetRef(rs.getLong("id"), rs.getLong("venue_id"))).single();
+		return new SetRef(venue.online().getFirst().value(), venue.id());
 	}
 
 	private long insertAwaiting(String code, SetRef set, LocalDate date) {

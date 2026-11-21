@@ -3,6 +3,8 @@ package ai.riviera.platform.booking.adapter.out;
 import java.time.LocalDate;
 import java.util.List;
 
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -11,6 +13,7 @@ import org.springframework.jdbc.core.simple.JdbcClient;
 
 import ai.riviera.platform.EnabledIfDockerAvailable;
 import ai.riviera.platform.TestcontainersConfiguration;
+import ai.riviera.platform.booking.StayFixtures;
 import ai.riviera.platform.booking.api.CustomerBookings;
 import ai.riviera.platform.booking.vocabulary.CustomerBookingSummary;
 import ai.riviera.platform.customer.vocabulary.CustomerId;
@@ -38,6 +41,19 @@ class JdbcCustomerBookingsIT {
 
 	@Autowired
 	JdbcClient jdbc;
+
+	/** This test's own venue; its rows are seeded as stored and publish nothing, so it leaves without waiting. */
+	private StayFixtures.Venue venue;
+
+	@BeforeEach
+	void ownVenue() {
+		venue = StayFixtures.venue(jdbc, "INSTANT", null, false);
+	}
+
+	@AfterEach
+	void removeVenue() {
+		StayFixtures.cleanupNow(jdbc, venue.id());
+	}
 
 	@Test
 	void listsOneGuestsBookingsNewestFirst() {
@@ -112,19 +128,18 @@ class JdbcCustomerBookingsIT {
 	}
 
 	private long onlineSetId() {
-		return jdbc.sql("SELECT id FROM set_position WHERE pool = 'ONLINE' ORDER BY id LIMIT 1")
-				.query(Long.class).single();
+		return venue.online().getFirst().value();
 	}
 
 	private long insertBooking(String code, CustomerId customerId, LocalDate date, String status) {
 		return jdbc.sql("""
 				INSERT INTO booking (code, venue_id, set_id, customer_id, booking_date,
 				                     amount_minor, amount_currency, status)
-				SELECT :code, sp.venue_id, sp.id, :cust, :date, 2500, 'EUR', :status
-				FROM set_position sp WHERE sp.pool = 'ONLINE' ORDER BY sp.id LIMIT 1
+				VALUES (:code, :venue, :set, :cust, :date, 2500, 'EUR', :status)
 				RETURNING id
 				""")
-				.param("code", code).param("cust", customerId.value())
+				.param("code", code).param("venue", venue.id()).param("set", venue.online().getFirst().value())
+				.param("cust", customerId.value())
 				.param("date", date).param("status", status)
 				.query(Long.class).single();
 	}
