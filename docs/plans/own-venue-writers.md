@@ -15,16 +15,16 @@ remove them; `StayFixtures.cleanupNow` also removes the guests its bookings name
 
 ## Acceptance criteria
 
-- [ ] **AC-1:** Given the ten classes, when each runs alone and all run in one fork, then the row counts of the tables
+- [x] **AC-1:** Given the ten classes, when each runs alone and all run in one fork, then the row counts of the tables
   they touch are the same before and after each class. *Seam:* the shared Testcontainers database · *Pinned by:* a
   scratch row-count probe (evidence only, never committed); the result is in the PR body.
-- [ ] **AC-2:** Given a venue's cleanup, when its bookings named a guest no other booking names, then the guest is
+- [x] **AC-2:** Given a venue's cleanup, when its bookings named a guest no other booking names, then the guest is
   removed, and a guest another venue still books stays. *Pinned by:*
   `StayFixturesCleanupScopeIT.cleanupRemovesTheCustomersOfItsBookingsButNotOneAnotherVenueStillBooks`.
-- [ ] **AC-3:** `StaffMarkVsOnlineClaimConcurrencyIT` races on a day the staff mark accepts (from the clock), so the
+- [x] **AC-3:** `StaffMarkVsOnlineClaimConcurrencyIT` races on a day the staff mark accepts (from the clock), so the
   race never degenerates into the claim winning alone. *Pinned by:* the class.
-- [ ] **AC-4:** The whole suite is green with no travel and red only on F (#1854) at 2038.
-- [ ] **AC-5:** No file under `platform/src/main` in the diff.
+- [x] **AC-4:** The whole suite is green with no travel and red only on F (#1854) at 2038.
+- [x] **AC-5:** No file under `platform/src/main` in the diff.
 
 ## Non-goals
 
@@ -45,12 +45,12 @@ remove them; `StayFixtures.cleanupNow` also removes the guests its bookings name
 
 ## Execution status
 
-**Stage pointer:** implement (phase 0)
+**Stage pointer:** review (round 1)
 
-**Next action:** open the draft PR; finish the whole suite both ways.
+**Next action:** mark #1856 ready and run the review gate at high.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
-| 0 — own venues and residue | ⏳ | `b48dd95`, `ec77daf` |
+| 0 — own venues and residue | ✅ | `b48dd95`, `ec77daf` |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
