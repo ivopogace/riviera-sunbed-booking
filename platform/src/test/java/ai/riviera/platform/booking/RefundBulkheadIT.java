@@ -79,8 +79,8 @@ import static org.assertj.core.api.Assertions.assertThat;
  * <p>The nested {@link ControllableRefundConfiguration} gives this class its <strong>own</strong> Spring
  * context rather than the suite's shared one — deliberate: a test that wedges a thread pool must not
  * hand that pool to the next class in the run. The gate is released unconditionally in
- * {@link #releaseGateway()}. Bookings are SQL-seeded on dates no other IT uses, and never claimed
- * through {@code availability}. Testcontainers; skipped where Docker is absent.
+ * {@link #releaseGatewayThenRemoveVenue()}. Bookings are SQL-seeded on the test's own venue, never
+ * claimed through {@code availability}, and removed with it. Testcontainers; skipped where Docker is absent.
  */
 @EnabledIfDockerAvailable
 @Import({ TestcontainersConfiguration.class, RefundBulkheadIT.ControllableRefundConfiguration.class })
@@ -125,15 +125,20 @@ class RefundBulkheadIT {
 
 	private TransactionTemplate transactions;
 
+	/** This test's own venue: its bookings reach no other class's sets, and leave with it (#2). */
+	private StayFixtures.Venue venue;
+
 	@BeforeEach
 	void resetGateway() {
 		transactions = new TransactionTemplate(txManager);
 		gateway.reset();
+		venue = StayFixtures.venue(jdbc, "INSTANT", null, false);
 	}
 
 	@AfterEach
-	void releaseGateway() {
+	void releaseGatewayThenRemoveVenue() {
 		gateway.release();
+		StayFixtures.cleanup(jdbc, venue.id());
 	}
 
 	// ---- fixtures ----------------------------------------------------------------------------
@@ -141,8 +146,7 @@ class RefundBulkheadIT {
 	private record SetRef(long setId, long venueId) { }
 
 	private SetRef onlineSet() {
-		return jdbc.sql("SELECT id, venue_id FROM set_position WHERE pool = 'ONLINE' ORDER BY id LIMIT 1")
-				.query((rs, n) -> new SetRef(rs.getLong("id"), rs.getLong("venue_id"))).single();
+		return new SetRef(venue.online().getFirst().value(), venue.id());
 	}
 
 	private long seedBooking(SetRef set, String code, LocalDate date, String contactEmail,
@@ -358,6 +362,13 @@ class RefundBulkheadIT {
 		Awaitility.await("a listener that threw leaves its row FAILED, which the spine retry filters on (#1340)")
 				.atMost(WAIT)
 				.until(() -> outstandingStatus(bookingId).equals(List.of("FAILED")));
+
+		gateway.failEveryRefund(false);
+		incompletePublications.resubmitIncompletePublications(publication ->
+				publication.getEvent() instanceof BookingCancelled cancelled
+						&& cancelled.bookingId().value() == bookingId);
+		Awaitility.await("the row is re-driven, so the venue can leave").atMost(WAIT)
+				.until(() -> outstandingRefundPublications(bookingId) == 0L);
 	}
 
 	// ---- the controllable gateway ------------------------------------------------------------

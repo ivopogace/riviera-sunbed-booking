@@ -1,8 +1,12 @@
 package ai.riviera.platform.booking;
 
 import java.time.LocalDate;
+import java.util.ArrayList;
+import java.util.List;
 
 import jakarta.servlet.http.Cookie;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -14,6 +18,7 @@ import org.springframework.test.web.servlet.MockMvc;
 
 import ai.riviera.platform.EnabledIfDockerAvailable;
 import ai.riviera.platform.MovableClock;
+import ai.riviera.platform.OwnershipFixtures;
 import ai.riviera.platform.SessionLoginSupport;
 import ai.riviera.platform.TestcontainersConfiguration;
 import ai.riviera.platform.TiraneDaytimeClock;
@@ -53,14 +58,34 @@ class BookingControllerIT {
 	@Autowired
 	MovableClock clock;
 
+	/** Every venue this test made; each leaves after it with its rows and its fixture owner (#2). */
+	private final List<Long> venues = new ArrayList<>();
+
+	/** This test's own visible Instant-Book venue, for the sets the default-venue tests reserve on. */
+	private StayFixtures.Venue venue;
+
+	@BeforeEach
+	void ownVenue() {
+		venue = newVenue("INSTANT", null, true);
+	}
+
+	@AfterEach
+	void removeVenues() {
+		venues.forEach(made -> StayFixtures.cleanup(jdbc, made));
+	}
+
+	private StayFixtures.Venue newVenue(String mode, Integer maxStayDays, boolean visible) {
+		StayFixtures.Venue made = StayFixtures.venue(jdbc, mode, maxStayDays, visible);
+		venues.add(made.id());
+		return made;
+	}
+
 	private long onlineSet() {
-		return jdbc.sql("SELECT id FROM set_position WHERE pool = 'ONLINE' ORDER BY id LIMIT 1")
-				.query(Long.class).single();
+		return venue.online().getFirst().value();
 	}
 
 	private long walkInSet() {
-		return jdbc.sql("SELECT id FROM set_position WHERE pool = 'WALK_IN' ORDER BY id LIMIT 1")
-				.query(Long.class).single();
+		return venue.walkIn().value();
 	}
 
 	private String body(long setId, LocalDate date) {
@@ -80,53 +105,35 @@ class BookingControllerIT {
 	}
 
 	/**
-	 * A fresh Instant-Book venue at the given {@code sales_close} boundary value, with one ONLINE
-	 * set: on the pinned clock a {@code 00:01} venue is closed for today, a {@code 23:59} one open.
+	 * A fresh visible Instant-Book venue at the given {@code sales_close} boundary value, and its first
+	 * ONLINE set: on the pinned clock a {@code 00:01} venue is closed for today, a {@code 23:59} one open.
 	 */
 	private long onlineSetAtSalesClose(String salesClose) {
-		long venue = boundaryVenue(salesClose);
-		long operator = jdbc.sql("INSERT INTO operator (username, status) "
-						+ "VALUES ('boundary-op-' || :v, 'ACTIVE') RETURNING id")
-				.param("v", venue).query(Long.class).single();
-		jdbc.sql("INSERT INTO operator_venue (venue_id, operator_id) VALUES (:v, :o)")
-				.param("v", venue).param("o", operator).update();
-		return boundaryOnlineSet(venue);
+		StayFixtures.Venue made = newVenue("INSTANT", null, true);
+		closeSalesAt(made.id(), salesClose);
+		return made.online().getFirst().value();
 	}
 
-	private long boundaryVenue(String salesClose) {
-		return jdbc.sql("""
-				INSERT INTO venue (name, beach, booking_mode, commission_bps, payout_currency, sales_close)
-				VALUES (:name, 'KSAMIL', 'INSTANT', 1500, 'EUR', TIME '%s')
-				RETURNING id
-				""".formatted(salesClose))
-				.param("name", "Boundary Club " + salesClose)
-				.query(Long.class).single();
+	private void closeSalesAt(long venueId, String salesClose) {
+		jdbc.sql("UPDATE venue SET sales_close = CAST(:close AS time) WHERE id = :v")
+				.param("close", salesClose).param("v", venueId).update();
 	}
 
-	private long boundaryOnlineSet(long venue) {
-		return jdbc.sql("""
-				INSERT INTO set_position (venue_id, row_label, position_no, tier, pool, price_minor,
-				                          price_currency, grid_x, grid_y)
-				VALUES (:venue, 'A', 1, 'STANDARD', 'ONLINE', 4500, 'EUR', 1, 1)
-				RETURNING id
-				""")
-				.param("venue", venue)
-				.query(Long.class).single();
+	private long boundaryOnlineSet(long venueId) {
+		return jdbc.sql("SELECT id FROM set_position WHERE venue_id = :v AND pool = 'ONLINE' ORDER BY id LIMIT 1")
+				.param("v", venueId).query(Long.class).single();
 	}
 
 	/**
-	 * A boundary venue owned by the seeded {@code operator} login (instead of a throwaway row), so
-	 * the #794 tests can drive the owner's real profile {@code PATCH} through the edge before a
-	 * tourist reserve. Fresh row ⇒ profile {@code version} 0.
+	 * A boundary venue owned by the seeded {@code operator} login, so the #794 tests can drive the
+	 * owner's real profile {@code PATCH} through the edge before a tourist reserve. Fresh row ⇒ profile
+	 * {@code version} 0.
 	 */
 	private long boundaryVenueOwnedBySeededOperator(String salesClose) {
-		long venue = boundaryVenue(salesClose);
-		jdbc.sql("""
-				INSERT INTO operator_venue (venue_id, operator_id)
-				SELECT :v, id FROM operator WHERE username = 'operator'
-				""")
-				.param("v", venue).update();
-		return venue;
+		long made = newVenue("INSTANT", null, false).id();
+		closeSalesAt(made, salesClose);
+		OwnershipFixtures.grantToBootstrap(jdbc, made);
+		return made;
 	}
 
 	/** The owner's full-replace PATCH body flipping only {@code salesClose} (#794 AC-4/AC-5). */
@@ -304,16 +311,7 @@ class BookingControllerIT {
 
 	@Test
 	void rangeAtRequestVenueIsOnePendingRequest() throws Exception {
-		long venue = jdbc.sql("""
-				INSERT INTO venue (name, beach, booking_mode, commission_bps, payout_currency)
-				VALUES ('Range Request Club', 'KSAMIL', 'REQUEST', 1500, 'EUR') RETURNING id
-				""").query(Long.class).single();
-		long operator = jdbc.sql("INSERT INTO operator (username, status) "
-						+ "VALUES ('range-request-op-' || :v, 'ACTIVE') RETURNING id")
-				.param("v", venue).query(Long.class).single();
-		jdbc.sql("INSERT INTO operator_venue (venue_id, operator_id) VALUES (:v, :o)")
-				.param("v", venue).param("o", operator).update();
-		long set = boundaryOnlineSet(venue);
+		long set = newVenue("REQUEST", null, true).online().getFirst().value();
 		LocalDate first = bookable().plusDays(60);
 
 		reserve(rangeBody(set, first, first.plusDays(2)))
@@ -331,16 +329,7 @@ class BookingControllerIT {
 
 	@Test
 	void rangeOverTheVenueMaximumIs422() throws Exception {
-		long venue = jdbc.sql("""
-				INSERT INTO venue (name, beach, booking_mode, commission_bps, payout_currency, max_stay_days)
-				VALUES ('Max Stay Club', 'KSAMIL', 'INSTANT', 1500, 'EUR', 2) RETURNING id
-				""").query(Long.class).single();
-		long operator = jdbc.sql("INSERT INTO operator (username, status) "
-						+ "VALUES ('max-stay-op-' || :v, 'ACTIVE') RETURNING id")
-				.param("v", venue).query(Long.class).single();
-		jdbc.sql("INSERT INTO operator_venue (venue_id, operator_id) VALUES (:v, :o)")
-				.param("v", venue).param("o", operator).update();
-		long set = boundaryOnlineSet(venue);
+		long set = newVenue("INSTANT", 2, true).online().getFirst().value();
 		LocalDate first = bookable().plusDays(70);
 
 		reserve(rangeBody(set, first, first.plusDays(2)))

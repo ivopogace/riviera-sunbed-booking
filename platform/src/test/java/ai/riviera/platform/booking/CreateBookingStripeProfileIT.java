@@ -8,6 +8,7 @@ import com.stripe.model.PaymentIntent;
 import com.stripe.service.PaymentIntentService;
 import com.stripe.service.V1Services;
 
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -73,9 +74,21 @@ class CreateBookingStripeProfileIT {
 		when(intents.create(any(), any())).thenReturn(intent);
 	}
 
+	/** This test's own visible venue: the reserve's fences admit it, and its rows leave with it (#2). */
+	private StayFixtures.Venue venue;
+
+	@BeforeEach
+	void ownVenue() {
+		venue = StayFixtures.venue(jdbc, "INSTANT", null, true);
+	}
+
+	@AfterEach
+	void removeVenue() {
+		StayFixtures.cleanup(jdbc, venue.id());
+	}
+
 	private long onlineSet() {
-		return jdbc.sql("SELECT id FROM set_position WHERE pool = 'ONLINE' ORDER BY id LIMIT 1")
-				.query(Long.class).single();
+		return venue.online().getFirst().value();
 	}
 
 	private String body(long setId, LocalDate date) {
@@ -92,22 +105,16 @@ class CreateBookingStripeProfileIT {
 		when(intent.getId()).thenReturn(intentId);
 		when(intent.getClientSecret()).thenReturn(intentId + "_secret");
 		when(stripeClient.v1().paymentIntents().create(any(), any())).thenReturn(intent);
-		StayFixtures.Venue venue = StayFixtures.venue(jdbc, "INSTANT", null, true);
-		try {
-			LocalDate first = StayFixtures.firstDay(clock);
-			mvc.perform(post("/api/stays")
-							.header(SessionLoginSupport.CHALLENGE_HEADER, SessionLoginSupport.solvedChallenge(mvc))
-							.contentType(MediaType.APPLICATION_JSON)
-							.content(stayBody(venue.online().get(0).value(), venue.online().get(1).value(), first)))
-					.andExpect(status().isAccepted())
-					.andExpect(jsonPath("$.status").value("AWAITING_PAYMENT"))
-					.andExpect(jsonPath("$.payment.kind").value("EMBEDDED"))
-					.andExpect(jsonPath("$.payment.clientToken").value(intentId + "_secret"))
-					.andExpect(jsonPath("$.payment.reference").value(intentId));
-		}
-		finally {
-			StayFixtures.cleanup(jdbc, venue.id());
-		}
+		LocalDate first = StayFixtures.firstDay(clock);
+		mvc.perform(post("/api/stays")
+						.header(SessionLoginSupport.CHALLENGE_HEADER, SessionLoginSupport.solvedChallenge(mvc))
+						.contentType(MediaType.APPLICATION_JSON)
+						.content(stayBody(venue.online().get(0).value(), venue.online().get(1).value(), first)))
+				.andExpect(status().isAccepted())
+				.andExpect(jsonPath("$.status").value("AWAITING_PAYMENT"))
+				.andExpect(jsonPath("$.payment.kind").value("EMBEDDED"))
+				.andExpect(jsonPath("$.payment.clientToken").value(intentId + "_secret"))
+				.andExpect(jsonPath("$.payment.reference").value(intentId));
 	}
 
 	private static String stayBody(long a, long b, LocalDate first) {
@@ -133,7 +140,7 @@ class CreateBookingStripeProfileIT {
 				.andExpect(jsonPath("$.code").isNotEmpty())
 				.andExpect(jsonPath("$.amount.currency").value("EUR"));
 
-		String status = jdbc.sql("SELECT status FROM booking ORDER BY id DESC LIMIT 1")
+		String status = jdbc.sql("SELECT status FROM booking WHERE venue_id = :v").param("v", venue.id())
 				.query(String.class).single();
 		assertEquals("AWAITING_PAYMENT", status,
 				"the booking stays AWAITING_PAYMENT until the verified webhook (invariant #8)");

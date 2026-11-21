@@ -9,6 +9,8 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.RepeatedTest;
 import org.junit.jupiter.api.RepetitionInfo;
 import org.junit.jupiter.api.Test;
@@ -52,10 +54,22 @@ class ConcurrentRangeReservationIT {
 	@Autowired
 	JdbcClient jdbc;
 
-	/** The second seeded online set: the single-day race IT contends on the first. */
+	/** This test's own visible venue: the reserve's fences admit it, and its rows leave with it (#2). */
+	private StayFixtures.Venue venue;
+
+	@BeforeEach
+	void ownVenue() {
+		venue = StayFixtures.venue(jdbc, "INSTANT", null, true);
+	}
+
+	@AfterEach
+	void removeVenue() {
+		StayFixtures.cleanup(jdbc, venue.id());
+	}
+
+	/** The one set both racers contend for: this test's own, so no other class holds a day on it. */
 	private SetId rangeSet() {
-		return new SetId(jdbc.sql("SELECT id FROM set_position WHERE pool = 'ONLINE' ORDER BY id OFFSET 1 LIMIT 1")
-				.query(Long.class).single());
+		return venue.online().getFirst();
 	}
 
 	private static CreateBookingCommand range(SetId set, LocalDate first, String guest) {
