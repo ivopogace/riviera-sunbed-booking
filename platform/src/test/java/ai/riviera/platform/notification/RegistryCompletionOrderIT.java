@@ -59,8 +59,9 @@ class RegistryCompletionOrderIT {
 
 	/** Unconditional, so a failure while wedged never hands a parked mail thread to this context's next class. */
 	@AfterEach
-	void releaseTransport() {
+	void releaseTransportThenRemoveVenue() {
 		transport.release();
+		fixtures.removeVenue();
 	}
 
 	@Test

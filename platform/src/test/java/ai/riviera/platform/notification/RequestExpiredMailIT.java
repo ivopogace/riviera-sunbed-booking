@@ -9,6 +9,7 @@ import java.util.Optional;
 import io.micrometer.core.instrument.MeterRegistry;
 
 import org.awaitility.Awaitility;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -81,6 +82,11 @@ class RequestExpiredMailIT {
 	void isolateOutbox() {
 		mailer.clear();
 		fixtures = new BookingMailFixtures(jdbc, txManager, publisher);
+	}
+
+	@AfterEach
+	void removeVenue() {
+		fixtures.removeVenue();
 	}
 
 	/** AC-4: the plain record — outcome, facts, the code-gated status link built at send time. */
