@@ -372,18 +372,16 @@ for (const { name, width } of WIDTHS) {
   });
 }
 
-/** Today in Europe/Tirane, the page's default day, and the day after it. */
-function tiraneDay(offset: number): string {
-  const day = new Date(Date.now() + offset * 86_400_000);
-  return new Intl.DateTimeFormat('en-CA', { timeZone: 'Europe/Tirane' }).format(day);
-}
+/** Midday in Tirane, mid-month: the calendar opens on one month, so on a month's last day tomorrow has no cell. */
+const PINNED_NOW = new Date('2026-08-15T10:00:00Z');
+const PINNED_TOMORROW = '2026-08-16';
 
 /** The page's two closed panels; the reviews section raises alerts of its own. */
 const closedAlert = (page: Page) =>
   page.locator('[data-testid="map-sales-closed"], [data-testid="map-closed-for-season"]');
 
 /**
- * Open venue 1 on today with `first` as its read, pick tomorrow in the calendar and hold that read
+ * Open venue 1 on the pinned today with `first` as its read, pick tomorrow in the calendar and hold that read
  * open. Returns the function that answers it with `next`.
  */
 async function pickTomorrowWithHeldRead(
@@ -393,6 +391,7 @@ async function pickTomorrowWithHeldRead(
 ): Promise<() => void> {
   let release: () => void = () => undefined;
   const held = new Promise<void>((resolve) => (release = resolve));
+  await page.clock.setFixedTime(PINNED_NOW);
   await mockVenues(page);
   let reads = 0;
   await page.route(/\/api\/venues\/1(\?.*)?$/, async (route) => {
@@ -408,7 +407,7 @@ async function pickTomorrowWithHeldRead(
   await page.getByTestId('map-date').click();
   await page
     .getByTestId('availability-calendar')
-    .locator(`button[data-date="${tiraneDay(1)}"]`)
+    .locator(`button[data-date="${PINNED_TOMORROW}"]`)
     .click();
   await expect(mapCard(page)).toHaveAttribute('inert', '');
   return release;
@@ -456,7 +455,7 @@ for (const { name, width } of WIDTHS) {
     test('the closed-for-season notice stays in place between two closed days', async ({
       page,
     }) => {
-      const season = { salesOpen: false, closedForSeason: true, reopensOn: tiraneDay(40) };
+      const season = { salesOpen: false, closedForSeason: true, reopensOn: '2026-09-24' };
       const release = await pickTomorrowWithHeldRead(page, season, season);
       const notice = page.getByTestId('map-closed-for-season');
       await notice.evaluate((node) => node.setAttribute('data-kept', ''));
@@ -493,6 +492,7 @@ test('a refresh that turns the focused tile partly free keeps focus on that set 
   page,
 }) => {
   await refuseBookingAsTaken(page, await mockChallengeFence(page, 'on'));
+  await page.clock.setFixedTime(PINNED_NOW);
   await mockVenues(page);
   let reads = 0;
   // Someone took set 1's last day while the dialog was open: every read after the first says so.
