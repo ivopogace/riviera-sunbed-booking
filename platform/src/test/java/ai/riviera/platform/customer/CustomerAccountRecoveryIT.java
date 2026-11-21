@@ -2,6 +2,7 @@ package ai.riviera.platform.customer;
 
 import java.sql.Connection;
 import java.sql.PreparedStatement;
+import java.time.Clock;
 import java.time.Duration;
 import java.time.Instant;
 
@@ -44,8 +45,8 @@ import static org.junit.jupiter.api.Assertions.assertTimeoutPreemptively;
 @SpringBootTest
 class CustomerAccountRecoveryIT {
 
-	private static final Instant FUTURE = Instant.now().plus(Duration.ofHours(1));
-	private static final Instant PAST = Instant.now().minus(Duration.ofMinutes(5));
+	@Autowired
+	Clock clock;
 
 	@Autowired
 	CustomerAccountRecovery recovery;
@@ -66,7 +67,7 @@ class CustomerAccountRecoveryIT {
 	void verifyEmail_firstRedeemsMarksVerified_secondAndExpiredFail() {
 		CustomerAccountId id = register("verify@example.com");
 		assertThat(recovery.emailVerifiedFor("verify@example.com")).as("a fresh account is unverified").contains(false);
-		recovery.issueEmailVerificationToken(id, "vh-valid", FUTURE);
+		recovery.issueEmailVerificationToken(id, "vh-valid", future());
 
 		VerifyEmailOutcome first = recovery.verifyEmail("vh-valid");
 
@@ -79,7 +80,7 @@ class CustomerAccountRecoveryIT {
 				.isInstanceOf(VerifyEmailOutcome.InvalidOrExpired.class);
 
 		CustomerAccountId other = register("verify-expired@example.com");
-		recovery.issueEmailVerificationToken(other, "vh-expired", PAST);
+		recovery.issueEmailVerificationToken(other, "vh-expired", past());
 		assertThat(recovery.verifyEmail("vh-expired"))
 				.as("an expired token cannot verify").isInstanceOf(VerifyEmailOutcome.InvalidOrExpired.class);
 		assertThat(recovery.emailVerifiedFor("verify-expired@example.com")).contains(false);
@@ -88,7 +89,7 @@ class CustomerAccountRecoveryIT {
 	@Test
 	void resetPassword_setsHashOnce_secondAndExpiredFail() {
 		CustomerAccountId id = register("reset@example.com");
-		recovery.issuePasswordResetToken(id, "rh-valid", FUTURE);
+		recovery.issuePasswordResetToken(id, "rh-valid", future());
 
 		ResetPasswordOutcome outcome = recovery.resetPassword("rh-valid", "{bcrypt}rotated");
 
@@ -101,7 +102,7 @@ class CustomerAccountRecoveryIT {
 				.isInstanceOf(ResetPasswordOutcome.InvalidOrExpired.class);
 
 		CustomerAccountId other = register("reset-expired@example.com");
-		recovery.issuePasswordResetToken(other, "rh-expired", PAST);
+		recovery.issuePasswordResetToken(other, "rh-expired", past());
 		assertThat(recovery.resetPassword("rh-expired", "{bcrypt}nope"))
 				.as("an expired token cannot reset").isInstanceOf(ResetPasswordOutcome.InvalidOrExpired.class);
 		assertThat(accounts.findByEmail("reset-expired@example.com")).get()
@@ -111,8 +112,8 @@ class CustomerAccountRecoveryIT {
 	@Test
 	void issuingANewTokenInvalidatesThePriorUnconsumedOne() {
 		CustomerAccountId id = register("reissue@example.com");
-		recovery.issuePasswordResetToken(id, "rh-old", FUTURE);
-		recovery.issuePasswordResetToken(id, "rh-new", FUTURE);
+		recovery.issuePasswordResetToken(id, "rh-old", future());
+		recovery.issuePasswordResetToken(id, "rh-new", future());
 
 		assertThat(recovery.resetPassword("rh-old", "{bcrypt}x"))
 				.as("only the newest link works").isInstanceOf(ResetPasswordOutcome.InvalidOrExpired.class);
@@ -128,7 +129,7 @@ class CustomerAccountRecoveryIT {
 	@Test
 	void emailForResetTokenResolvesTheAccountWithoutConsumingTheToken() {
 		CustomerAccountId id = register("named@example.com");
-		recovery.issuePasswordResetToken(id, "rh-named", FUTURE);
+		recovery.issuePasswordResetToken(id, "rh-named", future());
 
 		assertThat(recovery.emailForResetToken("rh-named")).contains("named@example.com");
 		assertThat(recovery.emailForResetToken("rh-named")).as("still readable — the read consumes nothing")
@@ -146,10 +147,10 @@ class CustomerAccountRecoveryIT {
 	@Test
 	void emailForResetTokenIsEmptyForAnExpiredConsumedOrWrongPurposeToken() {
 		CustomerAccountId id = register("named-negative@example.com");
-		recovery.issuePasswordResetToken(id, "rh-consumed", FUTURE);
+		recovery.issuePasswordResetToken(id, "rh-consumed", future());
 		recovery.resetPassword("rh-consumed", "{bcrypt}rotated");
-		recovery.issuePasswordResetToken(id, "rh-gone", PAST);
-		recovery.issueEmailVerificationToken(id, "vh-other-purpose", FUTURE);
+		recovery.issuePasswordResetToken(id, "rh-gone", past());
+		recovery.issueEmailVerificationToken(id, "vh-other-purpose", future());
 
 		assertThat(recovery.emailForResetToken("rh-consumed")).as("consumed").isEmpty();
 		assertThat(recovery.emailForResetToken("rh-gone")).as("expired").isEmpty();
@@ -187,7 +188,7 @@ class CustomerAccountRecoveryIT {
 		CustomerAccountId id = register("two-live-links@example.com");
 		for (String hash : new String[] {"live-link-a", "live-link-b"}) {
 			jdbc.update("INSERT INTO customer_account_token (account_id, purpose, token_hash, expires_at)"
-					+ " VALUES (?, 'RESET_PASSWORD', ?, ?)", id.value(), hash, java.sql.Timestamp.from(FUTURE));
+					+ " VALUES (?, 'RESET_PASSWORD', ?, ?)", id.value(), hash, java.sql.Timestamp.from(future()));
 		}
 
 		assertThat(recovery.resetPassword("live-link-a", "{bcrypt}reset")).isInstanceOf(ResetPasswordOutcome.Reset.class);
@@ -211,11 +212,11 @@ class CustomerAccountRecoveryIT {
 				lock.executeQuery().close();
 			}
 			assertTimeoutPreemptively(Duration.ofSeconds(30), () -> assertThatThrownBy(
-					() -> recovery.issuePasswordResetToken(id, "locked-hash", FUTURE))
+					() -> recovery.issuePasswordResetToken(id, "locked-hash", future()))
 					.isInstanceOf(DataAccessException.class));
 			holder.rollback();
 		}
-		assertThat(recovery.issuePasswordResetToken(id, "unlocked-hash", FUTURE)).isTrue();
+		assertThat(recovery.issuePasswordResetToken(id, "unlocked-hash", future())).isTrue();
 	}
 
 	private CustomerAccountId register(String email) {
@@ -227,5 +228,14 @@ class CustomerAccountRecoveryIT {
 		return jdbc.queryForObject(
 				"SELECT count(*) FROM customer_account WHERE id = ? AND email_verified_at IS NOT NULL",
 				Integer.class, id.value());
+	}
+
+	/** Expiries come from the context clock, the one the token store compares against (#1857). */
+	private Instant future() {
+		return clock.instant().plus(Duration.ofHours(1));
+	}
+
+	private Instant past() {
+		return clock.instant().minus(Duration.ofMinutes(5));
 	}
 }
