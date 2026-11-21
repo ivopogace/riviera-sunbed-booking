@@ -187,9 +187,9 @@ describe('Availability calendar contrast (WCAG AA) — venue/day-availability.ts
     });
 
     /**
-     * The stay's Apply wears the primary CTA skin (`[appPrimaryCta]`), proved against the card glass
-     * in `cta-border-token.contrast.spec.ts`; here against the popover it sits on, by the adjacency rule of
-     * `docs/design/non-text-contrast.md` rule 1: the fill or the white hairline, whichever abuts.
+     * The stay's Apply wears the primary CTA skin (`[appPrimaryCta]`). Rule 1's reading of
+     * `docs/design/non-text-contrast.md` (the fill or the white hairline, whichever abuts) carries
+     * it in the light palettes; in the dark one it is supplementary to rule 2, asserted below.
      */
     it('the Apply button reads against the popover surface over every stop', () => {
       expect(read('shared/availability-calendar.html')).toMatch(
@@ -227,6 +227,24 @@ describe('Availability calendar contrast (WCAG AA) — venue/day-availability.ts
         ).toBeLessThan(contrastRatio(palette.ink, rgbToHex(surface)));
       }
     });
+  });
+
+  /**
+   * Rule 2, the dark CTA's ground (#1840): the label carries the identity at AA and the fill-vs-host
+   * number stays measured. This popover (H4 in `cta-border-token.contrast.spec.ts`) is also the
+   * surface the partly-free sheet's retry stands on; the scrim under both is left out, as it only darkens.
+   */
+  it('the Apply rests on rule 2 in the dark palette: a measured sub-3:1 fill band, an AA label', () => {
+    const ratios = DARK_CALENDAR_PALETTE.stops.flatMap((stop) => {
+      const behind = rgbToHex(surfaceOver(DARK_CALENDAR_PALETTE.surface, stop));
+      return CTA_GRAD_STOPS.map((fill) => contrastRatio(rgbToHex(fill), behind));
+    });
+
+    expect(Math.min(...ratios), 'the band floor, under 3:1').toBeCloseTo(2.35, 2);
+    expect(Math.max(...ratios), 'the band ceiling').toBeCloseTo(3.13, 2);
+    for (const fill of CTA_GRAD_STOPS) {
+      expect(contrastRatio('#ffffff', rgbToHex(fill))).toBeGreaterThanOrEqual(AA_NORMAL);
+    }
   });
 
   /**

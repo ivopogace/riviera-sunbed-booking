@@ -72,6 +72,8 @@ export const DARK_PANEL_WASH_HOVER: Glass = { color: WHITE, alpha: 0.16 };
 /** Dark `--riv-field-fill` / `--riv-field-border` (light themes: the FIELD_*_ALPHA constants). */
 export const DARK_FIELD_FILL: Glass = { color: hexToRgb('020a16'), alpha: 0.45 };
 export const DARK_FIELD_BORDER: Glass = { color: WHITE, alpha: 0.5 };
+/** `--riv-field-solid` in dark — the slate banner inside the venue map's card. */
+export const DARK_FIELD_SOLID: Glass = { color: hexToRgb('0f172a'), alpha: 0.92 };
 /** Dark `--riv-card-track` (light themes: CARD_INK at CARD_TRACK_ALPHA). */
 export const DARK_CARD_TRACK: Glass = { color: WHITE, alpha: 0.18 };
 /** `--riv-dialog-glass` per ink family (light themes: white 0.82). */
