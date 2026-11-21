@@ -8,6 +8,7 @@ import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 import org.awaitility.Awaitility;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -111,10 +112,19 @@ class RefundOutboxScopeIT {
 
 	private TransactionTemplate transactions;
 
+	/** This test's own venue: its bookings reach no other class's sets, and leave with it (#2). */
+	private StayFixtures.Venue venue;
+
 	@BeforeEach
 	void resetGateway() {
 		transactions = new TransactionTemplate(txManager);
 		gateway.reset();
+		venue = StayFixtures.venue(jdbc, "INSTANT", null, false);
+	}
+
+	@AfterEach
+	void removeVenue() {
+		StayFixtures.cleanup(jdbc, venue.id());
 	}
 
 	/**
@@ -208,8 +218,7 @@ class RefundOutboxScopeIT {
 	private record SetRef(long setId, long venueId) { }
 
 	private SetRef onlineSet() {
-		return jdbc.sql("SELECT id, venue_id FROM set_position WHERE pool = 'ONLINE' ORDER BY id LIMIT 1")
-				.query((rs, n) -> new SetRef(rs.getLong("id"), rs.getLong("venue_id"))).single();
+		return new SetRef(venue.online().getFirst().value(), venue.id());
 	}
 
 	private long seedBooking(SetRef set, String code, LocalDate date, String contactEmail,

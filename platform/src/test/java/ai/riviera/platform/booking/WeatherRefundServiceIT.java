@@ -4,6 +4,8 @@ import java.time.LocalDate;
 import java.time.ZoneId;
 import java.util.List;
 
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -13,6 +15,7 @@ import org.springframework.test.context.event.ApplicationEvents;
 import org.springframework.test.context.event.RecordApplicationEvents;
 
 import ai.riviera.platform.EnabledIfDockerAvailable;
+import ai.riviera.platform.OwnershipFixtures;
 import ai.riviera.platform.TestcontainersConfiguration;
 import ai.riviera.platform.booking.events.BookingCancelled;
 import ai.riviera.platform.booking.events.BookingDayRefunded;
@@ -37,8 +40,8 @@ import static org.junit.jupiter.api.Assertions.assertNull;
  * date (after the cutoff, when a tourist cancel is refused outright) to prove the cutoff is ignored.
  * That past-date seeding also pins the guest-cancel fence's scope: the operator path stays open once
  * the service day has passed, because a post-storm refund returns the venue's own money.
- * Drives the real {@link RefundForWeather} port against Testcontainers Postgres. Each test uses its
- * own past date so the per-(venue, date) counts are deterministic on the shared container.
+ * Drives the real {@link RefundForWeather} port against Testcontainers Postgres. Each test runs on a
+ * venue of its own, removed after it, so the per-(venue, date) counts see only its bookings.
  */
 @EnabledIfDockerAvailable
 @Import(TestcontainersConfiguration.class)
@@ -61,7 +64,21 @@ class WeatherRefundServiceIT {
 	@Autowired
 	ai.riviera.platform.booking.application.checkin.MarkNoShows markNoShows;
 
-	/** The interim bootstrap operator (owns every venue) — resolves the ownership guard (#73). */
+	/** This test's own venue, granted to the bootstrap operator so the ownership guard admits it (#13). */
+	private StayFixtures.Venue venue;
+
+	@BeforeEach
+	void ownVenue() {
+		venue = StayFixtures.venue(jdbc, "INSTANT", null, false);
+		OwnershipFixtures.grantToBootstrap(jdbc, venue.id());
+	}
+
+	@AfterEach
+	void removeVenue() {
+		StayFixtures.cleanup(jdbc, venue.id());
+	}
+
+	/** The bootstrap operator, which {@link #ownVenue} grants this test's venue (#73). */
 	private OperatorId bootstrap() {
 		return operators.operatorFor("operator").orElseThrow();
 	}
@@ -70,8 +87,7 @@ class WeatherRefundServiceIT {
 	}
 
 	private long venueWithOnlineSets() {
-		return jdbc.sql("SELECT venue_id FROM set_position WHERE pool = 'ONLINE' ORDER BY venue_id LIMIT 1")
-				.query(Long.class).single();
+		return venue.id();
 	}
 
 	private List<Long> onlineSets(long venueId, int n) {

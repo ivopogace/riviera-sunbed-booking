@@ -8,6 +8,7 @@ import com.stripe.exception.ApiConnectionException;
 import com.stripe.service.PaymentIntentService;
 import com.stripe.service.V1Services;
 
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -73,14 +74,26 @@ class CreateBookingPaymentFailureIT {
 		when(intents.create(any(), any())).thenThrow(new ApiConnectionException("stripe unreachable"));
 	}
 
+	/** This test's own visible venue: the reserve's fences admit it, and its rows leave with it (#2). */
+	private StayFixtures.Venue venue;
+
+	@BeforeEach
+	void ownVenue() {
+		venue = StayFixtures.venue(jdbc, "INSTANT", null, true);
+	}
+
+	@AfterEach
+	void removeVenue() {
+		StayFixtures.cleanup(jdbc, venue.id());
+	}
+
 	private SetId anyOnlineSet() {
-		return new SetId(jdbc.sql("SELECT id FROM set_position WHERE pool = 'ONLINE' ORDER BY id LIMIT 1")
-				.query(Long.class).single());
+		return venue.online().getFirst();
 	}
 
 	private String bookingStatus(SetId set, LocalDate date) {
 		// .single() asserts EXACTLY one booking row for this (set, date) — also proving the failed
-		// attempt created no duplicate; the date is unique to this test so no other row can match.
+		// attempt created no duplicate; the set is this test's own, so no other row can match.
 		return jdbc.sql("SELECT status FROM booking WHERE set_id = :id AND booking_date = :date")
 				.param("id", set.value()).param("date", date).query(String.class).single();
 	}

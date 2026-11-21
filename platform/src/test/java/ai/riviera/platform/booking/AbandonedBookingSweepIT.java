@@ -10,6 +10,7 @@ import com.stripe.model.PaymentIntent;
 import com.stripe.service.PaymentIntentService;
 import com.stripe.service.V1Services;
 
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -69,9 +70,8 @@ class AbandonedBookingSweepIT {
 	private static final int FRESH_AGE_MINUTES = 1;
 
 	/**
-	 * A service day long since ended. Fixed rather than derived from "now" so the row this class
-	 * deletes between methods is the row it wrote; every other date here is far in the future, so the
-	 * day-end arm is inert for them and each arm is exercised in isolation.
+	 * A service day long since ended; every other date here is far in the future, so the day-end arm is
+	 * inert for them and each arm is exercised in isolation.
 	 */
 	private static final LocalDate ENDED_SERVICE_DAY = LocalDate.of(2020, 8, 1);
 
@@ -98,28 +98,17 @@ class AbandonedBookingSweepIT {
 	private PaymentIntentService intents;
 	private PaymentIntent cancelableIntent;
 
+	/** This test's own venue: the sweep's rows here are only this test's, and leave with it (#2). */
+	private StayFixtures.Venue venue;
+
 	@BeforeEach
-	void isolate() {
-		// The sweep scans the whole table, so wipe THIS class's own rows before each test (the shared
-		// Testcontainers DB persists across methods, and some methods deliberately leave a stale
-		// AWAITING_PAYMENT row behind). Scoped to this test's codes / intent ids / date range so it
-		// never touches another test class's data. Delete booking before customer (FK).
-		jdbc.sql("DELETE FROM payment_booking WHERE payment_id IN (SELECT id FROM payment "
-				+ "WHERE payment_intent_id LIKE 'pi_sweep%' OR payment_intent_id = 'pi_succeeded')").update();
-		jdbc.sql("DELETE FROM payment WHERE payment_intent_id LIKE 'pi_sweep%' "
-				+ "OR payment_intent_id = 'pi_succeeded'").update();
-		jdbc.sql("DELETE FROM set_availability WHERE booking_date BETWEEN '2027-08-01' AND '2027-08-31'")
-				.update();
-		// The day-end arm needs an already-ended date, which no future-dated range would cover.
-		jdbc.sql("DELETE FROM set_availability WHERE booking_date = :ended")
-				.param("ended", ENDED_SERVICE_DAY).update();
-		// Today-dated methods leave held claims behind; release exactly this class's own (join by code).
-		jdbc.sql("""
-				DELETE FROM set_availability sa USING booking b
-				WHERE b.code LIKE 'SWEEPAC%' AND sa.set_id = b.set_id AND sa.booking_date = b.booking_date
-				""").update();
-		jdbc.sql("DELETE FROM booking WHERE code LIKE 'SWEEPAC%'").update();
-		jdbc.sql("DELETE FROM customer WHERE email LIKE 'SWEEPAC%@example.com'").update();
+	void ownVenue() {
+		venue = StayFixtures.venue(jdbc, "INSTANT", null, false);
+	}
+
+	@AfterEach
+	void removeVenue() {
+		StayFixtures.cleanup(jdbc, venue.id());
 	}
 
 	@BeforeEach
@@ -140,8 +129,7 @@ class AbandonedBookingSweepIT {
 	}
 
 	private SetRef onlineSet() {
-		return jdbc.sql("SELECT id, venue_id FROM set_position WHERE pool = 'ONLINE' ORDER BY id LIMIT 1")
-				.query((rs, n) -> new SetRef(rs.getLong("id"), rs.getLong("venue_id"))).single();
+		return new SetRef(venue.online().getFirst().value(), venue.id());
 	}
 
 	private long insertBooking(String code, SetRef set, LocalDate date, String status, int ageMinutes) {

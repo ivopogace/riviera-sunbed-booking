@@ -3,6 +3,8 @@ package ai.riviera.platform.booking;
 import java.time.LocalDate;
 import java.util.List;
 
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -33,13 +35,25 @@ class BookingMigrationIT {
 	@Autowired
 	JdbcClient jdbc;
 
+	/** This test's own venue; its rows are seeded as stored and publish nothing, so it leaves without waiting. */
+	private StayFixtures.Venue venue;
+
+	@BeforeEach
+	void ownVenue() {
+		venue = StayFixtures.venue(jdbc, "INSTANT", null, false);
+	}
+
+	@AfterEach
+	void removeVenue() {
+		StayFixtures.cleanupNow(jdbc, venue.id());
+	}
+
 	private long anyOnlineSetId() {
-		return jdbc.sql("SELECT id FROM set_position WHERE pool = 'ONLINE' ORDER BY id LIMIT 1")
-				.query(Long.class).single();
+		return venue.online().getFirst().value();
 	}
 
 	private long anyVenueId() {
-		return jdbc.sql("SELECT id FROM venue ORDER BY id LIMIT 1").query(Long.class).single();
+		return venue.id();
 	}
 
 	private long insertCustomer(String email) {

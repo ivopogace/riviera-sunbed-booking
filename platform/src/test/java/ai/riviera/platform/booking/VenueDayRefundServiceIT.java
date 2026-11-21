@@ -2,8 +2,11 @@ package ai.riviera.platform.booking;
 
 import java.time.Clock;
 import java.time.LocalDate;
+import java.util.ArrayList;
 import java.util.List;
 
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -13,6 +16,7 @@ import org.springframework.test.context.event.ApplicationEvents;
 import org.springframework.test.context.event.RecordApplicationEvents;
 
 import ai.riviera.platform.EnabledIfDockerAvailable;
+import ai.riviera.platform.OwnershipFixtures;
 import ai.riviera.platform.TestcontainersConfiguration;
 import ai.riviera.platform.TiraneDaytimeClock;
 import ai.riviera.platform.availability.api.AvailabilityClaim;
@@ -74,7 +78,31 @@ class VenueDayRefundServiceIT {
 	@Autowired
 	OperatorDirectory operators;
 
-	/** The bootstrap operator owns Miramar (V29). */
+	/** This test's own venue, granted to the bootstrap operator so the ownership guard admits it (#13). */
+	private StayFixtures.Venue venue;
+
+	@BeforeEach
+	void ownVenue() {
+		venue = StayFixtures.venue(jdbc, "INSTANT", null, false);
+		OwnershipFixtures.grantToBootstrap(jdbc, venue.id());
+	}
+
+	/** Venues the bootstrap operator does not own, removed with {@link #venue}. */
+	private final List<Long> unowned = new ArrayList<>();
+
+	@AfterEach
+	void removeVenues() {
+		StayFixtures.cleanup(jdbc, venue.id());
+		unowned.forEach(other -> StayFixtures.cleanup(jdbc, other));
+	}
+
+	private StayFixtures.Venue unownedVenue() {
+		StayFixtures.Venue other = StayFixtures.venue(jdbc, "INSTANT", null, false);
+		unowned.add(other.id());
+		return other;
+	}
+
+	/** The bootstrap operator, which {@link #ownVenue} grants this test's venue. */
 	private OperatorId bootstrap() {
 		return operators.operatorFor("operator").orElseThrow();
 	}
@@ -83,8 +111,7 @@ class VenueDayRefundServiceIT {
 	}
 
 	private long venueWithOnlineSets() {
-		return jdbc.sql("SELECT venue_id FROM set_position WHERE pool = 'ONLINE' ORDER BY venue_id LIMIT 1")
-				.query(Long.class).single();
+		return venue.id();
 	}
 
 	private List<Long> onlineSets(long venueId, int n) {
@@ -352,15 +379,8 @@ class VenueDayRefundServiceIT {
 	void anAdminRefundsAStaysDayAtAVenueTheyDoNotOwn() {
 		LocalDate first = today().plusDays(200);
 		LocalDate dayTwo = first.plusDays(1);
-		long other = jdbc.sql("""
-				INSERT INTO venue (name, beach, booking_mode, commission_bps, payout_currency)
-				VALUES ('Unowned Admin Club', 'KSAMIL', 'INSTANT', 1500, 'EUR') RETURNING id
-				""").query(Long.class).single();
-		long set = jdbc.sql("""
-				INSERT INTO set_position (venue_id, row_label, position_no, tier, pool, price_minor, price_currency, grid_x, grid_y)
-				VALUES (:venue, 'A', 1, 'STANDARD', 'ONLINE', 4500, 'EUR', 1, 1) RETURNING id
-				""").param("venue", other).query(Long.class).single();
-		Seeded stay = confirmedStay(other, set, first, 4, "VDADMIN001", 12000L);
+		StayFixtures.Venue other = unownedVenue();
+		Seeded stay = confirmedStay(other.id(), other.online().getFirst().value(), first, 4, "VDADMIN001", 12000L);
 
 		VenueDayRefundOutcome outcome = refundVenueDay.refundDayAsAdmin(bootstrap(), new BookingId(stay.bookingId()), dayTwo);
 
@@ -385,15 +405,8 @@ class VenueDayRefundServiceIT {
 	void aForeignCodeAtAnOwnedVenueIsNotFound() {
 		LocalDate date = today().plusDays(160);
 		long owned = venueWithOnlineSets();
-		long other = jdbc.sql("""
-				INSERT INTO venue (name, beach, booking_mode, commission_bps, payout_currency)
-				VALUES ('Foreign Day Club', 'KSAMIL', 'INSTANT', 1500, 'EUR') RETURNING id
-				""").query(Long.class).single();
-		long foreignSet = jdbc.sql("""
-				INSERT INTO set_position (venue_id, row_label, position_no, tier, pool, price_minor, price_currency, grid_x, grid_y)
-				VALUES (:venue, 'A', 1, 'STANDARD', 'ONLINE', 4500, 'EUR', 1, 1) RETURNING id
-				""").param("venue", other).query(Long.class).single();
-		Seeded foreign = confirmedStay(other, foreignSet, date, 2, "VDFOREIGN1", 9000L);
+		StayFixtures.Venue other = unownedVenue();
+		Seeded foreign = confirmedStay(other.id(), other.online().getFirst().value(), date, 2, "VDFOREIGN1", 9000L);
 
 		assertInstanceOf(VenueDayRefundOutcome.NotFound.class,
 				refundVenueDay.refundDay(bootstrap(), new VenueId(owned), "VDFOREIGN1", date));
