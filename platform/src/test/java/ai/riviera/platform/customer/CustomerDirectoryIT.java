@@ -1,5 +1,8 @@
 package ai.riviera.platform.customer;
 
+import java.sql.Timestamp;
+import java.time.Duration;
+import java.time.Instant;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -11,7 +14,9 @@ import org.springframework.context.annotation.Import;
 import org.springframework.jdbc.core.simple.JdbcClient;
 
 import ai.riviera.platform.EnabledIfDockerAvailable;
+import ai.riviera.platform.MovableClock;
 import ai.riviera.platform.TestcontainersConfiguration;
+import ai.riviera.platform.TiraneDaytimeClock;
 import ai.riviera.platform.customer.api.CustomerDirectory;
 import ai.riviera.platform.customer.api.CustomerLookup;
 import ai.riviera.platform.customer.vocabulary.CustomerId;
@@ -25,10 +30,11 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
  * via Testcontainers so the {@code ON CONFLICT} upsert is exercised against the constraint.
  *
  * <p>It also covers the read-only twin, {@code CustomerLookup#findByEmail} — the same
- * canonical form, resolving without writing.
+ * canonical form, resolving without writing. The context clock is a {@link MovableClock}, so the
+ * retention-basis stamp is pinned to an instant the database's {@code now()} cannot produce.
  */
 @EnabledIfDockerAvailable
-@Import(TestcontainersConfiguration.class)
+@Import({ TestcontainersConfiguration.class, TiraneDaytimeClock.class })
 @SpringBootTest
 class CustomerDirectoryIT {
 
@@ -40,6 +46,9 @@ class CustomerDirectoryIT {
 
 	@Autowired
 	JdbcClient jdbc;
+
+	@Autowired
+	MovableClock clock;
 
 	@Test
 	void findOrCreateByEmail() {
@@ -57,6 +66,30 @@ class CustomerDirectoryIT {
 				.param("id", first.value()).query(String.class).single();
 		assertEquals("Ana Updated", name, "repeat email refreshes the stored name");
 		assertEquals("+355600222", phone, "repeat email refreshes the stored phone");
+	}
+
+	/**
+	 * {@code updated_at} is the retention sweep's basis, and its cutoff comes from the application clock
+	 * (#1854): a new guest and a returning one are both stamped with that clock's instant, never the database's.
+	 */
+	@Test
+	void stampsTheRetentionBasisFromTheApplicationClockOnInsertAndOnRefresh() {
+		Instant contextStart = clock.instant();
+		Instant created = Instant.parse("2024-03-05T08:09:10.123456Z");
+		Instant refreshed = created.plus(Duration.ofDays(40)).plusNanos(1_000);
+		GuestContact contact = new GuestContact("clock-stamp@example.com", "Clock Guest", "+355600666");
+		try {
+			clock.set(created);
+			CustomerId id = directory.findOrCreate(contact);
+			assertEquals(created, updatedAt(id), "a new guest is stamped from the application clock");
+
+			clock.set(refreshed);
+			assertEquals(id, directory.findOrCreate(contact));
+			assertEquals(refreshed, updatedAt(id), "a returning guest is re-stamped from the application clock");
+		}
+		finally {
+			clock.set(contextStart);
+		}
 	}
 
 	/**
@@ -107,6 +140,11 @@ class CustomerDirectoryIT {
 		assertEquals("Dren Doe", found.get(dren).fullName());
 
 		assertEquals(Map.of(), lookup.findByIds(List.of()), "empty input must not build IN () SQL");
+	}
+
+	private Instant updatedAt(CustomerId id) {
+		return jdbc.sql("SELECT updated_at FROM customer WHERE id = :id")
+				.param("id", id.value()).query(Timestamp.class).single().toInstant();
 	}
 
 	private long countCustomers() {

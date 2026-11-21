@@ -1,5 +1,7 @@
 package ai.riviera.platform.customer.adapter.out;
 
+import java.sql.Timestamp;
+import java.time.Clock;
 import java.util.Collection;
 import java.util.Map;
 import java.util.stream.Collectors;
@@ -13,13 +15,12 @@ import ai.riviera.platform.customer.vocabulary.Emails;
 import ai.riviera.platform.customer.vocabulary.GuestContact;
 
 /**
- * JDBC adapter implementing {@link CustomerDirectory} directly (no intervening application
- * service). Explicit SQL via {@link JdbcClient}, no JPA (invariant #1).
+ * JDBC adapter implementing {@link CustomerDirectory} directly: explicit SQL via {@link JdbcClient} (invariant #1).
  *
- * <p>Find-or-create is one atomic {@code INSERT ... ON CONFLICT (email) DO UPDATE} against
- * {@code customer_email_uniq} on the normalised (trimmed, lower-cased) email, returning the id
- * either way and refreshing name/phone; never {@code DO NOTHING}, whose {@code RETURNING} is
- * empty on a repeat email.
+ * <p>Find-or-create is one atomic {@code INSERT ... ON CONFLICT (email) DO UPDATE} against {@code customer_email_uniq}
+ * on the normalised email, returning the id either way and refreshing name/phone; never {@code DO NOTHING}, whose
+ * {@code RETURNING} is empty on a repeat email. Both paths stamp {@code updated_at}, the retention basis, from the
+ * injected {@link Clock}, the clock the retention sweep's cutoff reads (invariant #6).
  */
 @Repository
 class JdbcCustomerDirectory implements CustomerDirectory, ai.riviera.platform.customer.api.CustomerLookup {
@@ -36,26 +37,29 @@ class JdbcCustomerDirectory implements CustomerDirectory, ai.riviera.platform.cu
 	private static final String COL_PHONE = "phone";
 
 	private final JdbcClient jdbc;
+	private final Clock clock;
 
-	JdbcCustomerDirectory(JdbcClient jdbc) {
+	JdbcCustomerDirectory(JdbcClient jdbc, Clock clock) {
 		this.jdbc = jdbc;
+		this.clock = clock;
 	}
 
 	@Override
 	public CustomerId findOrCreate(GuestContact contact) {
 		String email = Emails.normalize(contact.email());
 		long id = jdbc.sql("""
-				INSERT INTO customer (email, full_name, phone)
-				VALUES (:email, :name, :phone)
+				INSERT INTO customer (email, full_name, phone, updated_at)
+				VALUES (:email, :name, :phone, :now)
 				ON CONFLICT (email) DO UPDATE
-				SET full_name = EXCLUDED.full_name,
-				    phone     = EXCLUDED.phone,
-				    updated_at = NOW()
+				SET full_name  = EXCLUDED.full_name,
+				    phone      = EXCLUDED.phone,
+				    updated_at = EXCLUDED.updated_at
 				RETURNING id
 				""")
 				.param(PARAM_EMAIL, email)
 				.param("name", contact.fullName())
 				.param(PARAM_PHONE, contact.phone())
+				.param("now", Timestamp.from(clock.instant()))
 				.query(Long.class)
 				.single();
 		return new CustomerId(id);
